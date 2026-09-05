@@ -1,9 +1,9 @@
 {
-  "name": "del-voltone-site",
+  "name": "app-boilerplate-site",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Documentazione del progetto DelVoltone — sito statico generato dai Markdown in docs/",
+  "description": "Documentazione del template app-boilerplate — sito statico generato dai Markdown in docs/",
   "scripts": {
     "build": "node build.mjs",
     "clean": "node build.mjs --clean"

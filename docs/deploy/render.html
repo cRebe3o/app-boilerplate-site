@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deploy su Render — DelVoltone</title>
+  <title>Deploy su Render — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="../index.html">
-      <span class="brand-name">DelVoltone</span>
-      <span class="brand-sub">Documentazione tecnica</span>
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
     </a>
   </header>
 
@@ -24,30 +24,23 @@
           <p class="nav-title">Progetto</p>
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
         <div class="nav-group">
-          <p class="nav-title">Database</p>
+          <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
-            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
-            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
-            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
-          </ul>
-        </div>
-        <div class="nav-group">
-          <p class="nav-title">Database — versione storica (obsoleta)</p>
-          <ul>
-            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
         <div class="nav-group">
           <p class="nav-title">Autenticazione</p>
           <ul>
-            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
             <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
           </ul>
         </div>
@@ -80,6 +73,9 @@
       </nav>
 <p>Pubblicare backend e frontend da GitHub su <a href="https://render.com" target="_blank" rel="noopener">Render</a>. Sono due servizi distinti,
 che si configurano una volta e poi si aggiornano da soli a ogni push.</p>
+<p>Render è l'esempio usato qui perché è il percorso più rapido per mettere online un progetto appena
+generato; i concetti — variabili d'ambiente, CORS, cookie cross-site, rewrite della SPA — valgono
+identici su qualunque altro hosting.</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -94,7 +90,7 @@ che si configurano una volta e poi si aggiornano da soli a ogni push.</p>
 <tr>
 <td>Backend</td>
 <td><strong>Web Service</strong></td>
-<td><code>apps/backend/DelVoltone.Api</code></td>
+<td><code>apps/backend/&lt;Progetto&gt;.Api</code></td>
 <td>Docker (rilevato dal <code>Dockerfile</code>)</td>
 </tr>
 <tr>
@@ -123,11 +119,11 @@ che si configurano una volta e poi si aggiornano da soli a ogni push.</p>
 <tbody>
 <tr>
 <td>Name</td>
-<td><code>del-voltone-backend</code></td>
+<td><code>&lt;progetto&gt;-backend</code></td>
 </tr>
 <tr>
 <td>Root Directory</td>
-<td><code>apps/backend/DelVoltone.Api</code></td>
+<td><code>apps/backend/&lt;Progetto&gt;.Api</code></td>
 </tr>
 <tr>
 <td>Environment</td>
@@ -158,7 +154,7 @@ corrisponde a <code>Auth:Jwt:Secret</code> in <code>appsettings.json</code>.</p>
 </tr>
 <tr>
 <td><code>ConnectionStrings__SqlServer</code></td>
-<td><code>Server=…;Database=DelVoltone;…</code></td>
+<td><code>Server=…;Database=…;…</code></td>
 <td>Connection string di produzione (provider di default)</td>
 </tr>
 <tr>
@@ -173,8 +169,13 @@ corrisponde a <code>Auth:Jwt:Secret</code> in <code>appsettings.json</code>.</p>
 </tr>
 <tr>
 <td><code>Cors__AllowedOrigins__0</code></td>
-<td><code>https://del-voltone-frontend.onrender.com</code></td>
+<td><code>https://&lt;progetto&gt;-frontend.onrender.com</code></td>
 <td>L'URL del frontend, esatto</td>
+</tr>
+<tr>
+<td><code>Database__SizeLimitMb</code></td>
+<td><em>(es. <code>512</code>)</em></td>
+<td>Facoltativa: il tetto di spazio del piano, che il motore non conosce. Senza, la pagina Monitoraggio usa un riferimento indicativo e lo segnala</td>
 </tr>
 <tr>
 <td><code>Auth__Msal__TenantId</code> · <code>Auth__Msal__ClientId</code></td>
@@ -186,9 +187,15 @@ corrisponde a <code>Auth:Jwt:Secret</code> in <code>appsettings.json</code>.</p>
 </div>
 <p><strong>Per usare PostgreSQL</strong> al posto di SQL Server, due variabili — e nient'altro:</p>
 <pre><code class="language-bash">Database__Provider=PostgreSQL
-ConnectionStrings__PostgreSQL=<span class="hljs-string">&quot;Host=…;Database=delvoltone;Username=…;Password=…;SSL Mode=Require&quot;</span>
+ConnectionStrings__PostgreSQL=<span class="hljs-string">&quot;Host=…;Database=…;Username=…;Password=…;SSL Mode=Require&quot;</span>
 </code></pre>
-<p>Le migration si applicano da sole al primo avvio. Vedi <a href="../database_sql-only/panoramica.html">Database</a>.</p>
+<p>Le migration si applicano da sole al primo avvio. Vedi
+<a href="../infrastructure/panoramica.html">Infrastruttura</a>.</p>
+<blockquote>
+<p>⚠️ <strong>Attenzione ai connection pooler.</strong> <code>MigrateAsync</code> crea il database se non esiste, ma solo dove
+l'utente ha il permesso di farlo. Dietro un pooler — Neon, per esempio, che espone host <code>*-pooler</code>
+— la <code>CREATE DATABASE</code> non è consentita e il login viene rifiutato con <code>08P01 database does not exist</code>. In quel caso il database va creato a monte, prima del primo deploy.</p>
+</blockquote>
 <h2 id="2-frontend-static-site">2. Frontend — Static Site</h2>
 <p><strong>New → Static Site</strong>, stesso repository:</p>
 <div class="table-wrap">
@@ -202,7 +209,7 @@ ConnectionStrings__PostgreSQL=<span class="hljs-string">&quot;Host=…;Database=
 <tbody>
 <tr>
 <td>Name</td>
-<td><code>del-voltone-frontend</code></td>
+<td><code>&lt;progetto&gt;-frontend</code></td>
 </tr>
 <tr>
 <td>Root Directory</td>
@@ -233,11 +240,15 @@ con <code>npm install &amp;&amp; npm run build</code>.</p>
 <tbody>
 <tr>
 <td><code>VITE_API_BASE_URL</code></td>
-<td><code>https://del-voltone-backend.onrender.com</code></td>
+<td><code>https://&lt;progetto&gt;-backend.onrender.com</code></td>
 </tr>
 <tr>
 <td><code>VITE_AUTH_STRATEGY</code></td>
-<td><code>jwt</code> oppure <code>msal</code></td>
+<td><code>jwt</code>, <code>msal</code> oppure <code>windows</code></td>
+</tr>
+<tr>
+<td><code>VITE_APP_ACCESS_MODE</code></td>
+<td><code>public</code> o <code>private</code></td>
 </tr>
 <tr>
 <td><code>VITE_MSAL_CLIENT_ID</code> · <code>VITE_MSAL_TENANT_ID</code> · <code>VITE_MSAL_API_CLIENT_ID</code></td>
@@ -246,6 +257,11 @@ con <code>npm install &amp;&amp; npm run build</code>.</p>
 </tbody>
 </table>
 </div>
+<blockquote>
+<p><strong><code>VITE_AUTH_STRATEGY=windows</code> non ha senso su un hosting pubblico.</strong> L'autenticazione integrata
+richiede che il browser possa negoziare Kerberos/NTLM con il server, cioè una rete aziendale
+Windows: è la strategia per i deploy intranet, non per Render.</p>
+</blockquote>
 <p>Due avvertenze che costano tempo:</p>
 <blockquote>
 <p><strong><code>VITE_API_BASE_URL</code> punta al BACKEND</strong>, non al frontend. È l'errore più facile da fare, e il
@@ -255,10 +271,10 @@ sintomo è una pagina che si carica ma non mostra dati.</p>
 <p><strong>Le variabili <code>VITE_*</code> sono iniettate al momento del build</strong>, non a runtime. Cambiarle in
 dashboard non basta: bisogna rifare il build (<em>Manual Deploy → Clear build cache &amp; deploy</em>).</p>
 </blockquote>
-<p>Il repository contiene già un <code>.env.production</code> con i valori usati oggi; le variabili impostate nella
-dashboard di Render <strong>hanno la precedenza</strong> su quel file.</p>
+<p>Le variabili impostate nella dashboard di Render <strong>hanno la precedenza</strong> su un eventuale
+<code>.env.production</code> committato nel repository.</p>
 <h3 id="il-routing-della-spa">Il routing della SPA</h3>
-<p>Vue Router usa la history mode: ogni URL profondo (<code>/data/valleys/…</code>) deve servire <code>index.html</code>,
+<p>Vue Router usa la history mode: ogni URL profondo (<code>/users/42</code>) deve servire <code>index.html</code>,
 altrimenti un refresh della pagina restituisce 404.</p>
 <p>Non serve configurare nulla: il file <code>apps/frontend/public/_redirects</code> contiene già la regola, e
 Render la applica.</p>
@@ -271,14 +287,14 @@ Render la applica.</p>
 un valore, sovrascrivibile con <code>Cors__AllowedOrigins__0</code>.</p>
 <pre><code class="language-json"><span class="hljs-punctuation">{</span>
   <span class="hljs-attr">&quot;Cors&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
-    <span class="hljs-attr">&quot;AllowedOrigins&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span> <span class="hljs-string">&quot;https://del-voltone-frontend.onrender.com&quot;</span> <span class="hljs-punctuation">]</span>
+    <span class="hljs-attr">&quot;AllowedOrigins&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span> <span class="hljs-string">&quot;https://mioprogetto-frontend.onrender.com&quot;</span> <span class="hljs-punctuation">]</span>
   <span class="hljs-punctuation">}</span>
 <span class="hljs-punctuation">}</span>
 </code></pre>
 <p>L'URL deve corrispondere <strong>esattamente</strong>: protocollo incluso, <strong>senza</strong> barra finale.</p>
-<pre><code>✅ https://del-voltone-frontend.onrender.com
-❌ https://del-voltone-frontend.onrender.com/
-❌ http://del-voltone-frontend.onrender.com
+<pre><code>✅ https://mioprogetto-frontend.onrender.com
+❌ https://mioprogetto-frontend.onrender.com/
+❌ http://mioprogetto-frontend.onrender.com
 </code></pre>
 <p>La policy abilita <code>AllowCredentials</code>, senza il quale il cookie del refresh token non viaggerebbe.
 In sviluppo, invece, il backend accetta qualunque porta su <code>localhost</code>.</p>
@@ -300,11 +316,14 @@ nel bundle del frontend. Non serve nasconderli — serve solo non confonderli fr
 Si disattiva da <em>Settings → Build &amp; Deploy → Auto-Deploy</em>.</p>
 <h2 id="6-diagnostica">6. Diagnostica</h2>
 <p><strong>Il backend non parte.</strong>
-Guarda i log (<em>Logs</em>). Le cause tipiche sono tre, e falliscono tutte all'avvio con un messaggio
-esplicito: <code>Auth__Jwt__Secret</code> mancante, connection string mancante, <code>Database__Provider</code> con un
-valore non ammesso (i soli ammessi sono <code>SqlServer</code> e <code>PostgreSQL</code>: un <code>MongoDB</code> ereditato da un
-vecchio deploy blocca l'avvio). Se il database è esterno a Render, controlla che il firewall consenta
-le connessioni in ingresso da Render.</p>
+Guarda i log (<em>Logs</em>). Le cause tipiche falliscono tutte all'avvio con un messaggio esplicito:
+<code>Auth__Jwt__Secret</code> mancante, connection string mancante, <code>Database__Provider</code> con un valore non
+ammesso (i soli ammessi sono <code>SqlServer</code> e <code>PostgreSQL</code>). Se il database è esterno a Render,
+controlla che il firewall consenta le connessioni in ingresso da Render.</p>
+<p><strong>Il backend parte ma ogni chiamata dà 500.</strong>
+Controlla che le migration esistano nel repository: se il progetto è stato generato e nessuno ha mai
+eseguito <code>migrations add</code>, lo schema non viene creato e ogni query fallisce. Vedi
+<a href="../progetto/generazione.html">Generare e aggiornare</a>.</p>
 <p><strong>Il frontend è bianco, o non carica i dati.</strong>
 Quasi sempre <code>VITE_API_BASE_URL</code> sbagliata o non ri-buildata. Controlla anche che la rewrite verso
 <code>index.html</code> sia attiva.</p>
@@ -314,18 +333,22 @@ Quasi sempre <code>VITE_API_BASE_URL</code> sbagliata o non ri-buildata. Control
 Frontend e backend sono su due origin diverse, quindi il cookie del refresh token è cross-site: deve
 essere <code>SameSite=None; Secure</code>, e quindi la connessione <strong>deve</strong> essere HTTPS. Vedi
 <a href="../autenticazione/autenticazione.html#il-cookie-e-il-samesite">Autenticazione</a>.</p>
+<p><strong>Non riesco ad accedere la prima volta.</strong>
+L'utente <code>admin</code> viene creato dal seed con la password di <code>Seed__AdminPassword</code>. Se la variabile non
+era impostata al primo avvio, la password è casuale e non recuperabile: il modo più rapido è
+svuotare il database e ripartire con la variabile valorizzata — il seed gira solo su database vuoto.</p>
 <p><strong>La prima richiesta dopo un po' di inattività va in timeout.</strong>
 È il piano gratuito: i servizi vanno in sleep dopo 15 minuti e il risveglio richiede 30–60 secondi.
-Il frontend lo gestisce già — mostra un avviso (<code>ServerWakeBanner</code>) mentre il backend si sveglia,
-invece di sembrare rotto. Per eliminare il problema serve un piano a pagamento, oppure un ping
-periodico che tenga sveglio il servizio.</p>
+Il frontend lo gestisce già — mostra un avviso mentre il backend si sveglia, invece di sembrare
+rotto. Per eliminare il problema serve un piano a pagamento, oppure un ping periodico che tenga
+sveglio il servizio.</p>
 
       </article>
     </main>
   </div>
 
   <footer class="footer">
-    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
   </footer>
 </body>
 </html>

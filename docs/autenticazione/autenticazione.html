@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JWT e MSAL — DelVoltone</title>
+  <title>JWT, MSAL e Windows — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="../index.html">
-      <span class="brand-name">DelVoltone</span>
-      <span class="brand-sub">Documentazione tecnica</span>
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
     </a>
   </header>
 
@@ -24,30 +24,23 @@
           <p class="nav-title">Progetto</p>
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
         <div class="nav-group">
-          <p class="nav-title">Database</p>
+          <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
-            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
-            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
-            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
-          </ul>
-        </div>
-        <div class="nav-group">
-          <p class="nav-title">Database — versione storica (obsoleta)</p>
-          <ul>
-            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
         <div class="nav-group">
           <p class="nav-title">Autenticazione</p>
           <ul>
-            <li><a href="../autenticazione/autenticazione.html" aria-current="page">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/autenticazione.html" aria-current="page">JWT, MSAL e Windows</a></li>
             <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
           </ul>
         </div>
@@ -63,20 +56,24 @@
     <main>
       <p class="eyebrow">Autenticazione</p>
       <article class="prose">
-<h1 id="autenticazione-jwt-e-msal">Autenticazione — JWT e MSAL</h1>
+<h1 id="autenticazione-jwt-msal-e-windows">Autenticazione — JWT, MSAL e Windows</h1>
 <nav class="toc" aria-label="Indice della pagina">
         <p class="toc-title">In questa pagina</p>
         <ul>
           <li class="lvl-2"><a href="#la-cosa-da-capire-per-prima">La cosa da capire per prima</a></li>
+          <li class="lvl-2"><a href="#l-identita-di-login-username">L'identità di login: <code>Username</code></a></li>
           <li class="lvl-2"><a href="#quale-strategia-usare">Quale strategia usare</a></li>
           <li class="lvl-3"><a href="#come-si-passa-dall-una-all-altra">Come si passa dall'una all'altra</a></li>
           <li class="lvl-2"><a href="#il-flusso-completo">Il flusso completo</a></li>
-          <li class="lvl-3"><a href="#1-accesso-con-email-e-password">1. Accesso con email e password</a></li>
+          <li class="lvl-3"><a href="#1-accesso-con-username-e-password">1. Accesso con username e password</a></li>
           <li class="lvl-3"><a href="#2-accesso-con-account-microsoft">2. Accesso con account Microsoft</a></li>
-          <li class="lvl-3"><a href="#3-uso-del-token-e-rinnovo">3. Uso del token, e rinnovo</a></li>
-          <li class="lvl-3"><a href="#4-uscita">4. Uscita</a></li>
+          <li class="lvl-3"><a href="#3-accesso-con-identita-windows">3. Accesso con identità Windows</a></li>
+          <li class="lvl-3"><a href="#4-uso-del-token-e-rinnovo">4. Uso del token, e rinnovo</a></li>
+          <li class="lvl-3"><a href="#5-uscita">5. Uscita</a></li>
           <li class="lvl-2"><a href="#come-si-risolvono-i-permessi">Come si risolvono i permessi</a></li>
           <li class="lvl-2"><a href="#configurazione">Configurazione</a></li>
+          <li class="lvl-3"><a href="#il-pacchetto-negotiate-e-la-versione">Il pacchetto Negotiate e la versione</a></li>
+          <li class="lvl-2"><a href="#simulare-l-autenticazione-windows-in-locale">Simulare l'autenticazione Windows in locale</a></li>
           <li class="lvl-2"><a href="#sicurezza-che-cosa-e-in-piedi">Sicurezza — che cosa è in piedi</a></li>
           <li class="lvl-3"><a href="#il-cookie-e-il-samesite">Il cookie e il <code>SameSite</code></a></li>
           <li class="lvl-2"><a href="#sul-frontend">Sul frontend</a></li>
@@ -84,40 +81,91 @@
           <li class="lvl-2"><a href="#i-file">I file</a></li>
         </ul>
       </nav>
-<p>DelVoltone sa autenticare gli utenti in due modi: con <strong>email e password</strong> custoditi nel proprio
-database, oppure con un <strong>account Microsoft</strong> (Azure AD / Entra ID). Sono strategie diverse solo nel
+<p>Un progetto generato sa autenticare gli utenti in tre modi: con <strong>username e password</strong> custoditi
+nel proprio database, con un <strong>account Microsoft</strong> (Azure AD / Entra ID), oppure con l'<strong>identità
+Windows</strong> della macchina (autenticazione integrata, Kerberos/NTLM). Sono strategie diverse solo nel
 primo passo. Da lì in poi il sistema è identico.</p>
+<p>Tutte e tre sono già montate: non c'è nulla da implementare, al massimo da configurare.</p>
 <h2 id="la-cosa-da-capire-per-prima">La cosa da capire per prima</h2>
-<p><strong>Il backend emette sempre un JWT proprio.</strong> Sempre, con entrambe le strategie.</p>
-<pre><code>   Email + password                Account Microsoft
-          │                                │
-          │                     token Azure AD (firmato da Microsoft)
-          ▼                                ▼
-   POST /api/auth/login          POST /api/auth/msal-login
-          │                                │
-          │  verifica BCrypt      valida il token con le chiavi pubbliche di Azure,
-          │                       poi cerca l'utente locale con quella email
-          └────────────────┬───────────────┘
-                           ▼
-              Risolve i permessi dell'utente
-              Emette un JWT interno (HS256) + un refresh token
-                           │
-                           ▼
-              Da qui in avanti tutto è identico:
-              Authorization: Bearer &lt;JWT interno&gt;
+<p><strong>Il backend emette sempre un JWT proprio.</strong> Sempre, con tutte e tre le strategie.</p>
+<pre><code>   Username + password        Account Microsoft            Identità Windows
+          │                          │                            │
+          │              token Azure AD (firmato        handshake Negotiate
+          │                da Microsoft)                (Kerberos / NTLM)
+          ▼                          ▼                            ▼
+   POST /api/auth/login   POST /api/auth/msal-login   POST /api/auth/windows-login
+          │                          │                            │
+          │  verifica BCrypt   valida il token con le      il middleware Negotiate
+          │                    chiavi pubbliche di Azure,   autentica il browser,
+          │                    poi cerca l'utente locale    poi si cerca l'utente
+          │                    con quello username          locale con quello username
+          └────────────────────────┬────────────────────────────┘
+                                   ▼
+                      Risolve i permessi dell'utente
+                      Emette un JWT interno (HS256) + un refresh token
+                                   │
+                                   ▼
+                      Da qui in avanti tutto è identico:
+                      Authorization: Bearer &lt;JWT interno&gt;
 </code></pre>
-<p>Il token di Azure serve <strong>solo</strong> per il login iniziale, per stabilire <em>chi è</em> chi sta bussando. Non
-viene mai usato per chiamare le API di DelVoltone: per quello c'è il JWT interno.</p>
-<p>Conseguenza pratica: <strong>i permessi vengono sempre dal database locale</strong>, mai da Azure. Azure dice
-&quot;questa persona è Mario Rossi&quot;; che cosa Mario Rossi possa fare lo decide DelVoltone.</p>
+<p>Il token di Azure e l'handshake Windows servono <strong>solo</strong> per il login iniziale, per stabilire <em>chi è</em>
+chi sta bussando. Non vengono mai usati per chiamare le API dell'applicazione: per quello c'è il JWT
+interno.</p>
+<p>Conseguenza pratica: <strong>i permessi vengono sempre dal database locale</strong>, mai da Azure né da Active
+Directory. L'IdP dice &quot;questa persona è Mario Rossi&quot;; che cosa Mario Rossi possa fare lo decide
+l'applicazione.</p>
+<h2 id="l-identita-di-login-username">L'identità di login: <code>Username</code></h2>
+<p>Tutte e tre le strategie, alla fine, cercano l'utente locale <strong>per <code>Username</code></strong> — una sola colonna,
+<code>NOT NULL</code> e <strong>unica</strong>, che contiene la stringa con cui quell'utente accede:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Strategia</th>
+<th>Cosa finisce in <code>Username</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Username + password</td>
+<td>Lo username locale scelto in fase di creazione utente (può essere una email, ma non è obbligatorio)</td>
+</tr>
+<tr>
+<td>Account Microsoft</td>
+<td>La <code>preferred_username</code> del token Azure — di fatto la email aziendale</td>
+</tr>
+<tr>
+<td>Identità Windows</td>
+<td><code>DOMINIO\utente</code> (o l'UPN), come lo restituisce il sistema</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il backend <strong>non interpreta</strong> il contenuto: fa un confronto esatto sul valore normalizzato. La
+normalizzazione è centralizzata in un unico helper, <code>Username.Normalize</code>, applicato sia in scrittura
+(creazione/modifica utente, seed) sia in lettura (ogni handler di login):</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Helpers/Username.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-built_in">string</span> <span class="hljs-title">Normalize</span>(<span class="hljs-params"><span class="hljs-built_in">string</span>? <span class="hljs-keyword">value</span></span>)</span> =&gt; (<span class="hljs-keyword">value</span> ?? <span class="hljs-built_in">string</span>.Empty).Trim().ToLowerInvariant();
+</code></pre>
+<p>Regola: <strong>trim + minuscolo</strong>. Serve perché Postgres confronta le stringhe in modo case-sensitive
+(SQL Server no) e perché Windows non distingue il maiuscolo/minuscolo nei nomi account. Domini
+diversi restano identità diverse: <code>AZIENDA\mrossi</code> e <code>NOMEPC\mrossi</code> sono due utenti distinti;
+<code>AZIENDA\MRossi</code> e <code>azienda\mrossi</code> sono lo stesso.</p>
+<blockquote>
+<p><strong><code>Email</code> non è la chiave di login.</strong> È <strong>opzionale</strong> (<code>string?</code>) e puramente anagrafica: serve per
+la visualizzazione e per eventuali notifiche, non per accedere. È indicizzata per le ricerche ma
+<strong>non unica</strong>. Chi crea un utente decide che cosa mettere in <code>Username</code> a seconda di come
+quell'utente entrerà.</p>
+</blockquote>
 <h2 id="quale-strategia-usare">Quale strategia usare</h2>
 <div class="table-wrap">
 <table>
 <thead>
 <tr>
 <th></th>
-<th>Email + password</th>
+<th>Username + password</th>
 <th>Account Microsoft (MSAL)</th>
+<th>Identità Windows</th>
 </tr>
 </thead>
 <tbody>
@@ -125,61 +173,72 @@ viene mai usato per chiamare le API di DelVoltone: per quello c'è il JWT intern
 <td>Dove vivono le credenziali</td>
 <td>Nel database, come hash BCrypt</td>
 <td>In Azure AD</td>
+<td>In Active Directory / account Windows locale</td>
 </tr>
 <tr>
 <td>Single Sign-On</td>
 <td>No</td>
 <td>Sì, con l'ecosistema Microsoft 365</td>
+<td>Sì, sulla rete aziendale Windows</td>
 </tr>
 <tr>
 <td>MFA, recupero password, policy</td>
 <td>Da implementare</td>
 <td>Li gestisce Microsoft</td>
+<td>Li gestisce Active Directory</td>
 </tr>
 <tr>
 <td>Prerequisito per l'utente</td>
-<td>Esistere in DelVoltone</td>
-<td>Esistere in Azure AD <strong>e</strong> in DelVoltone, con la stessa email</td>
+<td>Esistere nell'applicazione</td>
+<td>Esistere in Azure AD <strong>e</strong> nell'applicazione, con <code>Username</code> = la sua email aziendale</td>
+<td>Esistere nell'applicazione con <code>Username</code> = <code>DOMINIO\utente</code></td>
 </tr>
 <tr>
 <td>Setup</td>
 <td>Nessuno</td>
 <td>Registrazione dell'app su Azure (<a href="azure-app-registration.html">guida</a>)</td>
+<td>Nessuno (il pacchetto Negotiate fa il fallback NTLM anche fuori dominio)</td>
 </tr>
 <tr>
 <td>Adatta a</td>
 <td>Sviluppo, installazioni autonome, prototipi</td>
 <td>Aziende già su Microsoft 365</td>
+<td>Applicazioni intranet su rete Windows / Active Directory</td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>In esercizio: <strong>sviluppo con email e password, produzione con account Microsoft</strong>.</p>
+<p>In esercizio: <strong>sviluppo con username e password, produzione con account Microsoft o identità
+Windows</strong> a seconda dell'infrastruttura del cliente.</p>
 <h3 id="come-si-passa-dall-una-all-altra">Come si passa dall'una all'altra</h3>
 <p>Qui c'è un punto che sorprende, ed è bene saperlo perché fa risparmiare tempo:</p>
 <blockquote>
-<p><strong>Il backend non ha una strategia.</strong> Entrambi gli endpoint (<code>/login</code> e <code>/msal-login</code>) sono
-<strong>sempre</strong> attivi, e il backend emette e valida sempre e solo i propri JWT. Non esiste alcun
-interruttore lato server.</p>
-<p>Fino al 12/07/2026 in <code>appsettings.json</code> c'era una chiave <code>Auth:Strategy</code>: non era letta da nessuna
-parte del codice ed è stata <strong>rimossa</strong>, perché lasciava credere il contrario.</p>
+<p><strong>Il backend non ha una strategia.</strong> Tutti e tre gli endpoint (<code>/login</code>, <code>/msal-login</code>,
+<code>/windows-login</code>) sono <strong>sempre</strong> attivi, e il backend emette e valida sempre e solo i propri JWT.
+Non esiste alcun interruttore lato server.</p>
+<p>In <code>appsettings.local.json.example</code> compare una chiave <code>Auth:Strategy</code>: <strong>non è letta da nessuna
+parte del codice</strong>, è lì solo come promemoria di quale schermata si sta usando. Cambiarla non
+cambia il comportamento del backend.</p>
 </blockquote>
 <p>A scegliere è il <strong>frontend</strong>, con <code>VITE_AUTH_STRATEGY</code>:</p>
 <pre><code class="language-env"><span class="hljs-comment"># apps/frontend/.env.local</span>
-<span class="hljs-attr">VITE_AUTH_STRATEGY</span>=jwt     <span class="hljs-comment"># form email/password</span>
-<span class="hljs-attr">VITE_AUTH_STRATEGY</span>=msal    <span class="hljs-comment"># pulsante &quot;Accedi con Microsoft&quot;</span>
+<span class="hljs-attr">VITE_AUTH_STRATEGY</span>=jwt       <span class="hljs-comment"># form username/password</span>
+<span class="hljs-attr">VITE_AUTH_STRATEGY</span>=msal      <span class="hljs-comment"># pulsante &quot;Accedi con Microsoft&quot;</span>
+<span class="hljs-attr">VITE_AUTH_STRATEGY</span>=windows   <span class="hljs-comment"># nessun form: SSO Windows automatico all&#x27;apertura della pagina</span>
 </code></pre>
-<p>Il confronto in <code>LoginPage.vue</code> è con la stringa <code>'msal'</code>: qualunque altro valore mostra il form
-classico. Per usare MSAL servono anche le variabili descritte nella
-<a href="azure-app-registration.html">guida ad Azure</a>; il backend, dal canto suo, ha bisogno di
-<code>Auth:Msal:TenantId</code> e <code>Auth:Msal:ClientId</code> per poter validare il token in arrivo.</p>
+<p>In <code>LoginPage.vue</code> il form classico compare <strong>solo</strong> con <code>'jwt'</code>; <code>'msal'</code> mostra il pulsante
+Microsoft; <code>'windows'</code> non mostra nulla e tenta subito il Single Sign-On, con un pulsante &quot;Riprova&quot;
+se qualcosa va storto.</p>
+<p>Per usare MSAL servono anche le variabili descritte nella <a href="azure-app-registration.html">guida ad Azure</a>;
+il backend, dal canto suo, ha bisogno di <code>Auth:Msal:TenantId</code> e <code>Auth:Msal:ClientId</code> per validare il
+token in arrivo. Per Windows, invece, <strong>non serve configurare nulla</strong>.</p>
 <h2 id="il-flusso-completo">Il flusso completo</h2>
-<h3 id="1-accesso-con-email-e-password">1. Accesso con email e password</h3>
-<pre><code>POST /api/auth/login   { email, password }
+<h3 id="1-accesso-con-username-e-password">1. Accesso con username e password</h3>
+<pre><code>POST /api/auth/login   { username, password }
         │
         ▼  LoginHandler
    ┌───────────────────────────────────────────────┐
-   │ 1. Cerca l'utente per email                   │
+   │ 1. Normalizza lo username e cerca l'utente    │
    │ 2. Se non è attivo → 401                      │
    │ 3. Verifica la password con BCrypt            │
    │ 4. Risolve i permessi (vedi sotto)            │
@@ -187,11 +246,11 @@ classico. Per usare MSAL servono anche le variabili descritte nella
    └───────────────────────────────────────────────┘
         │
         ▼
-   200 OK  { accessToken, expiresAt, userId, email, displayName, language, permissions }
+   200 OK  { accessToken, expiresAt, userId, username, email, displayName, language, permissions }
    Set-Cookie: refreshToken=…  (HttpOnly)
 </code></pre>
-<p>L'errore su email inesistente e quello su password sbagliata sono <strong>lo stesso messaggio</strong>
-(&quot;Credenziali non valide&quot;): distinguerli permetterebbe di scoprire quali email sono registrate.</p>
+<p>L'errore su username inesistente e quello su password sbagliata sono <strong>lo stesso messaggio</strong>
+(&quot;Credenziali non valide&quot;): distinguerli permetterebbe di scoprire quali utenti sono registrati.</p>
 <h3 id="2-accesso-con-account-microsoft">2. Accesso con account Microsoft</h3>
 <pre><code>Frontend → Azure AD (login, MFA, consenso)  →  access token firmato da Microsoft
         │
@@ -203,17 +262,15 @@ POST /api/auth/msal-login   { azureToken }
    │ 1. Scarica le chiavi pubbliche del tenant (JWKS) e le      │
    │    tiene in cache                                          │
    │ 2. VALIDA il token: firma, issuer, audience, scadenza      │
-   │ 3. Estrae l'email (preferred_username, o email)            │
-   │ 4. Cerca l'utente LOCALE con quella email → se non c'è, 401│
+   │ 3. Estrae preferred_username (o email)                     │
+   │ 4. Cerca l'utente LOCALE con quello Username → se no, 401  │
    │ 5. Se non è attivo → 401                                   │
    │ 6. Risolve i permessi, genera il JWT interno + refresh     │
    └────────────────────────────────────────────────────────────┘
 </code></pre>
 <blockquote>
 <p><strong>Il backend valida il token di Azure per intero.</strong> Non si fida di quanto ha già fatto il frontend:
-verifica la firma con le chiavi pubbliche di Microsoft, l'emittente, il destinatario e la scadenza.
-Se una versione precedente di questa documentazione diceva il contrario — che il backend si limita
-a leggere il token — era <strong>sbagliata</strong>: il codice fa la cosa giusta.</p>
+verifica la firma con le chiavi pubbliche di Microsoft, l'emittente, il destinatario e la scadenza.</p>
 </blockquote>
 <pre><code class="language-csharp"><span class="hljs-comment">// MsalLoginHandler.cs — la validazione, per esteso</span>
 <span class="hljs-keyword">var</span> openIdConfig = <span class="hljs-keyword">await</span> configManager.GetConfigurationAsync(cancellationToken);
@@ -242,7 +299,52 @@ contenere il ClientId nudo oppure <code>api://{clientId}</code>. Accettarli entr
 loro a scaricare e rinfrescare le chiavi JWKS. Ricrearli a ogni login significherebbe riscaricare
 le chiavi a ogni login.</li>
 </ul>
-<h3 id="3-uso-del-token-e-rinnovo">3. Uso del token, e rinnovo</h3>
+<h3 id="3-accesso-con-identita-windows">3. Accesso con identità Windows</h3>
+<pre><code>Browser  ── POST /api/auth/windows-login (senza corpo) ──▶  backend
+        ◀── 401  WWW-Authenticate: Negotiate ────────────
+        ── ripete la richiesta con il ticket Kerberos/NTLM ▶  middleware Negotiate
+                                                              autentica → HttpContext.User
+        │
+        ▼  WindowsLoginHandler
+   ┌────────────────────────────────────────────────────────────┐
+   │ 1. Legge l'identità: &quot;DOMINIO\utente&quot; da HttpContext.User  │
+   │    (in Development: header X-Dev-Windows-User, vedi sotto) │
+   │ 2. Normalizza e cerca l'utente LOCALE con quello Username  │
+   │    → se non c'è, 401                                       │
+   │ 3. Se non è attivo → 401                                   │
+   │ 4. Risolve i permessi, genera il JWT interno + refresh     │
+   └────────────────────────────────────────────────────────────┘
+</code></pre>
+<p>Nessun corpo nella richiesta: l'identità viaggia nell'header <code>Authorization: Negotiate …</code> che il
+<strong>browser</strong> aggiunge da solo rispondendo al <code>401</code>. Perché parta serve <code>withCredentials: true</code> sul
+client (già impostato in <code>axios.ts</code>) e che il browser consideri l'host &quot;intranet&quot; — Chrome/Edge lo
+fanno di default per <code>localhost</code> e per i domini della rete aziendale; Firefox va configurato
+(<code>network.negotiate-auth.trusted-uris</code>).</p>
+<p>Lato .NET, lo schema Negotiate è <strong>aggiuntivo</strong>, non il default:</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// AuthExtensions.cs</span>
+services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)   <span class="hljs-comment">// JWT resta il default</span>
+    .AddJwtBearer(options =&gt; { <span class="hljs-comment">/* … */</span> })
+    .AddNegotiate();                                                  <span class="hljs-comment">// usato solo da /windows-login</span>
+</code></pre>
+<pre><code class="language-csharp"><span class="hljs-comment">// AuthEndpoints.cs — l&#x27;endpoint richiede esplicitamente lo schema Negotiate</span>
+<span class="hljs-keyword">group</span>.MapPost(<span class="hljs-string">&quot;/windows-login&quot;</span>, <span class="hljs-keyword">async</span> (<span class="hljs-comment">/* … */</span>) =&gt; { <span class="hljs-comment">/* … */</span> })
+    .RequireAuthorization(<span class="hljs-keyword">new</span> AuthorizeAttribute
+    {
+        AuthenticationSchemes = NegotiateDefaults.AuthenticationScheme
+    })
+    .RequireRateLimiting(<span class="hljs-string">&quot;auth-policy&quot;</span>);
+</code></pre>
+<p>Tutti gli altri endpoint continuano a usare JWT Bearer. Su Windows il pacchetto
+<code>Microsoft.AspNetCore.Authentication.Negotiate</code> funziona <strong>anche fuori dominio</strong>, con il fallback NTLM
+sull'account locale della macchina.</p>
+<blockquote>
+<p><strong>Bypass di sviluppo.</strong> In <code>Development</code> — e solo lì — l'endpoint accetta l'header
+<code>X-Dev-Windows-User: DOMINIO\utente</code> e lo usa come identità, saltando del tutto l'handshake. Serve
+per i test di integrazione, per <code>curl</code>/Postman (dove non c'è un browser che negozia Kerberos) e per
+simulare utenti diversi senza cambiare l'account Windows della macchina. In <code>Production</code> il ramo è
+irraggiungibile: <code>IWebHostEnvironment.IsDevelopment()</code> è <code>false</code> e l'header viene ignorato.</p>
+</blockquote>
+<h3 id="4-uso-del-token-e-rinnovo">4. Uso del token, e rinnovo</h3>
 <p>L'access token dura <strong>60 minuti</strong> (configurabile). Alla scadenza si usa il refresh token, che vive in
 un cookie e dura <strong>7 giorni</strong>.</p>
 <pre><code>POST /api/auth/refresh          (il cookie viaggia da solo)
@@ -261,12 +363,12 @@ un cookie e dura <strong>7 giorni</strong>.</p>
 potrebbe usarlo una volta sola, e solo se arriva prima del legittimo proprietario.</p>
 <p><strong>I permessi vengono ririsolti a ogni refresh</strong>: una modifica ai ruoli di un utente diventa effettiva
 al più tardi dopo un'ora, senza bisogno che l'utente rifaccia il login.</p>
-<h3 id="4-uscita">4. Uscita</h3>
+<h3 id="5-uscita">5. Uscita</h3>
 <p><code>POST /api/auth/logout</code> revoca il refresh token e cancella il cookie. È <strong>idempotente</strong>: se il token
 non c'è più, non è un errore. L'access token già emesso resta tecnicamente valido fino alla scadenza —
 è la natura dei JWT — ma il frontend lo elimina e senza refresh token non se ne ottengono altri.</p>
 <h2 id="come-si-risolvono-i-permessi">Come si risolvono i permessi</h2>
-<p>È la stessa identica sequenza in tutti e tre gli handler (login, msal-login, refresh):</p>
+<p>È la stessa identica sequenza in tutti gli handler (login, msal-login, windows-login, refresh):</p>
 <pre><code>     Utente
        ├── RoleIds            (ruoli assegnati direttamente)
        └── GroupIds → Gruppi → RoleIds   (ruoli ereditati dai gruppi)
@@ -275,25 +377,28 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
                                   │
                                Ruoli → PermissionIds
                                   │
-                            Permessi → Key   (&quot;valleys.read&quot;, &quot;users.write&quot;, …)
+                            Permessi → Key   (&quot;users.read&quot;, &quot;groups.write&quot;, …)
                                   │
                     un claim &quot;permissions&quot; per ciascuno, dentro il JWT
 </code></pre>
 <p>Il JWT che ne esce:</p>
 <pre><code class="language-json"><span class="hljs-punctuation">{</span>
   <span class="hljs-attr">&quot;sub&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;42&quot;</span><span class="hljs-punctuation">,</span>                             <span class="hljs-comment">// id dell&#x27;utente (int)</span>
-  <span class="hljs-attr">&quot;email&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;mario@example.com&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;username&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;azienda\\mrossi&quot;</span><span class="hljs-punctuation">,</span>           <span class="hljs-comment">// l&#x27;identità di login</span>
+  <span class="hljs-attr">&quot;email&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;mario@example.com&quot;</span><span class="hljs-punctuation">,</span>            <span class="hljs-comment">// presente solo se l&#x27;utente ha una email</span>
   <span class="hljs-attr">&quot;name&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Mario Rossi&quot;</span><span class="hljs-punctuation">,</span>
   <span class="hljs-attr">&quot;jti&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;550e8400-e29b-41d4-a716-446655440000&quot;</span><span class="hljs-punctuation">,</span>
-  <span class="hljs-attr">&quot;permissions&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;users.read&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;valleys.write&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
-  <span class="hljs-attr">&quot;iss&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;DelVoltone&quot;</span><span class="hljs-punctuation">,</span>
-  <span class="hljs-attr">&quot;aud&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;DelVoltoneClients&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;permissions&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;users.read&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;groups.write&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;iss&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;MioProgetto&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;aud&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;MioProgettoClients&quot;</span><span class="hljs-punctuation">,</span>
   <span class="hljs-attr">&quot;exp&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1695315600</span>
 <span class="hljs-punctuation">}</span>
 </code></pre>
+<p><code>iss</code> e <code>aud</code> derivano dal <code>project_slug</code> scelto alla generazione, e sono configurabili in
+<code>Auth:Jwt:Issuer</code> e <code>Auth:Jwt:Audience</code>.</p>
 <p>Gli endpoint verificano il claim, non il ruolo:</p>
 <pre><code class="language-csharp"><span class="hljs-keyword">group</span>.MapDelete(<span class="hljs-string">&quot;/{id:int}&quot;</span>, …)
-    .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;valleys.delete&quot;</span>));
+    .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;groups.delete&quot;</span>));
 </code></pre>
 <h2 id="configurazione">Configurazione</h2>
 <pre><code class="language-json"><span class="hljs-comment">// appsettings.local.json (gitignored) — in produzione: variabili d&#x27;ambiente</span>
@@ -301,8 +406,8 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
   <span class="hljs-attr">&quot;Auth&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
     <span class="hljs-attr">&quot;Jwt&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
       <span class="hljs-attr">&quot;Secret&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;…almeno 32 caratteri, casuale…&quot;</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;Issuer&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;DelVoltone&quot;</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;Audience&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;DelVoltoneClients&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;Issuer&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;MioProgetto&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;Audience&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;MioProgettoClients&quot;</span><span class="hljs-punctuation">,</span>
       <span class="hljs-attr">&quot;ExpiresInMinutes&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">60</span><span class="hljs-punctuation">,</span>
       <span class="hljs-attr">&quot;RefreshExpiresInDays&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">7</span>
     <span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
@@ -311,6 +416,7 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
       <span class="hljs-attr">&quot;TenantId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;…&quot;</span><span class="hljs-punctuation">,</span>
       <span class="hljs-attr">&quot;ClientId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;…&quot;</span>     <span class="hljs-comment">// l&#x27;app registration dell&#x27;API — non quella della SPA</span>
     <span class="hljs-punctuation">}</span>
+    <span class="hljs-comment">// Windows: nessuna sezione. L&#x27;autenticazione integrata non legge alcuna chiave.</span>
   <span class="hljs-punctuation">}</span>
 <span class="hljs-punctuation">}</span>
 </code></pre>
@@ -339,6 +445,10 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
 <td><code>Msal:ClientId</code></td>
 <td>Il ClientId dell'<strong>API</strong> su Azure: è quello che il backend si aspetta come <code>aud</code> del token</td>
 </tr>
+<tr>
+<td><em>(Windows)</em></td>
+<td>Nessun parametro. Serve solo il pacchetto NuGet <code>Microsoft.AspNetCore.Authentication.Negotiate</code></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -347,6 +457,38 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
 </code></pre>
 <pre><code class="language-powershell">[<span class="hljs-type">Convert</span>]::ToBase64String((<span class="hljs-number">1</span>..<span class="hljs-number">32</span> | <span class="hljs-built_in">ForEach-Object</span> { [<span class="hljs-built_in">byte</span>](<span class="hljs-built_in">Get-Random</span> <span class="hljs-literal">-Max</span> <span class="hljs-number">256</span>) }))
 </code></pre>
+<h3 id="il-pacchetto-negotiate-e-la-versione">Il pacchetto Negotiate e la versione</h3>
+<p>L'autenticazione Windows dipende da <code>Microsoft.AspNetCore.Authentication.Negotiate</code>, pinnato nel
+template a <strong>10.0.10</strong>. Le versioni <code>10.0.0</code>–<code>10.0.9</code> sono soggette a due avvisi di sicurezza di
+gravità alta (<code>GHSA-8prm-248r-h957</code>, <code>GHSA-2p3q-h3hg-jcqq</code>) che riguardano l'uso di Negotiate con
+LDAP per il recupero dei ruoli: <code>dotnet build</code> li segnala come <code>NU1903</code>. La 10.0.10 li chiude — non
+abbassare quella versione.</p>
+<h2 id="simulare-l-autenticazione-windows-in-locale">Simulare l'autenticazione Windows in locale</h2>
+<p>Windows Auth <strong>funziona sulla macchina di sviluppo</strong> anche senza un dominio Active Directory: su
+Windows il pacchetto Negotiate fa il fallback NTLM con l'account locale.</p>
+<p><strong>Opzione A — Kestrel + NTLM locale (consigliata per iniziare).</strong>
+<code>dotnet run</code> normale. Il browser chiama <code>POST http://localhost:&lt;porta&gt;/api/auth/windows-login</code>,
+riceve <code>401 WWW-Authenticate: Negotiate</code> e Chrome/Edge rispediscono in automatico le credenziali
+dell'account Windows corrente (<code>localhost</code> è zona intranet). <code>HttpContext.User.Identity.Name</code> diventa
+<code>NOMEPC\tuoutente</code>: perché il login riesca, serve un utente nel seed con
+<code>Username = &quot;nomepc\\tuoutente&quot;</code> (minuscolo). Firefox va configurato in <code>about:config</code>
+(<code>network.negotiate-auth.trusted-uris</code> = <code>localhost</code>).</p>
+<p><strong>Opzione B — header di sviluppo (per test automatici e per iterare).</strong>
+Con <code>ASPNETCORE_ENVIRONMENT=Development</code>:</p>
+<pre><code class="language-bash">curl -X POST http://localhost:&lt;porta&gt;/api/auth/windows-login \
+  -H <span class="hljs-string">&quot;X-Dev-Windows-User: admin&quot;</span> \
+  -c cookies.txt
+</code></pre>
+<p>Non serve un browser, e si può simulare qualsiasi utente cambiando il valore dell'header.</p>
+<p><strong>Opzione C — IIS Express (più simile alla produzione su IIS).</strong>
+In <code>launchSettings.json</code>, profilo IIS Express:</p>
+<pre><code class="language-json"><span class="hljs-attr">&quot;windowsAuthentication&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span>
+<span class="hljs-attr">&quot;anonymousAuthentication&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-literal"><span class="hljs-keyword">true</span></span>
+</code></pre>
+<p>IIS Express completa l'handshake e popola <code>HttpContext.User</code> prima del codice applicativo.</p>
+<p><strong>CORS in locale</strong>: già a posto. In Development ogni origin <code>localhost</code> è ammesso con
+<code>AllowCredentials()</code>. Il cross-origin fra frontend e backend non impedisce l'invio delle
+credenziali, perché il browser considera comunque <code>localhost</code> intranet.</p>
 <h2 id="sicurezza-che-cosa-e-in-piedi">Sicurezza — che cosa è in piedi</h2>
 <div class="table-wrap">
 <table>
@@ -375,11 +517,11 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
 </tr>
 <tr>
 <td>Brute force</td>
-<td>Rate limiting <strong>per IP</strong> su login, msal-login e refresh: 10 tentativi ogni 15 minuti</td>
+<td>Rate limiting <strong>per IP</strong> su login, msal-login, windows-login e refresh: 10 tentativi ogni 15 minuti</td>
 </tr>
 <tr>
 <td>Enumerazione utenti</td>
-<td>Messaggio di errore identico per email sconosciuta e password errata</td>
+<td>Messaggio di errore identico per username sconosciuto e password errata</td>
 </tr>
 <tr>
 <td>Account disattivati</td>
@@ -389,6 +531,10 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
 <td>Token Azure</td>
 <td>Firma (JWKS), issuer, audience e scadenza validati <strong>dal backend</strong></td>
 </tr>
+<tr>
+<td>Identità Windows</td>
+<td>Handshake Negotiate gestito dal middleware <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a>; header di bypass attivo <strong>solo</strong> in Development</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -397,17 +543,16 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
 {
     HttpOnly = <span class="hljs-literal">true</span>,
     Secure = !isDev,
-    <span class="hljs-comment">// In produzione frontend e backend stanno su origin diverse (cross-site):</span>
+    <span class="hljs-comment">// In produzione frontend e backend stanno spesso su origin diverse (cross-site):</span>
     <span class="hljs-comment">// con SameSite=Lax il browser NON invierebbe il cookie sulle chiamate XHR.</span>
     SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.None,
     Path = <span class="hljs-string">&quot;/api/auth&quot;</span>,
     MaxAge = TimeSpan.FromDays(days)
 });
 </code></pre>
-<p>Vale la pena fermarsi un attimo. In produzione il cookie è <code>SameSite=None</code>, <strong>non</strong> <code>Lax</code>: il
-frontend (<code>del-voltone-frontend.onrender.com</code>) e il backend (<code>del-voltone-backend.onrender.com</code>) sono
-due origin diverse, quindi ogni chiamata è cross-site e con <code>Lax</code> il browser non allegherebbe mai il
-cookie. <code>None</code> <strong>richiede</strong> <code>Secure</code>, cioè HTTPS — che in produzione c'è.</p>
+<p>Vale la pena fermarsi un attimo. In produzione il cookie è <code>SameSite=None</code>, <strong>non</strong> <code>Lax</code>: quando il
+frontend e il backend sono pubblicati su due domini diversi ogni chiamata è cross-site, e con <code>Lax</code>
+il browser non allegherebbe mai il cookie. <code>None</code> <strong>richiede</strong> <code>Secure</code>, cioè HTTPS.</p>
 <p>Il prezzo è che <code>SameSite</code> non offre più protezione CSRF; a proteggere restano il fatto che il cookie
 serve <strong>solo</strong> su <code>/api/auth</code> e che le API vere vogliono il Bearer token, che vive in <code>localStorage</code>
 e non viaggia da solo.</p>
@@ -415,7 +560,7 @@ e non viaggia da solo.</p>
 <pre><code class="language-typescript"><span class="hljs-comment">// plugins/axios.ts</span>
 <span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> api = axios.<span class="hljs-title function_">create</span>({
   <span class="hljs-attr">baseURL</span>: <span class="hljs-keyword">import</span>.<span class="hljs-property">meta</span>.<span class="hljs-property">env</span>.<span class="hljs-property">VITE_API_BASE_URL</span>,
-  <span class="hljs-attr">withCredentials</span>: <span class="hljs-literal">true</span>,        <span class="hljs-comment">// senza questo il cookie del refresh non parte</span>
+  <span class="hljs-attr">withCredentials</span>: <span class="hljs-literal">true</span>,        <span class="hljs-comment">// senza questo il cookie del refresh — e l&#x27;handshake Windows — non partono</span>
 })
 
 api.<span class="hljs-property">interceptors</span>.<span class="hljs-property">request</span>.<span class="hljs-title function_">use</span>(<span class="hljs-function"><span class="hljs-params">config</span> =&gt;</span> {
@@ -441,11 +586,15 @@ api.<span class="hljs-property">interceptors</span>.<span class="hljs-property">
 <blockquote>
 <p><strong>Attenzione a questo comportamento</strong>: su <code>401</code> il frontend <strong>disconnette l'utente</strong>, non tenta il
 refresh. <code>authStore.refresh()</code> esiste ed è disponibile per un rinnovo preventivo, ma non è agganciato
-all'interceptor. In pratica, a token scaduto l'utente viene rimandato al login.</p>
+all'interceptor. In pratica, a token scaduto l'utente viene rimandato al login. È una scelta da
+rivalutare in un progetto dove le sessioni lunghe contano.</p>
 </blockquote>
-<p>Lo store <code>auth.store.ts</code> conserva in <code>localStorage</code> token, scadenza, dati dell'utente e permessi; il
-navigation guard del router controlla <code>meta.requiresAuth</code> e <code>meta.permission</code> prima di ogni
-navigazione, e il composable <code>usePermission</code> espone <code>can('permesso')</code> per i template.</p>
+<p>Lo store <code>auth.store.ts</code> conserva in <code>localStorage</code> token, scadenza, <code>username</code>, <code>email</code> (se presente),
+gli altri dati dell'utente e i permessi. Le azioni di login sono tre: <code>login()</code>, <code>loginWithMsal()</code>,
+<code>loginWithWindows()</code>. Il navigation guard del router controlla <code>meta.requiresAuth</code> e <code>meta.permission</code>
+prima di ogni navigazione, e il composable <code>usePermission</code> espone <code>can('permesso')</code> per i template.</p>
+<p>Nella gestione utenti il campo obbligatorio è <strong>Username</strong> (con un suggerimento su cosa scriverci:
+username locale, email per MSAL, <code>DOMINIO\utente</code> per Windows); <strong>Email</strong> è facoltativo.</p>
 <h2 id="diagnostica">Diagnostica</h2>
 <div class="table-wrap">
 <table>
@@ -465,8 +614,8 @@ navigazione, e il composable <code>usePermission</code> espone <code>can('permes
 <td>Il cookie non è arrivato. Controlla <code>withCredentials: true</code> sul client, <code>Secure</code>/<code>SameSite</code> sul server e che la richiesta sia su HTTPS in produzione</td>
 </tr>
 <tr>
-<td><strong>&quot;Nessun utente locale con email …&quot;</strong></td>
-<td><em>Solo MSAL.</em> L'utente esiste su Azure ma non in DelVoltone. Va creato nel pannello, con la <strong>stessa</strong> email</td>
+<td><strong>&quot;Nessun utente locale con username …&quot;</strong></td>
+<td><em>MSAL o Windows.</em> L'identità è valida ma non c'è un utente locale con quello <code>Username</code>. Va creato nel pannello, con lo <code>Username</code> esatto (per MSAL: la email aziendale; per Windows: <code>DOMINIO\utente</code>)</td>
 </tr>
 <tr>
 <td><strong>&quot;Token Azure non valido: IDX10214&quot;</strong></td>
@@ -477,12 +626,20 @@ navigazione, e il composable <code>usePermission</code> espone <code>can('permes
 <td>Orologio del server disallineato (la tolleranza è 2 minuti) o token già scaduto</td>
 </tr>
 <tr>
+<td><strong>SSO Windows: 401 e nessun popup</strong></td>
+<td>Il browser non invia le credenziali. Chrome/Edge: l'host non è in zona intranet. Firefox: manca <code>network.negotiate-auth.trusted-uris</code>. In alternativa usa l'header <code>X-Dev-Windows-User</code> in Development</td>
+</tr>
+<tr>
+<td><strong>SSO Windows: <code>NU1903</code> a <code>dotnet build</code></strong></td>
+<td>Pacchetto Negotiate su una versione &lt; 10.0.10: aggiorna</td>
+</tr>
+<tr>
 <td><strong>Il pulsante Microsoft non appare</strong></td>
 <td><code>VITE_AUTH_STRATEGY</code> non vale esattamente <code>msal</code></td>
 </tr>
 <tr>
-<td><strong>Il form email/password non appare</strong></td>
-<td><code>VITE_AUTH_STRATEGY=msal</code>: rimettilo a <code>jwt</code></td>
+<td><strong>Il form username/password non appare</strong></td>
+<td><code>VITE_AUTH_STRATEGY</code> vale <code>msal</code> o <code>windows</code>: rimettilo a <code>jwt</code></td>
 </tr>
 <tr>
 <td><strong>401 &quot;Account disabilitato&quot;</strong></td>
@@ -505,15 +662,19 @@ token di produzione.</p>
 <tbody>
 <tr>
 <td><code>Features/Auth/AuthEndpoints.cs</code></td>
-<td>Le quattro rotte, il rate limiting, il cookie</td>
+<td>Le rotte, il rate limiting, il cookie, il bypass dev di Windows</td>
 </tr>
 <tr>
 <td><code>Features/Auth/Login/LoginHandler.cs</code></td>
-<td>Email + password, BCrypt</td>
+<td>Username + password, BCrypt</td>
 </tr>
 <tr>
 <td><code>Features/Auth/MsalLogin/MsalLoginHandler.cs</code></td>
 <td>Validazione del token Azure, lookup dell'utente locale</td>
+</tr>
+<tr>
+<td><code>Features/Auth/WindowsLogin/WindowsLoginHandler.cs</code></td>
+<td>Identità Windows → lookup dell'utente locale per <code>Username</code></td>
 </tr>
 <tr>
 <td><code>Features/Auth/RefreshToken/RefreshTokenHandler.cs</code></td>
@@ -528,8 +689,12 @@ token di produzione.</p>
 <td>Generazione del JWT e del refresh token</td>
 </tr>
 <tr>
+<td><code>Features/_Shared/Helpers/Username.cs</code></td>
+<td>Normalizzazione dell'identità di login (trim + minuscolo)</td>
+</tr>
+<tr>
 <td><code>Features/_Shared/Extensions/AuthExtensions.cs</code></td>
-<td>Registrazione del JwtBearer e delle policy</td>
+<td>Registrazione di JwtBearer + Negotiate e delle policy</td>
 </tr>
 <tr>
 <td><code>plugins/axios.ts</code> · <code>stores/auth.store.ts</code> · <code>services/msal.service.ts</code></td>
@@ -544,7 +709,7 @@ token di produzione.</p>
   </div>
 
   <footer class="footer">
-    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
   </footer>
 </body>
 </html>

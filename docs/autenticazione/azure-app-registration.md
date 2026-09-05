@@ -9,7 +9,7 @@ ambiente. Il funzionamento a valle è descritto in [JWT e MSAL](autenticazione.m
 
 ## Il modello: due app, non una
 
-È il punto in cui ci si perde, quindi conviene chiarirlo subito. In produzione DelVoltone usa **due
+È il punto in cui ci si perde, quindi conviene chiarirlo subito. In produzione si usano **due
 app registration distinte**:
 
 | App registration | Che cos'è | Chi la usa |
@@ -41,7 +41,7 @@ Il resto della guida descrive il caso completo, con due app.
 ## 1. Registrare l'app dell'API
 
 1. **Microsoft Entra ID** → **Registrazioni app** → **+ Nuova registrazione**.
-2. Nome: `DelVoltone-API` (o come preferisci).
+2. Nome: `<Progetto>-API` (per esempio `MioProgetto-API`).
 3. Tipi di account supportati: **Solo questa directory organizzativa** (single tenant) — è la scelta
    giusta se tutti gli utenti appartengono alla stessa organizzazione.
 4. Nessun URI di reindirizzamento: l'API non ne ha bisogno.
@@ -59,15 +59,15 @@ Dalla pagina **Panoramica** annota **ID applicazione (client)** e **ID directory
    |---|---|
    | Nome ambito | `access_as_user` |
    | Chi può consentire | Amministratori e utenti |
-   | Nome visualizzato | Accedi a DelVoltone come utente |
-   | Descrizione | Consente all'app di accedere a DelVoltone per conto dell'utente connesso |
+   | Nome visualizzato | Accedi all'applicazione come utente |
+   | Descrizione | Consente all'app di accedere all'applicazione per conto dell'utente connesso |
    | Stato | Abilitato |
 
 Lo scope completo diventa `api://{API_CLIENT_ID}/access_as_user`: è quello che la SPA chiederà.
 
 ## 2. Registrare l'app della SPA
 
-1. **+ Nuova registrazione**, nome `DelVoltone-SPA`, single tenant.
+1. **+ Nuova registrazione**, nome `<Progetto>-SPA`, single tenant.
 2. **Autenticazione** → **+ Aggiungi una piattaforma** → **Applicazione a pagina singola (SPA)**.
 
    > Deve essere **SPA**, non *Web*. La piattaforma Web usa il flusso implicito e produce l'errore
@@ -77,7 +77,7 @@ Lo scope completo diventa `api://{API_CLIENT_ID}/access_as_user`: è quello che 
 3. URI di reindirizzamento: **deve coincidere esattamente** con `window.location.origin + '/login'`.
 
    ```
-   http://localhost:5173/login          sviluppo
+   http://localhost:5173/login             sviluppo (con frontend_port = 5173)
    https://<frontend>.onrender.com/login   produzione
    ```
 
@@ -90,7 +90,7 @@ Lo scope completo diventa `api://{API_CLIENT_ID}/access_as_user`: è quello che 
 ### Dare alla SPA il permesso di chiamare l'API
 
 1. Nell'app **SPA** → **Autorizzazioni API** → **+ Aggiungi un'autorizzazione**.
-2. Scheda **Le mie API** → seleziona `DelVoltone-API`.
+2. Scheda **Le mie API** → seleziona l'app `<Progetto>-API`.
 3. **Autorizzazioni delegate** → spunta `access_as_user` → **Aggiungi autorizzazioni**.
 4. Clicca **Concedi consenso amministratore** e conferma.
 
@@ -98,7 +98,7 @@ Senza il consenso amministratore ogni utente dovrà accettare i permessi al prim
 consenso, la cosa è trasparente. Se lo stato resta *Non concesso*, l'accesso fallisce con
 `AADSTS65001`.
 
-## 3. Configurare DelVoltone
+## 3. Configurare il progetto
 
 ### Backend
 
@@ -121,7 +121,7 @@ consenso, la cosa è trasparente. Se lo stato resta *Non concesso*, l'accesso fa
 
 ```env
 # apps/frontend/.env.local
-VITE_API_BASE_URL=http://localhost:5000
+VITE_API_BASE_URL=http://localhost:5080     # la porta scelta come api_port
 VITE_AUTH_STRATEGY=msal
 VITE_MSAL_CLIENT_ID=<ClientId dell'app SPA>
 VITE_MSAL_TENANT_ID=<ID directory (tenant)>
@@ -139,22 +139,26 @@ VITE_MSAL_API_CLIENT_ID=<ClientId dell'app API>   # vuoto se SPA e API sono la s
 L'authority non si configura: il frontend la costruisce da sé come
 `https://login.microsoftonline.com/{VITE_MSAL_TENANT_ID}`.
 
-## 4. Creare l'utente in DelVoltone
+## 4. Creare l'utente nell'applicazione
 
 Azure verifica **l'identità**; i **permessi** vengono dal database locale. Quindi:
 
-> L'utente deve esistere **anche** in DelVoltone, con la **stessa email** dell'account Azure
-> (quella del claim `preferred_username`, di norma l'UPN), e deve avere ruoli assegnati —
-> direttamente o tramite un gruppo.
+> L'utente deve esistere **anche** nell'applicazione, con `Username` uguale all'identità
+> dell'account Azure — il claim `preferred_username`, di norma l'UPN, cioè la email aziendale — e
+> deve avere ruoli assegnati, direttamente o tramite un gruppo.
 
-Se manca, l'accesso fallisce con *"Nessun utente locale con email …"*. Se c'è ma non ha ruoli,
+Se manca, l'accesso fallisce con *"Nessun utente locale con username …"*. Se c'è ma non ha ruoli,
 l'accesso riesce e l'utente non vede nulla.
+
+> Attenzione al campo giusto: la corrispondenza si fa su **`Username`**, non sul campo `Email`, che
+> nell'applicazione è un dato anagrafico opzionale. Vedi
+> [JWT, MSAL e Windows](autenticazione.md#l-identita-di-login-username).
 
 ## 5. Verificare
 
 ```bash
-pnpm serve:backend      # http://localhost:5000
-pnpm serve:frontend     # http://localhost:5173
+pnpm serve:backend      # sulla porta scelta alla generazione (api_port)
+pnpm serve:frontend     # sulla porta scelta alla generazione (frontend_port)
 ```
 
 Nella pagina di accesso deve comparire il pulsante **Accedi con Microsoft**. Dopo il login, in
@@ -178,14 +182,14 @@ deve essere il ClientId dell'**API** (o `api://{clientId}`). È la diagnosi più
 - [ ] Backend: `Auth:Msal:TenantId` e `Auth:Msal:ClientId` (= app API)
 - [ ] Frontend: `VITE_AUTH_STRATEGY=msal`, `VITE_MSAL_CLIENT_ID` (= app SPA), `VITE_MSAL_TENANT_ID`,
       `VITE_MSAL_API_CLIENT_ID` (= app API)
-- [ ] L'utente Azure esiste anche in DelVoltone, con la stessa email, e ha dei ruoli
+- [ ] L'utente Azure esiste anche nell'applicazione, con `Username` = la sua email aziendale, e ha dei ruoli
 
 ## Produzione
 
 Aggiungi l'URI di produzione fra i redirect URI della SPA (**in HTTPS**: obbligatorio).
 
-Meglio ancora: **app registration separate per ambiente** — `DelVoltone-SPA-Dev` e
-`DelVoltone-SPA-Prod` — così gli ambienti restano isolati e possono avere policy diverse.
+Meglio ancora: **app registration separate per ambiente** — `<Progetto>-SPA-Dev` e
+`<Progetto>-SPA-Prod` — così gli ambienti restano isolati e possono avere policy diverse.
 
 I valori non vanno nei file versionati: sul backend usa le variabili d'ambiente
 (`Auth__Msal__TenantId`, `Auth__Msal__ClientId`, `Auth__Jwt__Secret`), sul frontend le variabili di
@@ -204,7 +208,8 @@ No, per lo stesso motivo.
 
 **Posso limitare chi accede?**
 Sì, in due punti. Su Azure: *Applicazioni aziendali* → *Assegnazione utenti obbligatoria* → assegna
-solo le persone o i gruppi desiderati. Su DelVoltone: chi non ha un utente locale non entra comunque.
+solo le persone o i gruppi desiderati. Nell'applicazione: chi non ha un utente locale non entra
+comunque.
 
 **Posso usare account Microsoft personali (outlook.com)?**
 Solo se nella registrazione hai scelto un tipo di account che li include. Per l'uso aziendale,
@@ -218,7 +223,7 @@ Solo se nella registrazione hai scelto un tipo di account che li include. Per l'
 | `AADSTS700054` | Piattaforma **Web** invece di **SPA** | Rimuovi la piattaforma Web, aggiungi la SPA |
 | `AADSTS65001` | Manca il consenso amministratore | *Autorizzazioni API* → **Concedi consenso amministratore** |
 | `IDX10214: Audience validation failed` | Il token è destinato alla SPA, non all'API | Imposta `VITE_MSAL_API_CLIENT_ID` e verifica che lo scope richiesto sia `api://{API}/access_as_user` |
-| *Nessun utente locale con email …* | L'utente non esiste in DelVoltone | Crealo con la stessa email |
+| *Nessun utente locale con username …* | L'utente non esiste nell'applicazione | Crealo con `Username` = la email aziendale |
 | Accede, ma non vede nulla | L'utente locale non ha ruoli | Assegnagli ruoli, direttamente o via gruppo |
 
 ## Riferimenti

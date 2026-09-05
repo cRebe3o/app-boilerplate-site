@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aggiungere una feature — DelVoltone</title>
+  <title>Aggiungere una feature — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="../index.html">
-      <span class="brand-name">DelVoltone</span>
-      <span class="brand-sub">Documentazione tecnica</span>
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
     </a>
   </header>
 
@@ -24,30 +24,23 @@
           <p class="nav-title">Progetto</p>
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
         <div class="nav-group">
-          <p class="nav-title">Database</p>
+          <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
-            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
-            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
-            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
-          </ul>
-        </div>
-        <div class="nav-group">
-          <p class="nav-title">Database — versione storica (obsoleta)</p>
-          <ul>
-            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
         <div class="nav-group">
           <p class="nav-title">Autenticazione</p>
           <ul>
-            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
             <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
           </ul>
         </div>
@@ -85,10 +78,18 @@
       </nav>
 <p>Il percorso completo per portare una nuova entità dal database fino alla pagina, attraversando tutti
 i punti in cui il progetto chiede qualcosa di specifico.</p>
-<p><strong>L'esempio non è inventato: è la feature &quot;Valli&quot; (<code>Valleys</code>), che esiste nel repository.</strong> Ogni
-frammento di codice qui sotto è il file reale, non una versione semplificata: si può aprire il
-progetto e confrontare riga per riga. È una lookup piatta — descrizione italiana, descrizione
-inglese, ordinamento — cioè il caso più frequente e il più facile da imitare.</p>
+<p>È l'operazione più frequente in un progetto generato: il template porta l'impianto, il dominio lo
+aggiungi tu, e lo aggiungi sempre così.</p>
+<p><strong>L'esempio è un'entità <code>Category</code></strong>: una lookup piatta — descrizione italiana, descrizione inglese,
+ordinamento — cioè il caso più semplice e il più facile da adattare. Non esiste nel template: è il
+tipo di entità che il tuo progetto aggiungerà per primo. Le feature già presenti (<code>Groups</code>, <code>Roles</code>,
+<code>Users</code>) seguono esattamente questa forma e si possono aprire per confronto.</p>
+<blockquote>
+<p><strong>Scorciatoia.</strong> Le <a href="../progetto/skill.html">skill Claude</a> incluse nel progetto scaffoldano tutti i
+passaggi che seguono — <code>db-entity</code> per l'entità e le migration, <code>vertical-slice-backend</code> per le
+slice, <code>vue-feature</code> per il frontend, o <code>/new-feature Category</code> per l'intero giro. Questa pagina
+descrive <em>che cosa</em> producono e perché, che è ciò che serve per rivederne l'output.</p>
+</blockquote>
 <h2 id="la-regola-che-governa-tutto">La regola che governa tutto</h2>
 <blockquote>
 <p><strong>Una modifica al modello richiede due migration, una per provider.</strong> L'applicazione gira su
@@ -111,7 +112,7 @@ case-sensitive su PostgreSQL.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>_Shared/Entities/Valley.cs</code></td>
+<td><code>_Shared/Entities/Category.cs</code></td>
 <td>L'entità EF Core</td>
 </tr>
 <tr>
@@ -126,22 +127,22 @@ case-sensitive su PostgreSQL.</p>
 </tr>
 <tr>
 <td>4</td>
-<td><code>Features/Valleys/GetValleys/</code></td>
+<td><code>Features/Categories/GetCategories/</code></td>
 <td>La query</td>
 </tr>
 <tr>
 <td>5</td>
-<td><code>Features/Valleys/CreateValley/</code></td>
+<td><code>Features/Categories/CreateCategory/</code></td>
 <td>Il comando, con validazione e audit</td>
 </tr>
 <tr>
 <td>6</td>
-<td><code>Features/Valleys/UpdateValley/</code>, <code>DeleteValley/</code></td>
+<td><code>Features/Categories/UpdateCategory/</code>, <code>DeleteCategory/</code></td>
 <td>Modifica e cancellazione</td>
 </tr>
 <tr>
 <td>7</td>
-<td><code>Features/Valleys/ValleyEndpoints.cs</code> + <code>_Shared/Extensions/EndpointExtensions.cs</code></td>
+<td><code>Features/Categories/CategoryEndpoints.cs</code> + <code>_Shared/Extensions/EndpointExtensions.cs</code></td>
 <td>Le rotte</td>
 </tr>
 <tr>
@@ -162,13 +163,11 @@ case-sensitive su PostgreSQL.</p>
 </tbody>
 </table>
 </div>
-<p>Rispetto al passato non c'è più nessun file di repository: gli handler usano direttamente
-<code>AppDbContext</code>.</p>
 <hr>
 <h1 id="backend">Backend</h1>
 <h2 id="1-l-entita">1. L'entità</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Entities/Valley.cs</span>
-<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Valley</span> : <span class="hljs-title">ITimestamped</span>
+<pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Entities/Category.cs</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Category</span> : <span class="hljs-title">ITimestamped</span>
 {
     <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Id { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
     <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> DescIt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
@@ -180,9 +179,9 @@ case-sensitive su PostgreSQL.</p>
 </code></pre>
 <p>Le regole, tutte e quattro non negoziabili:</p>
 <ul>
-<li><strong>Nessun suffisso</strong>: <code>Valley</code>, non <code>ValleyDocument</code> né <code>ValleyEntity</code>.</li>
+<li><strong>Nessun suffisso</strong>: <code>Category</code>, non <code>CategoryDocument</code> né <code>CategoryEntity</code>.</li>
 <li><strong><code>Id</code> di tipo <code>int</code></strong>, mai <code>string</code> né <code>Guid</code>. È identity: lo assegna il database. Il perché è in
-<a href="../database_sql-only/decisioni.html">Decisioni</a>.</li>
+<a href="../infrastructure/decisioni.html">Decisioni</a>.</li>
 <li><strong><code>ITimestamped</code></strong> se l'entità ha <code>CreatedAt</code>/<code>UpdatedAt</code>: è l'interfaccia che fa scattare
 l'assegnazione automatica dei timestamp in <code>SaveChanges</code>. Gli handler non li valorizzano mai a mano.</li>
 <li><strong>Nessun attributo di persistenza.</strong> Niente data annotation: tutta la configurazione sta in
@@ -190,29 +189,30 @@ l'assegnazione automatica dei timestamp in <code>SaveChanges</code>. Gli handler
 </ul>
 <h2 id="2-la-tabella">2. La tabella</h2>
 <pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Persistence/AppDbContext.cs — dentro OnModelCreating</span>
-mb.Entity&lt;Valley&gt;(e =&gt;
+mb.Entity&lt;Category&gt;(e =&gt;
 {
-    e.ToTable(<span class="hljs-string">&quot;Valleys&quot;</span>);
+    e.ToTable(<span class="hljs-string">&quot;Categories&quot;</span>);
     e.Property(x =&gt; x.DescIt).HasMaxLength(<span class="hljs-number">256</span>);   <span class="hljs-comment">// mai lasciare nvarchar(max)/text</span>
     e.Property(x =&gt; x.DescEn).HasMaxLength(<span class="hljs-number">256</span>);
 });
 </code></pre>
-<p><code>HasKey</code> non serve: EF riconosce <code>Id</code> per convenzione e lo rende identity su entrambi i provider.</p>
+<p><code>HasKey</code> non serve: EF riconosce <code>Id</code> per convenzione e lo rende identity su entrambi i provider.
+Non serve nemmeno un <code>DbSet</code>: le entità si raggiungono con <code>db.Set&lt;Category&gt;()</code>.</p>
 <p><strong>Ogni colonna stringa va dimensionata.</strong> Senza <code>HasMaxLength</code> EF genera <code>nvarchar(max)</code> (SQL Server)
 o <code>text</code> (Postgres): pessimo per indici e storage, e su SQL Server un indice unique non è nemmeno
 ammesso su <code>nvarchar(max)</code>.</p>
-<p>Se l'entità avesse una <strong>FK</strong> verso un'altra (come <code>ProductTypes</code> → <code>Typologies</code>), andrebbe
-dichiarata con <code>Restrict</code>, mai <code>Cascade</code>:</p>
-<pre><code class="language-csharp">e.HasOne(x =&gt; x.Typology).WithMany().HasForeignKey(x =&gt; x.TypologyId)
+<p>Se l'entità avesse una <strong>FK</strong> verso un'altra, andrebbe dichiarata con <code>Restrict</code>, mai <code>Cascade</code>:</p>
+<pre><code class="language-csharp">e.HasOne(x =&gt; x.Parent).WithMany().HasForeignKey(x =&gt; x.ParentId)
     .OnDelete(DeleteBehavior.Restrict);
 </code></pre>
+<p><code>Cascade</code> qui sarebbe pericoloso: cancellare una categoria cancellerebbe tutto ciò che la usa.</p>
 <p>Se avesse una relazione <strong>molti-a-molti</strong>, servirebbe una join table con skip navigation
-unidirezionale — vedi <a href="../database_sql-only/architettura.html">Architettura</a>.</p>
+unidirezionale — vedi <a href="../infrastructure/architettura.html">Architettura</a>.</p>
 <h2 id="3-le-due-migration">3. Le due migration</h2>
-<pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/DelVoltone.Api
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/&lt;Progetto&gt;.Api
 
-dotnet dotnet-ef migrations add AddValleys --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add AddValleys --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+dotnet dotnet-ef migrations add AddCategories --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
+dotnet dotnet-ef migrations add AddCategories --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
 </code></pre>
 <p>Il <code>--context</code> seleziona quale delle due derivate usare, e quindi in quale cartella finisce la
 migration. Si applicano da sole all'avvio (<code>MigrateAsync</code>).</p>
@@ -222,22 +222,21 @@ migration. Si applicano da sole all'avvio (<code>MigrateAsync</code>).</p>
 <h2 id="4-la-query">4. La query</h2>
 <p>Una slice è fatta di quattro file al massimo — richiesta, handler, validatore, risposta — nella
 stessa cartella. Per una lettura ne bastano tre.</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Valleys/GetValleys/ValleyResponse.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">ValleyResponse</span>(<span class="hljs-params">
+<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/GetCategories/CategoryResponse.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">CategoryResponse</span>(<span class="hljs-params">
     <span class="hljs-built_in">int</span> Id, <span class="hljs-built_in">string</span> DescIt, <span class="hljs-built_in">string</span> DescEn, <span class="hljs-built_in">int</span> Order,
     DateTime CreatedAt, DateTime UpdatedAt</span>)</span>;
 
-<span class="hljs-comment">// Features/Valleys/GetValleys/GetValleysQuery.cs</span>
-<span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">GetValleysQuery</span> : <span class="hljs-title">IRequest</span>&lt;<span class="hljs-title">List</span>&lt;<span class="hljs-title">ValleyResponse</span>&gt;&gt;;
+<span class="hljs-comment">// Features/Categories/GetCategories/GetCategoriesQuery.cs</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">GetCategoriesQuery</span> : <span class="hljs-title">IRequest</span>&lt;<span class="hljs-title">List</span>&lt;<span class="hljs-title">CategoryResponse</span>&gt;&gt;;
 
-<span class="hljs-comment">// Features/Valleys/GetValleys/GetValleysHandler.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GetValleysHandler</span>(<span class="hljs-params">AppDbContext db</span>) : IRequestHandler&lt;GetValleysQuery, List&lt;ValleyResponse&gt;&gt;</span>
+<span class="hljs-comment">// Features/Categories/GetCategories/GetCategoriesHandler.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GetCategoriesHandler</span>(<span class="hljs-params">AppDbContext db</span>) : IRequestHandler&lt;GetCategoriesQuery, List&lt;CategoryResponse&gt;&gt;</span>
 {
-    <span class="hljs-comment">// Nessun OrderBy: l&#x27;ordinamento è a carico del chiamante (la scansione segue comunque</span>
-    <span class="hljs-comment">// la PK identity, cioè l&#x27;ordine di creazione).</span>
-    <span class="hljs-keyword">public</span> Task&lt;List&lt;ValleyResponse&gt;&gt; Handle(GetValleysQuery request, CancellationToken cancellationToken) =&gt;
-        db.Set&lt;Valley&gt;()
-            .Select(x =&gt; <span class="hljs-keyword">new</span> ValleyResponse(x.Id, x.DescIt, x.DescEn, x.Order, x.CreatedAt, x.UpdatedAt))
+    <span class="hljs-keyword">public</span> Task&lt;List&lt;CategoryResponse&gt;&gt; Handle(GetCategoriesQuery request, CancellationToken cancellationToken) =&gt;
+        db.Set&lt;Category&gt;()
+            .OrderBy(x =&gt; x.Order)
+            .Select(x =&gt; <span class="hljs-keyword">new</span> CategoryResponse(x.Id, x.DescIt, x.DescEn, x.Order, x.CreatedAt, x.UpdatedAt))
             .ToListAsync(cancellationToken);
 }
 </code></pre>
@@ -252,17 +251,18 @@ necessarie e non popola il change tracker. Niente entità intermedie, niente map
 <p>In lettura, <code>Select</code> verso un record rende <code>AsNoTracking()</code> superfluo: una proiezione non traccia
 nulla di per sé. <code>AsNoTracking()</code> serve quando si materializzano <strong>entità</strong>.</p>
 </blockquote>
+<p>L'handler non va registrato da nessuna parte: MediatR lo scopre da sé nell'assembly.</p>
 <h2 id="5-il-comando-validazione-e-audit">5. Il comando: validazione e audit</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Valleys/CreateValley/CreateValleyCommand.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">CreateValleyCommand</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> DescIt, <span class="hljs-built_in">string</span> DescEn, <span class="hljs-built_in">int</span> Order</span>) : IRequest&lt;CreateValleyResponse&gt;</span>;
+<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/CreateCategory/CreateCategoryCommand.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">CreateCategoryCommand</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> DescIt, <span class="hljs-built_in">string</span> DescEn, <span class="hljs-built_in">int</span> Order</span>) : IRequest&lt;CreateCategoryResponse&gt;</span>;
 
-<span class="hljs-comment">// Features/Valleys/CreateValley/CreateValleyResponse.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">CreateValleyResponse</span>(<span class="hljs-params"><span class="hljs-built_in">int</span> Id</span>)</span>;
+<span class="hljs-comment">// Features/Categories/CreateCategory/CreateCategoryResponse.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">CreateCategoryResponse</span>(<span class="hljs-params"><span class="hljs-built_in">int</span> Id</span>)</span>;
 
-<span class="hljs-comment">// Features/Valleys/CreateValley/CreateValleyValidator.cs</span>
-<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateValleyValidator</span> : <span class="hljs-title">AbstractValidator</span>&lt;<span class="hljs-title">CreateValleyCommand</span>&gt;
+<span class="hljs-comment">// Features/Categories/CreateCategory/CreateCategoryValidator.cs</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateCategoryValidator</span> : <span class="hljs-title">AbstractValidator</span>&lt;<span class="hljs-title">CreateCategoryCommand</span>&gt;
 {
-    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">CreateValleyValidator</span>()</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">CreateCategoryValidator</span>()</span>
     {
         RuleFor(x =&gt; x.DescIt).NotEmpty().MaximumLength(<span class="hljs-number">200</span>);
         RuleFor(x =&gt; x.DescEn).NotEmpty().MaximumLength(<span class="hljs-number">200</span>);
@@ -272,27 +272,27 @@ nulla di per sé. <code>AsNoTracking()</code> serve quando si materializzano <st
 <p>Il validatore <strong>non va invocato</strong>: il <code>ValidationBehavior</code> della pipeline MediatR lo trova da sé e,
 se fallisce, la richiesta non arriva mai all'handler — il middleware restituisce <code>400</code> con
 ProblemDetails.</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Valleys/CreateValley/CreateValleyHandler.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateValleyHandler</span>(<span class="hljs-params">
+<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/CreateCategory/CreateCategoryHandler.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateCategoryHandler</span>(<span class="hljs-params">
     AppDbContext db,
-    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;CreateValleyCommand, CreateValleyResponse&gt;</span>
+    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;CreateCategoryCommand, CreateCategoryResponse&gt;</span>
 {
-    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;CreateValleyResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">CreateValleyCommand request, CancellationToken cancellationToken</span>)</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;CreateCategoryResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">CreateCategoryCommand request, CancellationToken cancellationToken</span>)</span>
     {
-        <span class="hljs-keyword">var</span> valley = <span class="hljs-keyword">new</span> Valley
+        <span class="hljs-keyword">var</span> category = <span class="hljs-keyword">new</span> Category
         {
             DescIt = request.DescIt,
             DescEn = request.DescEn,
             Order = request.Order,
         };
 
-        db.Add(valley);
+        db.Add(category);
         <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);   <span class="hljs-comment">// assegna l&#x27;id identity</span>
 
-        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Valley&quot;</span>, valley.Id, <span class="hljs-string">&quot;Created&quot;</span>));
+        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Category&quot;</span>, category.Id, <span class="hljs-string">&quot;Created&quot;</span>));
         <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
 
-        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CreateValleyResponse(valley.Id);
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CreateCategoryResponse(category.Id);
     }
 }
 </code></pre>
@@ -333,19 +333,19 @@ compila da sé <code>ActorId</code> (claim <code>sub</code>, 0 se assente), <cod
 </tbody>
 </table>
 </div>
-<pre><code class="language-csharp"><span class="hljs-comment">// UpdateValleyHandler — la forma dello snapshot</span>
-<span class="hljs-keyword">var</span> valley = <span class="hljs-keyword">await</span> db.Set&lt;Valley&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, cancellationToken)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Valley&quot;</span>, request.Id);
+<pre><code class="language-csharp"><span class="hljs-comment">// UpdateCategoryHandler — la forma dello snapshot</span>
+<span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> db.Set&lt;Category&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, cancellationToken)
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Category&quot;</span>, request.Id);
 
-<span class="hljs-keyword">var</span> before = valley.ToAuditJson();      <span class="hljs-comment">// PRIMA di toccare l&#x27;oggetto</span>
-valley.DescIt = request.Body.DescIt;
-valley.DescEn = request.Body.DescEn;
-valley.Order = request.Body.Order;
+<span class="hljs-keyword">var</span> before = category.ToAuditJson();      <span class="hljs-comment">// PRIMA di toccare l&#x27;oggetto</span>
+category.DescIt = request.Body.DescIt;
+category.DescEn = request.Body.DescEn;
+category.Order = request.Body.Order;
 
 <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);   <span class="hljs-comment">// UpdatedAt lo imposta ApplyTimestamps</span>
 
-db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Valley&quot;</span>, valley.Id, <span class="hljs-string">&quot;Updated&quot;</span>,
-    before: before, after: valley.ToAuditJson()));
+db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Category&quot;</span>, category.Id, <span class="hljs-string">&quot;Updated&quot;</span>,
+    before: before, after: category.ToAuditJson()));
 <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
 </code></pre>
 <p>Lo snapshot <code>Before</code> va catturato <strong>prima</strong> di modificare l'oggetto — è un errore facile e silenzioso,
@@ -357,93 +357,94 @@ finirci <strong>per costruzione</strong>.</p>
 </blockquote>
 <p>⚠️ <strong>Il caso M2M.</strong> Se l'update tocca <strong>solo</strong> le collezioni molti-a-molti, l'entità non viene marcata
 <code>Modified</code> e <code>UpdatedAt</code> non si aggiorna da solo: va toccato esplicitamente (vedi <code>UpdateUserHandler</code>).
-Per una lookup piatta come <code>Valley</code> il problema non si pone.</p>
+Per una lookup piatta come <code>Category</code> il problema non si pone.</p>
 <h2 id="6-la-cancellazione-prima-si-controlla">6. La cancellazione: prima si controlla</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Valleys/DeleteValley/DeleteValleyHandler.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">DeleteValleyHandler</span>(<span class="hljs-params">
+<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/DeleteCategory/DeleteCategoryHandler.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">DeleteCategoryHandler</span>(<span class="hljs-params">
     AppDbContext db,
-    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;DeleteValleyCommand&gt;</span>
+    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;DeleteCategoryCommand&gt;</span>
 {
-    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Handle</span>(<span class="hljs-params">DeleteValleyCommand request, CancellationToken cancellationToken</span>)</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Handle</span>(<span class="hljs-params">DeleteCategoryCommand request, CancellationToken cancellationToken</span>)</span>
     {
-        <span class="hljs-keyword">var</span> valley = <span class="hljs-keyword">await</span> db.Set&lt;Valley&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, cancellationToken)
-            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Valley&quot;</span>, request.Id);
+        <span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> db.Set&lt;Category&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, cancellationToken)
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Category&quot;</span>, request.Id);
 
         <span class="hljs-comment">// Conteggio prima della DELETE per dare un 409 con messaggio chiaro: la FK Restrict</span>
-        <span class="hljs-comment">// su Products farebbe comunque fallire la cancellazione, ma con un errore generico.</span>
-        <span class="hljs-keyword">var</span> count = <span class="hljs-keyword">await</span> db.Set&lt;Product&gt;().CountAsync(x =&gt; x.ValleyId == request.Id, cancellationToken);
+        <span class="hljs-comment">// farebbe comunque fallire la cancellazione, ma con un errore generico.</span>
+        <span class="hljs-keyword">var</span> count = <span class="hljs-keyword">await</span> db.Set&lt;Article&gt;().CountAsync(x =&gt; x.CategoryId == request.Id, cancellationToken);
         <span class="hljs-keyword">if</span> (count &gt; <span class="hljs-number">0</span>)
             <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(
-                <span class="hljs-string">$&quot;Impossibile eliminare questa valle: è ancora utilizzata in <span class="hljs-subst">{count}</span> prodotto/i. &quot;</span> +
-                <span class="hljs-string">&quot;Rimuovila da tutti i prodotti prima di eliminarla.&quot;</span>);
+                <span class="hljs-string">$&quot;Impossibile eliminare questa categoria: è ancora utilizzata in <span class="hljs-subst">{count}</span> elemento/i. &quot;</span> +
+                <span class="hljs-string">&quot;Rimuovila da tutti gli elementi prima di eliminarla.&quot;</span>);
 
-        <span class="hljs-keyword">var</span> before = valley.ToAuditJson();
-        db.Remove(valley);
+        <span class="hljs-keyword">var</span> before = category.ToAuditJson();
+        db.Remove(category);
         <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
 
-        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Valley&quot;</span>, valley.Id, <span class="hljs-string">&quot;Deleted&quot;</span>, before: before));
+        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Category&quot;</span>, category.Id, <span class="hljs-string">&quot;Deleted&quot;</span>, before: before));
         <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
     }
 }
 </code></pre>
 <p>Il pattern si ritrova identico in tutte le lookup: <strong>due difese sovrapposte, deliberatamente</strong>.
 L'handler produce un <code>409 Conflict</code> con un messaggio comprensibile; la FK <code>Restrict</code> è la stessa
-regola applicata anche a chi scrivesse sul database da fuori.</p>
-<p>Non serve più validare la forma dell'id: il constraint di rotta <code>{id:int}</code> fa sì che un id malformato
-non arrivi nemmeno all'handler (404 dal routing).</p>
+regola applicata anche a chi scrivesse sul database da fuori. (Il conteggio serve solo se qualche
+altra entità referenzia questa.)</p>
+<p>Non serve validare la forma dell'id: il constraint di rotta <code>{id:int}</code> fa sì che un id malformato non
+arrivi nemmeno all'handler (404 dal routing).</p>
 <p>Se l'operazione dovesse toccare più entità insieme, un singolo <code>SaveChangesAsync</code> è già atomico; per
-blocchi più ampi si usa <code>db.Database.BeginTransactionAsync</code>. Le cancellazioni a cascata delle join
-table le garantisce il database con le FK.</p>
+blocchi più ampi si usa <code>db.Database.BeginTransactionAsync</code> — ricordando che con
+<code>EnableRetryOnFailure</code> attivo va eseguito dentro la strategia di esecuzione.</p>
 <h2 id="7-le-rotte">7. Le rotte</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Valleys/ValleyEndpoints.cs</span>
-<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ValleyEndpoints</span>
+<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/CategoryEndpoints.cs</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CategoryEndpoints</span>
 {
-    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> IEndpointRouteBuilder <span class="hljs-title">MapValleyEndpoints</span>(<span class="hljs-params"><span class="hljs-keyword">this</span> IEndpointRouteBuilder app</span>)</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> IEndpointRouteBuilder <span class="hljs-title">MapCategoryEndpoints</span>(<span class="hljs-params"><span class="hljs-keyword">this</span> IEndpointRouteBuilder app</span>)</span>
     {
-        <span class="hljs-keyword">var</span> <span class="hljs-keyword">group</span> = app.MapGroup(<span class="hljs-string">&quot;/api/valleys&quot;</span>).WithTags(<span class="hljs-string">&quot;Valleys&quot;</span>).RequireAuthorization();
+        <span class="hljs-keyword">var</span> <span class="hljs-keyword">group</span> = app.MapGroup(<span class="hljs-string">&quot;/api/categories&quot;</span>).WithTags(<span class="hljs-string">&quot;Categories&quot;</span>).RequireAuthorization();
 
         <span class="hljs-keyword">group</span>.MapGet(<span class="hljs-string">&quot;/&quot;</span>, <span class="hljs-keyword">async</span> (IMediator mediator, CancellationToken ct) =&gt;
-            Results.Ok(<span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> GetValleysQuery(), ct)))
-            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;valleys.read&quot;</span>))
-            .WithName(<span class="hljs-string">&quot;GetValleys&quot;</span>)
-            .WithSummary(<span class="hljs-string">&quot;Lista valli&quot;</span>)
+            Results.Ok(<span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> GetCategoriesQuery(), ct)))
+            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.read&quot;</span>))
+            .WithName(<span class="hljs-string">&quot;GetCategories&quot;</span>)
+            .WithSummary(<span class="hljs-string">&quot;Lista categorie&quot;</span>)
             .Produces(StatusCodes.Status200OK);
 
         <span class="hljs-keyword">group</span>.MapGet(<span class="hljs-string">&quot;/{id:int}&quot;</span>, <span class="hljs-keyword">async</span> (<span class="hljs-built_in">int</span> id, IMediator mediator, CancellationToken ct) =&gt;
-            Results.Ok(<span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> GetValleyByIdQuery(id), ct)))
-            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;valleys.read&quot;</span>))
-            .WithName(<span class="hljs-string">&quot;GetValleyById&quot;</span>)
-            .WithSummary(<span class="hljs-string">&quot;Dettaglio valle&quot;</span>)
+            Results.Ok(<span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> GetCategoryByIdQuery(id), ct)))
+            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.read&quot;</span>))
+            .WithName(<span class="hljs-string">&quot;GetCategoryById&quot;</span>)
+            .WithSummary(<span class="hljs-string">&quot;Dettaglio categoria&quot;</span>)
             .Produces(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        <span class="hljs-keyword">group</span>.MapPost(<span class="hljs-string">&quot;/&quot;</span>, <span class="hljs-keyword">async</span> (CreateValleyCommand cmd, IMediator mediator, CancellationToken ct) =&gt;
+        <span class="hljs-keyword">group</span>.MapPost(<span class="hljs-string">&quot;/&quot;</span>, <span class="hljs-keyword">async</span> (CreateCategoryCommand cmd, IMediator mediator, CancellationToken ct) =&gt;
         {
             <span class="hljs-keyword">var</span> result = <span class="hljs-keyword">await</span> mediator.Send(cmd, ct);
-            <span class="hljs-keyword">return</span> Results.Created(<span class="hljs-string">$&quot;/api/valleys/<span class="hljs-subst">{result.Id}</span>&quot;</span>, result);
+            <span class="hljs-keyword">return</span> Results.Created(<span class="hljs-string">$&quot;/api/categories/<span class="hljs-subst">{result.Id}</span>&quot;</span>, result);
         })
-            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;valleys.write&quot;</span>))
-            .WithName(<span class="hljs-string">&quot;CreateValley&quot;</span>)
-            .WithSummary(<span class="hljs-string">&quot;Crea una nuova valle&quot;</span>)
+            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.write&quot;</span>))
+            .WithName(<span class="hljs-string">&quot;CreateCategory&quot;</span>)
+            .WithSummary(<span class="hljs-string">&quot;Crea una nuova categoria&quot;</span>)
             .Produces(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
-        <span class="hljs-keyword">group</span>.MapPut(<span class="hljs-string">&quot;/{id:int}&quot;</span>, <span class="hljs-keyword">async</span> (<span class="hljs-built_in">int</span> id, UpdateValleyRequest body, IMediator mediator, CancellationToken ct) =&gt;
-            Results.Ok(<span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> UpdateValleyCommand(id, body), ct)))
-            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;valleys.write&quot;</span>))
-            .WithName(<span class="hljs-string">&quot;UpdateValley&quot;</span>)
-            .WithSummary(<span class="hljs-string">&quot;Aggiorna una valle&quot;</span>)
+        <span class="hljs-keyword">group</span>.MapPut(<span class="hljs-string">&quot;/{id:int}&quot;</span>, <span class="hljs-keyword">async</span> (<span class="hljs-built_in">int</span> id, UpdateCategoryRequest body, IMediator mediator, CancellationToken ct) =&gt;
+            Results.Ok(<span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> UpdateCategoryCommand(id, body), ct)))
+            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.write&quot;</span>))
+            .WithName(<span class="hljs-string">&quot;UpdateCategory&quot;</span>)
+            .WithSummary(<span class="hljs-string">&quot;Aggiorna una categoria&quot;</span>)
             .Produces(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         <span class="hljs-keyword">group</span>.MapDelete(<span class="hljs-string">&quot;/{id:int}&quot;</span>, <span class="hljs-keyword">async</span> (<span class="hljs-built_in">int</span> id, IMediator mediator, CancellationToken ct) =&gt;
         {
-            <span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> DeleteValleyCommand(id), ct);
+            <span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> DeleteCategoryCommand(id), ct);
             <span class="hljs-keyword">return</span> Results.NoContent();
         })
-            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;valleys.delete&quot;</span>))
-            .WithName(<span class="hljs-string">&quot;DeleteValley&quot;</span>)
-            .WithSummary(<span class="hljs-string">&quot;Elimina una valle&quot;</span>)
+            .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.delete&quot;</span>))
+            .WithName(<span class="hljs-string">&quot;DeleteCategory&quot;</span>)
+            .WithSummary(<span class="hljs-string">&quot;Elimina una categoria&quot;</span>)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -456,16 +457,22 @@ table le garantisce il database con le FK.</p>
 <li><strong>Il constraint <code>{id:int}</code></strong> su ogni rotta con id. Non è cosmetico: filtra gli id malformati prima
 che tocchino l'applicazione.</li>
 <li><strong>Ogni rotta dichiara il permesso</strong> che richiede (<code>read</code> / <code>write</code> / <code>delete</code>).</li>
-<li><strong><code>UpdateValleyRequest</code> è il body</strong>, e l'handler riceve un <code>UpdateValleyCommand(id, body)</code>: l'id
+<li><strong><code>UpdateCategoryRequest</code> è il body</strong>, e l'handler riceve un <code>UpdateCategoryCommand(id, body)</code>: l'id
 viene dalla rotta, non dal corpo della richiesta.</li>
 </ul>
 <p>Poi va agganciato:</p>
 <pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Extensions/EndpointExtensions.cs</span>
-app.MapValleyEndpoints();
+app.MapCategoryEndpoints();
 </code></pre>
 <h2 id="8-i-permessi">8. I permessi</h2>
-<p>Vanno aggiunti al seed (<code>_Shared/Seed/DataSeeder.cs</code>) come <code>valleys.read</code>, <code>valleys.write</code>,
-<code>valleys.delete</code>, e assegnati ai ruoli che devono averli.</p>
+<p>Vanno aggiunti al seed (<code>_Shared/Seed/DataSeeder.cs</code>) come <code>categories.read</code>, <code>categories.write</code>,
+<code>categories.delete</code>, e assegnati ai ruoli che devono averli.</p>
+<pre><code class="language-csharp">(<span class="hljs-string">&quot;categories.read&quot;</span>,   <span class="hljs-string">&quot;Categories&quot;</span>, <span class="hljs-string">&quot;read&quot;</span>,   <span class="hljs-string">&quot;Legge la lista categorie&quot;</span>),
+(<span class="hljs-string">&quot;categories.write&quot;</span>,  <span class="hljs-string">&quot;Categories&quot;</span>, <span class="hljs-string">&quot;write&quot;</span>,  <span class="hljs-string">&quot;Crea e modifica categorie&quot;</span>),
+(<span class="hljs-string">&quot;categories.delete&quot;</span>, <span class="hljs-string">&quot;Categories&quot;</span>, <span class="hljs-string">&quot;delete&quot;</span>, <span class="hljs-string">&quot;Elimina categorie&quot;</span>),
+</code></pre>
+<p>Il ruolo <code>Viewer</code> prende automaticamente tutti i permessi con azione <code>read</code>, quindi il nuovo
+<code>categories.read</code> ci finisce da solo; per gli altri ruoli va deciso caso per caso.</p>
 <blockquote>
 <p>Il seed popola <strong>solo un database vuoto</strong>: su un'installazione già avviata i nuovi permessi <strong>non
 compaiono da soli</strong>. Vanno creati dal pannello Permessi e assegnati ai ruoli — oppure, in sviluppo,
@@ -476,7 +483,7 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
 <p>La catena è sempre la stessa, e non si salta un anello: <strong>tipi → service → store → pagina</strong>.</p>
 <h2 id="9-tipi-service-store">9. Tipi, service, store</h2>
 <pre><code class="language-typescript"><span class="hljs-comment">// types/api.types.ts</span>
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">Valley</span> {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">Category</span> {
   <span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span>
   <span class="hljs-attr">descIt</span>: <span class="hljs-built_in">string</span>
   <span class="hljs-attr">descEn</span>: <span class="hljs-built_in">string</span>
@@ -485,32 +492,32 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
   <span class="hljs-attr">updatedAt</span>: <span class="hljs-built_in">string</span>
 }
 
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">CreateValleyRequest</span> {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">CreateCategoryRequest</span> {
   <span class="hljs-attr">descIt</span>: <span class="hljs-built_in">string</span>
   <span class="hljs-attr">descEn</span>: <span class="hljs-built_in">string</span>
   <span class="hljs-attr">order</span>: <span class="hljs-built_in">number</span>
 }
 
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">UpdateValleyRequest</span> = <span class="hljs-title class_">CreateValleyRequest</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">UpdateCategoryRequest</span> = <span class="hljs-title class_">CreateCategoryRequest</span>
 </code></pre>
 <p>Gli id sono <strong><code>number</code></strong>, coerenti con gli <code>int</code> del backend.</p>
-<pre><code class="language-typescript"><span class="hljs-comment">// services/valleys.service.ts — le uniche righe del progetto in cui si usa axios</span>
+<pre><code class="language-typescript"><span class="hljs-comment">// services/categories.service.ts — le uniche righe del progetto in cui si usa axios</span>
 <span class="hljs-keyword">import</span> { api } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@/plugins/axios&#x27;</span>
-<span class="hljs-keyword">import</span> <span class="hljs-keyword">type</span> { <span class="hljs-title class_">Valley</span>, <span class="hljs-title class_">CreateValleyRequest</span>, <span class="hljs-title class_">UpdateValleyRequest</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@/types/api.types&#x27;</span>
+<span class="hljs-keyword">import</span> <span class="hljs-keyword">type</span> { <span class="hljs-title class_">Category</span>, <span class="hljs-title class_">CreateCategoryRequest</span>, <span class="hljs-title class_">UpdateCategoryRequest</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@/types/api.types&#x27;</span>
 
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> valleysService = {
-  <span class="hljs-attr">getAll</span>: <span class="hljs-function">() =&gt;</span> api.<span class="hljs-property">get</span>&lt;<span class="hljs-title class_">Valley</span>[]&gt;(<span class="hljs-string">&#x27;/api/valleys&#x27;</span>).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
-  <span class="hljs-attr">getById</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span></span>) =&gt;</span> api.<span class="hljs-property">get</span>&lt;<span class="hljs-title class_">Valley</span>&gt;(<span class="hljs-string">`/api/valleys/<span class="hljs-subst">${id}</span>`</span>).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
-  <span class="hljs-attr">create</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateValleyRequest</span></span>) =&gt;</span> api.<span class="hljs-property">post</span>&lt;<span class="hljs-title class_">Valley</span>&gt;(<span class="hljs-string">&#x27;/api/valleys&#x27;</span>, data).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
-  <span class="hljs-attr">update</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span>, <span class="hljs-attr">data</span>: <span class="hljs-title class_">UpdateValleyRequest</span></span>) =&gt;</span>
-    api.<span class="hljs-property">put</span>&lt;<span class="hljs-title class_">Valley</span>&gt;(<span class="hljs-string">`/api/valleys/<span class="hljs-subst">${id}</span>`</span>, data).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
-  <span class="hljs-attr">delete</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span></span>) =&gt;</span> api.<span class="hljs-title function_">delete</span>(<span class="hljs-string">`/api/valleys/<span class="hljs-subst">${id}</span>`</span>),
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> categoriesService = {
+  <span class="hljs-attr">getAll</span>: <span class="hljs-function">() =&gt;</span> api.<span class="hljs-property">get</span>&lt;<span class="hljs-title class_">Category</span>[]&gt;(<span class="hljs-string">&#x27;/api/categories&#x27;</span>).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
+  <span class="hljs-attr">getById</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span></span>) =&gt;</span> api.<span class="hljs-property">get</span>&lt;<span class="hljs-title class_">Category</span>&gt;(<span class="hljs-string">`/api/categories/<span class="hljs-subst">${id}</span>`</span>).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
+  <span class="hljs-attr">create</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateCategoryRequest</span></span>) =&gt;</span> api.<span class="hljs-property">post</span>&lt;<span class="hljs-title class_">Category</span>&gt;(<span class="hljs-string">&#x27;/api/categories&#x27;</span>, data).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
+  <span class="hljs-attr">update</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span>, <span class="hljs-attr">data</span>: <span class="hljs-title class_">UpdateCategoryRequest</span></span>) =&gt;</span>
+    api.<span class="hljs-property">put</span>&lt;<span class="hljs-title class_">Category</span>&gt;(<span class="hljs-string">`/api/categories/<span class="hljs-subst">${id}</span>`</span>, data).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
+  <span class="hljs-attr">delete</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span></span>) =&gt;</span> api.<span class="hljs-title function_">delete</span>(<span class="hljs-string">`/api/categories/<span class="hljs-subst">${id}</span>`</span>),
 }
 </code></pre>
-<pre><code class="language-typescript"><span class="hljs-comment">// stores/valleys.store.ts — composition API, mai options API</span>
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> useValleysStore = <span class="hljs-title function_">defineStore</span>(<span class="hljs-string">&#x27;valleys&#x27;</span>, <span class="hljs-function">() =&gt;</span> {
-  <span class="hljs-keyword">const</span> items = ref&lt;<span class="hljs-title class_">Valley</span>[]&gt;([])
-  <span class="hljs-keyword">const</span> selectedItem = ref&lt;<span class="hljs-title class_">Valley</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
+<pre><code class="language-typescript"><span class="hljs-comment">// stores/categories.store.ts — composition API, mai options API</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> useCategoriesStore = <span class="hljs-title function_">defineStore</span>(<span class="hljs-string">&#x27;categories&#x27;</span>, <span class="hljs-function">() =&gt;</span> {
+  <span class="hljs-keyword">const</span> items = ref&lt;<span class="hljs-title class_">Category</span>[]&gt;([])
+  <span class="hljs-keyword">const</span> selectedItem = ref&lt;<span class="hljs-title class_">Category</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
   <span class="hljs-keyword">const</span> loading = <span class="hljs-title function_">ref</span>(<span class="hljs-literal">false</span>)
   <span class="hljs-keyword">const</span> error = ref&lt;<span class="hljs-built_in">string</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
 
@@ -518,23 +525,23 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
     loading.<span class="hljs-property">value</span> = <span class="hljs-literal">true</span>
     error.<span class="hljs-property">value</span> = <span class="hljs-literal">null</span>
     <span class="hljs-keyword">try</span> {
-      items.<span class="hljs-property">value</span> = <span class="hljs-keyword">await</span> valleysService.<span class="hljs-title function_">getAll</span>()
+      items.<span class="hljs-property">value</span> = <span class="hljs-keyword">await</span> categoriesService.<span class="hljs-title function_">getAll</span>()
     } <span class="hljs-keyword">catch</span> {
-      error.<span class="hljs-property">value</span> = i18n.<span class="hljs-property">global</span>.<span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;errors.loadValleys&#x27;</span>)   <span class="hljs-comment">// mai una stringa a mano</span>
+      error.<span class="hljs-property">value</span> = i18n.<span class="hljs-property">global</span>.<span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;errors.loadCategories&#x27;</span>)   <span class="hljs-comment">// mai una stringa a mano</span>
     } <span class="hljs-keyword">finally</span> {
       loading.<span class="hljs-property">value</span> = <span class="hljs-literal">false</span>
     }
   }
 
-  <span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">create</span>(<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateValleyRequest</span></span>) {
+  <span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">create</span>(<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateCategoryRequest</span></span>) {
     loading.<span class="hljs-property">value</span> = <span class="hljs-literal">true</span>
     error.<span class="hljs-property">value</span> = <span class="hljs-literal">null</span>
     <span class="hljs-keyword">try</span> {
-      <span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> valleysService.<span class="hljs-title function_">create</span>(data)
+      <span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> categoriesService.<span class="hljs-title function_">create</span>(data)
       <span class="hljs-keyword">await</span> <span class="hljs-title function_">fetchAll</span>()          <span class="hljs-comment">// ricarica: la lista resta allineata al server</span>
       <span class="hljs-keyword">return</span> result
     } <span class="hljs-keyword">catch</span> (e) {
-      error.<span class="hljs-property">value</span> = i18n.<span class="hljs-property">global</span>.<span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;errors.loadValleys&#x27;</span>)
+      error.<span class="hljs-property">value</span> = i18n.<span class="hljs-property">global</span>.<span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;errors.createCategory&#x27;</span>)
       <span class="hljs-keyword">throw</span> e                   <span class="hljs-comment">// rilancia: la pagina deve poter mostrare l&#x27;errore</span>
     } <span class="hljs-keyword">finally</span> {
       loading.<span class="hljs-property">value</span> = <span class="hljs-literal">false</span>
@@ -549,24 +556,24 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
 <p>Lo store <strong>rilancia</strong> l'eccezione dopo averla registrata: senza, la pagina chiuderebbe il dialog come
 se l'operazione fosse riuscita.</p>
 <h2 id="10-le-pagine">10. Le pagine</h2>
-<p>Due: la lista (<code>ValleysPage.vue</code>) e il dettaglio, usato sia per la creazione sia per la modifica
-(<code>ValleyDetailPage.vue</code>).</p>
+<p>Due: la lista (<code>CategoriesPage.vue</code>) e il dettaglio, usato sia per la creazione sia per la modifica
+(<code>CategoryDetailPage.vue</code>).</p>
 <pre><code class="language-vue"><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">setup</span> <span class="hljs-attr">lang</span>=<span class="hljs-string">&quot;ts&quot;</span>&gt;</span><span class="language-javascript">
 <span class="hljs-keyword">const</span> { t } = <span class="hljs-title function_">useI18n</span>()
 <span class="hljs-keyword">const</span> { mobile } = <span class="hljs-title function_">useDisplay</span>()
-<span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useValleysStore</span>()
+<span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useCategoriesStore</span>()
 <span class="hljs-keyword">const</span> { can } = <span class="hljs-title function_">usePermission</span>()
 
 <span class="hljs-title function_">onMounted</span>(<span class="hljs-function">() =&gt;</span> store.<span class="hljs-title function_">fetchAll</span>())
 </span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
 
 <span class="hljs-tag">&lt;<span class="hljs-name">template</span>&gt;</span>
-  <span class="hljs-tag">&lt;<span class="hljs-name">h1</span> <span class="hljs-attr">class</span>=<span class="hljs-string">&quot;text-h5&quot;</span>&gt;</span>{{ t(&#x27;valleys.title&#x27;) }}<span class="hljs-tag">&lt;/<span class="hljs-name">h1</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">h1</span> <span class="hljs-attr">class</span>=<span class="hljs-string">&quot;text-h5&quot;</span>&gt;</span>{{ t(&#x27;categories.title&#x27;) }}<span class="hljs-tag">&lt;/<span class="hljs-name">h1</span>&gt;</span>
 
   <span class="hljs-comment">&lt;!-- il pulsante non esiste se manca il permesso --&gt;</span>
-  <span class="hljs-tag">&lt;<span class="hljs-name">v-btn</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;can(&#x27;valleys.write&#x27;)&quot;</span> <span class="hljs-attr">color</span>=<span class="hljs-string">&quot;primary&quot;</span> <span class="hljs-attr">prepend-icon</span>=<span class="hljs-string">&quot;mdi-plus&quot;</span>
-         <span class="hljs-attr">:to</span>=<span class="hljs-string">&quot;{ name: &#x27;valley-create&#x27; }&quot;</span>&gt;</span>
-    {{ t(&#x27;valleys.createButton&#x27;) }}
+  <span class="hljs-tag">&lt;<span class="hljs-name">v-btn</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;can(&#x27;categories.write&#x27;)&quot;</span> <span class="hljs-attr">color</span>=<span class="hljs-string">&quot;primary&quot;</span> <span class="hljs-attr">prepend-icon</span>=<span class="hljs-string">&quot;mdi-plus&quot;</span>
+         <span class="hljs-attr">:to</span>=<span class="hljs-string">&quot;{ name: &#x27;category-create&#x27; }&quot;</span>&gt;</span>
+    {{ t(&#x27;categories.createButton&#x27;) }}
   <span class="hljs-tag">&lt;/<span class="hljs-name">v-btn</span>&gt;</span>
 
   <span class="hljs-comment">&lt;!-- tabella su desktop, lista su mobile --&gt;</span>
@@ -587,45 +594,49 @@ l'operazione è il backend.</li>
 <h2 id="11-rotte-e-testi">11. Rotte e testi</h2>
 <pre><code class="language-typescript"><span class="hljs-comment">// router/index.ts</span>
 {
-  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;data/valleys&#x27;</span>,
-  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;valleys&#x27;</span>,
-  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/data/ValleysPage.vue&#x27;</span>),     <span class="hljs-comment">// lazy load, sempre</span>
-  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;valleys.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.valleys&#x27;</span>, <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;data&#x27;</span> },
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;categories&#x27;</span>,
+  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;categories&#x27;</span>,
+  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/categories/CategoriesPage.vue&#x27;</span>),   <span class="hljs-comment">// lazy load, sempre</span>
+  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.categories&#x27;</span> },
 },
 {
-  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;data/valleys/new&#x27;</span>,
-  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;valley-create&#x27;</span>,
-  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/data/ValleyDetailPage.vue&#x27;</span>),
-  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;valleys.write&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.newValley&#x27;</span>, <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;data&#x27;</span> },
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;categories/new&#x27;</span>,
+  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;category-create&#x27;</span>,
+  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/categories/CategoryDetailPage.vue&#x27;</span>),
+  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.write&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.newCategory&#x27;</span> },
 },
 {
-  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;data/valleys/:id(\d+)&#x27;</span>,
-  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;valley-detail&#x27;</span>,
-  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/data/ValleyDetailPage.vue&#x27;</span>),
-  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;valleys.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.valleyDetail&#x27;</span>, <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;data&#x27;</span> },
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;categories/:id(\\d+)&#x27;</span>,
+  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;category-detail&#x27;</span>,
+  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/categories/CategoryDetailPage.vue&#x27;</span>),
+  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.categoryDetail&#x27;</span> },
 },
 </code></pre>
 <p>Due dettagli:</p>
 <ul>
 <li><strong><code>:id(\d+)</code></strong> è il corrispettivo frontend del constraint <code>{id:int}</code> del backend: con id numerici,
-la rotta <code>data/valleys/new</code> non rischia di essere catturata dalla rotta di dettaglio.</li>
+la rotta <code>categories/new</code> non rischia di essere catturata dalla rotta di dettaglio.</li>
 <li><strong>Ogni rotta dichiara <code>meta.permission</code></strong>: il navigation guard la usa per bloccare l'accesso diretto
-via URL. Nota che la creazione richiede <code>valleys.write</code> mentre il dettaglio richiede <code>valleys.read</code>,
-pur essendo lo stesso componente.</li>
+via URL. Nota che la creazione richiede <code>categories.write</code> mentre il dettaglio richiede
+<code>categories.read</code>, pur essendo lo stesso componente.</li>
 </ul>
 <p>Infine i testi, in <strong>entrambe</strong> le lingue (<code>locales/it.ts</code> e <code>locales/en.ts</code>):</p>
 <pre><code class="language-typescript"><span class="hljs-comment">// locales/it.ts</span>
-<span class="hljs-attr">nav</span>: { <span class="hljs-attr">valleys</span>: <span class="hljs-string">&#x27;Valli&#x27;</span> },
-<span class="hljs-attr">routes</span>: { <span class="hljs-attr">valleys</span>: <span class="hljs-string">&#x27;Valli&#x27;</span>, <span class="hljs-attr">newValley</span>: <span class="hljs-string">&#x27;Nuova valle&#x27;</span>, <span class="hljs-attr">valleyDetail</span>: <span class="hljs-string">&#x27;Dettaglio valle&#x27;</span> },
-<span class="hljs-attr">valleys</span>: {
-  <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Valli&#x27;</span>,
-  <span class="hljs-attr">subtitle</span>: <span class="hljs-string">&#x27;Gestione valli&#x27;</span>,
-  <span class="hljs-attr">createButton</span>: <span class="hljs-string">&#x27;Nuova valle&#x27;</span>,
-  <span class="hljs-attr">deleteConfirm</span>: <span class="hljs-string">&#x27;Sei sicuro di voler eliminare questa valle?&#x27;</span>,
+<span class="hljs-attr">nav</span>: { <span class="hljs-attr">categories</span>: <span class="hljs-string">&#x27;Categorie&#x27;</span> },
+<span class="hljs-attr">routes</span>: { <span class="hljs-attr">categories</span>: <span class="hljs-string">&#x27;Categorie&#x27;</span>, <span class="hljs-attr">newCategory</span>: <span class="hljs-string">&#x27;Nuova categoria&#x27;</span>, <span class="hljs-attr">categoryDetail</span>: <span class="hljs-string">&#x27;Dettaglio categoria&#x27;</span> },
+<span class="hljs-attr">categories</span>: {
+  <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Categorie&#x27;</span>,
+  <span class="hljs-attr">subtitle</span>: <span class="hljs-string">&#x27;Gestione categorie&#x27;</span>,
+  <span class="hljs-attr">createButton</span>: <span class="hljs-string">&#x27;Nuova categoria&#x27;</span>,
+  <span class="hljs-attr">deleteConfirm</span>: <span class="hljs-string">&#x27;Sei sicuro di voler eliminare questa categoria?&#x27;</span>,
   <span class="hljs-attr">descIt</span>: <span class="hljs-string">&#x27;Descrizione (IT)&#x27;</span>,
   <span class="hljs-attr">descEn</span>: <span class="hljs-string">&#x27;Descrizione (EN)&#x27;</span>,
 },
-<span class="hljs-attr">errors</span>: { <span class="hljs-attr">loadValleys</span>: <span class="hljs-string">&#x27;Errore nel caricamento valli&#x27;</span>, <span class="hljs-attr">deleteValley</span>: <span class="hljs-string">&#x27;Errore nell\&#x27;eliminazione della valle&#x27;</span> },
+<span class="hljs-attr">errors</span>: {
+  <span class="hljs-attr">loadCategories</span>: <span class="hljs-string">&#x27;Errore nel caricamento delle categorie&#x27;</span>,
+  <span class="hljs-attr">createCategory</span>: <span class="hljs-string">&#x27;Errore nella creazione della categoria&#x27;</span>,
+  <span class="hljs-attr">deleteCategory</span>: <span class="hljs-string">&#x27;Errore nell\&#x27;eliminazione della categoria&#x27;</span>,
+},
 </code></pre>
 <hr>
 <h2 id="prima-di-dire-che-e-finita">Prima di dire che è finita</h2>
@@ -634,8 +645,9 @@ pur essendo lo stesso componente.</li>
 <li>[ ] La mappatura in <code>OnModelCreating</code> c'è, le colonne stringa sono <strong>dimensionate</strong>, le FK sono <code>Restrict</code></li>
 <li>[ ] <strong>Entrambe</strong> le migration sono generate (SqlServer + Postgres) e committate</li>
 <li>[ ] Le query LINQ sono traducibili da entrambi i provider — attenzione a <code>Contains</code> su stringa</li>
-<li>[ ] Le rotte con id usano il constraint <code>{id:int}</code></li>
+<li>[ ] Le rotte con id usano il constraint <code>{id:int}</code>, e gli endpoint sono agganciati in <code>EndpointExtensions</code></li>
 <li>[ ] Ogni scrittura produce un audit log, con lo snapshot <code>Before</code> catturato <strong>prima</strong> della modifica</li>
+<li>[ ] I permessi sono nel seed e assegnati ai ruoli giusti</li>
 <li>[ ] I testi esistono in italiano <strong>e</strong> in inglese</li>
 </ul>
 
@@ -644,7 +656,7 @@ pur essendo lo stesso componente.</li>
   </div>
 
   <footer class="footer">
-    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
   </footer>
 </body>
 </html>

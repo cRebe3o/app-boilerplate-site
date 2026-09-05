@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Implementazione — DelVoltone</title>
+  <title>Implementazione — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="../index.html">
-      <span class="brand-name">DelVoltone</span>
-      <span class="brand-sub">Documentazione tecnica</span>
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
     </a>
   </header>
 
@@ -24,30 +24,23 @@
           <p class="nav-title">Progetto</p>
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
         <div class="nav-group">
-          <p class="nav-title">Database</p>
+          <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
-            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
-            <li><a href="../database_sql-only/implementazione.html" aria-current="page">Implementazione</a></li>
-            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
-          </ul>
-        </div>
-        <div class="nav-group">
-          <p class="nav-title">Database — versione storica (obsoleta)</p>
-          <ul>
-            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html" aria-current="page">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
         <div class="nav-group">
           <p class="nav-title">Autenticazione</p>
           <ul>
-            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
             <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
           </ul>
         </div>
@@ -61,9 +54,9 @@
     </nav>
 
     <main>
-      <p class="eyebrow">Database</p>
+      <p class="eyebrow">Infrastruttura</p>
       <article class="prose">
-<h1 id="database-implementazione">Database — implementazione</h1>
+<h1 id="infrastruttura-implementazione">Infrastruttura — implementazione</h1>
 <nav class="toc" aria-label="Indice della pagina">
         <p class="toc-title">In questa pagina</p>
         <ul>
@@ -72,34 +65,30 @@
           <li class="lvl-2"><a href="#2-appdbcontext-astratto-con-tutto-il-modello">2. <code>AppDbContext</code>: astratto, con tutto il modello</a></li>
           <li class="lvl-3"><a href="#i-timestamp-automatici">I timestamp automatici</a></li>
           <li class="lvl-3"><a href="#le-m2m-skip-navigation-unidirezionale">Le M2M: skip navigation unidirezionale</a></li>
-          <li class="lvl-3"><a href="#le-fk-del-catalogo-restrict-non-cascade">Le FK del catalogo: <code>Restrict</code>, non <code>Cascade</code></a></li>
           <li class="lvl-3"><a href="#le-colonne-vanno-dimensionate">Le colonne vanno dimensionate</a></li>
           <li class="lvl-3"><a href="#gli-enum-come-stringa">Gli enum come stringa</a></li>
           <li class="lvl-3"><a href="#systemconfig-oggetti-annidati-senza-tabella-extra"><code>SystemConfig</code>: oggetti annidati senza tabella extra</a></li>
-          <li class="lvl-2"><a href="#3-gli-handler-appdbcontext-diretto-niente-repository">3. Gli handler: <code>AppDbContext</code> diretto, niente repository</a></li>
+          <li class="lvl-2"><a href="#3-la-pipeline-mediatr">3. La pipeline MediatR</a></li>
+          <li class="lvl-3"><a href="#la-gestione-degli-errori">La gestione degli errori</a></li>
+          <li class="lvl-2"><a href="#4-gli-handler-appdbcontext-diretto-niente-repository">4. Gli handler: <code>AppDbContext</code> diretto, niente repository</a></li>
           <li class="lvl-3"><a href="#lettura-proiezione-diretta-sul-response">Lettura: proiezione diretta sul response</a></li>
           <li class="lvl-3"><a href="#scrittura-l-id-identity-esiste-solo-dopo-il-savechanges">Scrittura: l'id identity esiste solo dopo il <code>SaveChanges</code></a></li>
-          <li class="lvl-3"><a href="#delete-di-una-lookup-conteggio-prima-per-un-errore-leggibile">Delete di una lookup: conteggio prima, per un errore leggibile</a></li>
+          <li class="lvl-3"><a href="#delete-con-dipendenze-conteggio-prima-per-un-errore-leggibile">Delete con dipendenze: conteggio prima, per un errore leggibile</a></li>
           <li class="lvl-3"><a href="#update-con-m2m-il-caso-di-updatedat">Update con M2M: il caso di <code>UpdatedAt</code></a></li>
           <li class="lvl-3"><a href="#operazioni-bulk-senza-caricare-le-entita">Operazioni bulk senza caricare le entità</a></li>
-          <li class="lvl-2"><a href="#4-le-due-migration-una-per-provider">4. Le due migration, una per provider</a></li>
+          <li class="lvl-2"><a href="#5-le-due-migration-una-per-provider">5. Le due migration, una per provider</a></li>
           <li class="lvl-3"><a href="#lo-stesso-modello-tipi-nativi-diversi">Lo stesso modello, tipi nativi diversi</a></li>
-          <li class="lvl-2"><a href="#5-l-avvio-migrate-e-seed">5. L'avvio: migrate e seed</a></li>
-          <li class="lvl-2"><a href="#6-il-servizio-di-pulizia-dei-token">6. Il servizio di pulizia dei token</a></li>
-          <li class="lvl-2"><a href="#7-l-unico-codice-provider-specifico-databasestats">7. L'unico codice provider-specifico: <code>DatabaseStats</code></a></li>
-          <li class="lvl-2"><a href="#8-checklist-per-una-nuova-entita">8. Checklist per una nuova entità</a></li>
+          <li class="lvl-2"><a href="#6-l-avvio-migrate-e-seed">6. L'avvio: migrate e seed</a></li>
+          <li class="lvl-3"><a href="#il-seed-gira-in-transazione-dentro-la-strategia-di-retry">Il seed gira in transazione, dentro la strategia di retry</a></li>
+          <li class="lvl-2"><a href="#7-il-servizio-di-pulizia-dei-token">7. Il servizio di pulizia dei token</a></li>
+          <li class="lvl-2"><a href="#8-l-unico-codice-provider-specifico-databasestats">8. L'unico codice provider-specifico: <code>DatabaseStats</code></a></li>
+          <li class="lvl-2"><a href="#9-checklist-per-una-nuova-entita">9. Checklist per una nuova entità</a></li>
           <li class="lvl-2"><a href="#approfondimenti">Approfondimenti</a></li>
         </ul>
       </nav>
 <p>Il codice di ogni pezzo dell'architettura, nell'ordine in cui lo si incontra leggendo il backend.
-I frammenti riproducono i file reali in <code>apps/backend/DelVoltone.Api/Features/_Shared/</code>, che restano
+I frammenti riproducono i file reali in <code>apps/backend/&lt;Progetto&gt;.Api/Features/_Shared/</code>, che restano
 la fonte di verità: qui sono accompagnati dal <strong>perché</strong>, che nel codice non sempre c'è.</p>
-<blockquote>
-<p>La versione precedente — con repository Mongo/EF, conversioni <code>ObjectId</code> e <code>ITransactionRunner</code> —
-è documentata come storico in
-<a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a>. <strong>Quel codice non esiste
-più nel repository.</strong></p>
-</blockquote>
 <h2 id="1-lo-switch-di-provider">1. Lo switch di provider</h2>
 <p><code>Features/_Shared/Extensions/DatabaseExtensions.cs</code> è il punto unico in cui il provider viene scelto.
 È l'unico file dell'applicazione che nomina <code>UseSqlServer</code> e <code>UseNpgsql</code>.</p>
@@ -146,8 +135,8 @@ più nel repository.</strong></p>
 <li><strong><code>AddDbContext&lt;AppDbContext, SqlServerAppDbContext&gt;</code></strong> registra la derivata <em>dietro il tipo base</em>.
 È la riga che rende il resto del codice provider-agnostico: gli handler chiedono <code>AppDbContext</code> e
 ricevono l'implementazione giusta.</li>
-<li>Il <code>default:</code> <strong>fa fallire l'avvio</strong>. Un <code>Database:Provider=MongoDB</code> ereditato da un vecchio deploy
-non viene ignorato in silenzio: l'applicazione si ferma dicendo quali valori sono ammessi.</li>
+<li>Il <code>default:</code> <strong>fa fallire l'avvio</strong>. Un valore sbagliato ereditato da un vecchio deploy non viene
+ignorato in silenzio: l'applicazione si ferma dicendo quali valori sono ammessi.</li>
 </ul>
 <p>La connection string viene letta con un messaggio d'errore che dice <em>dove</em> impostarla:</p>
 <pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-built_in">string</span> <span class="hljs-title">GetConnectionString</span>(<span class="hljs-params">IConfiguration configuration, <span class="hljs-built_in">string</span> name</span>)</span>
@@ -175,6 +164,8 @@ sono <strong>una riga ciascuna</strong>:</p>
 <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">PostgresAppDbContext</span>(<span class="hljs-params">DbContextOptions&lt;PostgresAppDbContext&gt; options</span>)  : <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">options</span>)</span>;
 </code></pre>
 <p>Non contengono configurazione: esistono <strong>solo</strong> per dare un'identità ai due set di migration.</p>
+<p>Nota che non ci sono proprietà <code>DbSet</code> nominate: le entità si raggiungono con <code>db.Set&lt;T&gt;()</code>. Una
+entità in meno da dichiarare a ogni aggiunta.</p>
 <h3 id="i-timestamp-automatici">I timestamp automatici</h3>
 <pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">void</span> <span class="hljs-title">ApplyTimestamps</span>()</span>
 {
@@ -213,28 +204,21 @@ overload: intercettarla copre ogni chiamata, sync e async.</p>
 <p><code>WithMany()</code> <strong>senza argomenti</strong> è la parte importante: la navigazione è unidirezionale, esiste
 <code>User.Groups</code> ma non <code>Group.Users</code>. Meno superficie da mantenere, e nessun rischio di cicli di
 serializzazione. La join table non ha una classe: le righe le gestisce EF quando si modifica la lista.</p>
-<h3 id="le-fk-del-catalogo-restrict-non-cascade">Le FK del catalogo: <code>Restrict</code>, non <code>Cascade</code></h3>
-<pre><code class="language-csharp">e.HasOne(p =&gt; p.ProductType).WithMany().HasForeignKey(p =&gt; p.ProductTypeId)
-    .OnDelete(DeleteBehavior.Restrict);     <span class="hljs-comment">// obbligatoria: ogni prodotto ha un tipo</span>
-
-e.HasOne(p =&gt; p.Location).WithMany().HasForeignKey(p =&gt; p.LocationId)
-    .OnDelete(DeleteBehavior.Restrict);     <span class="hljs-comment">// int? → colonna nullable</span>
-</code></pre>
-<p><code>Cascade</code> qui sarebbe pericoloso: cancellare un formato cancellerebbe i prodotti che lo usano.
-<code>Restrict</code> fa rifiutare la cancellazione dal database — e gli handler la anticipano con un conteggio
-(vedi sotto).</p>
 <h3 id="le-colonne-vanno-dimensionate">Le colonne vanno dimensionate</h3>
-<pre><code class="language-csharp">e.Property(u =&gt; u.Email).HasMaxLength(<span class="hljs-number">256</span>);
+<pre><code class="language-csharp">e.Property(u =&gt; u.Username).HasMaxLength(<span class="hljs-number">256</span>).IsRequired();
+e.Property(u =&gt; u.Email).HasMaxLength(<span class="hljs-number">256</span>);
 e.Property(u =&gt; u.PasswordHash).HasMaxLength(<span class="hljs-number">256</span>);   <span class="hljs-comment">// hash BCrypt = 60 char, teniamo margine</span>
-e.HasIndex(u =&gt; u.Email).IsUnique();
+
+e.HasIndex(u =&gt; u.Username).IsUnique();   <span class="hljs-comment">// è la chiave di login</span>
+e.HasIndex(u =&gt; u.Email);                 <span class="hljs-comment">// solo per le ricerche: NON unique, è opzionale</span>
 </code></pre>
-<p>Senza <code>HasMaxLength</code>, EF genera <code>nvarchar(max)</code> / <code>text</code>: pessimo per indici e storage. <code>Email</code>
-<strong>deve</strong> avere una lunghezza perché sotto è indicizzata unique — un indice unique non è ammesso su
+<p>Senza <code>HasMaxLength</code>, EF genera <code>nvarchar(max)</code> / <code>text</code>: pessimo per indici e storage. <code>Username</code>
+<strong>deve</strong> avere una lunghezza perché sotto è indicizzato unique — un indice unique non è ammesso su
 <code>nvarchar(max)</code>.</p>
 <p>Un caso limite da ricordare: <code>RefreshToken.Token</code> è <code>HasMaxLength(450)</code>, perché 450 è il massimo
 indicizzabile su una colonna <code>nvarchar</code> in SQL Server (900 byte / 2).</p>
-<p>Restano senza limite solo le colonne che non ne hanno uno sensato: <code>Product.Desc</code>, <code>Product.Photo</code>
-(immagine in base64), <code>ErrorLog.Message</code>, <code>ErrorLog.StackTrace</code>, <code>AuditLog.Before</code>/<code>After</code>.</p>
+<p>Restano senza limite solo le colonne che non ne hanno uno sensato: <code>ErrorLog.Message</code>,
+<code>ErrorLog.StackTrace</code>, <code>AuditLog.Before</code>/<code>After</code>.</p>
 <h3 id="gli-enum-come-stringa">Gli enum come stringa</h3>
 <pre><code class="language-csharp">e.Property(x =&gt; x.Level).HasConversion&lt;<span class="hljs-built_in">string</span>&gt;().HasMaxLength(<span class="hljs-number">50</span>);
 e.Property(x =&gt; x.Source).HasConversion&lt;<span class="hljs-built_in">string</span>&gt;().HasMaxLength(<span class="hljs-number">50</span>);
@@ -252,58 +236,95 @@ l'ordine dei membri dell'enum.</p>
 <p>I due <code>LogRetentionConfig</code> sono <strong>valori, non entità</strong>: <code>ComplexProperty</code> li appiattisce in colonne
 della stessa tabella (<code>ErrorLogs_Enabled</code>, <code>AuditLogs_Enabled</code>, …). Nessuna tabella extra, nessuna
 chiave da gestire.</p>
-<h2 id="3-gli-handler-appdbcontext-diretto-niente-repository">3. Gli handler: <code>AppDbContext</code> diretto, niente repository</h2>
+<h2 id="3-la-pipeline-mediatr">3. La pipeline MediatR</h2>
+<p>Un'unica extension registra MediatR, i behavior e tutti i validator dell'assembly:</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> IServiceCollection <span class="hljs-title">AddMediatRWithBehaviors</span>(<span class="hljs-params"><span class="hljs-keyword">this</span> IServiceCollection services</span>)</span>
+{
+    services.AddMediatR(cfg =&gt; cfg.RegisterServicesFromAssemblyContaining&lt;Program&gt;());
+
+    <span class="hljs-comment">// Pipeline: prima LoggingBehavior, poi ValidationBehavior</span>
+    services.AddTransient(<span class="hljs-keyword">typeof</span>(IPipelineBehavior&lt;,&gt;), <span class="hljs-keyword">typeof</span>(LoggingBehavior&lt;,&gt;));
+    services.AddTransient(<span class="hljs-keyword">typeof</span>(IPipelineBehavior&lt;,&gt;), <span class="hljs-keyword">typeof</span>(ValidationBehavior&lt;,&gt;));
+
+    <span class="hljs-comment">// Registra tutti i validator FluentValidation nell&#x27;assembly</span>
+    services.AddValidatorsFromAssemblyContaining&lt;Program&gt;();
+
+    <span class="hljs-keyword">return</span> services;
+}
+</code></pre>
+<p>Le due conseguenze pratiche, valide per ogni slice che si aggiungerà:</p>
+<ul>
+<li><strong>Un validator non va registrato né invocato.</strong> Basta che esista una classe
+<code>AbstractValidator&lt;TCommand&gt;</code> nell'assembly: <code>AddValidatorsFromAssemblyContaining</code> la trova, e il
+<code>ValidationBehavior</code> la esegue prima dell'handler. Se fallisce, l'handler non viene mai raggiunto.</li>
+<li><strong>Un handler non va registrato.</strong> <code>RegisterServicesFromAssemblyContaining</code> scopre da sé ogni
+<code>IRequestHandler</code>.</li>
+</ul>
+<p>L'ordine conta: il logging avvolge la validazione, così anche una richiesta respinta a <code>400</code> compare
+nei log con la sua durata.</p>
+<h3 id="la-gestione-degli-errori">La gestione degli errori</h3>
+<p><code>ExceptionHandlingMiddleware</code> è il solo punto in cui un'eccezione diventa una risposta HTTP. Gli
+handler <strong>lanciano</strong> e non catturano:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">var</span> <span class="hljs-keyword">group</span> = <span class="hljs-keyword">await</span> db.Set&lt;Group&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, ct)
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Group&quot;</span>, request.Id);
+</code></pre>
+<p>Le eccezioni di dominio vivono in <code>_Shared/Exceptions/</code> — <code>NotFoundException</code>, <code>ConflictException</code>,
+<code>ForbiddenException</code>, <code>UnauthorizedException</code> — e il middleware le mappa su 404, 409, 403, 401. Tutto
+il resto è un 500, con il dettaglio nel log e non nella risposta.</p>
+<p>Il formato è sempre <strong>ProblemDetails</strong> (RFC 7807), quindi il frontend può tradurre ogni errore con
+un unico composable (<code>useApiErrors</code>) invece che caso per caso.</p>
+<h2 id="4-gli-handler-appdbcontext-diretto-niente-repository">4. Gli handler: <code>AppDbContext</code> diretto, niente repository</h2>
 <p>Gli handler iniettano <code>AppDbContext</code> e usano <code>db.Set&lt;T&gt;()</code>. Non c'è nessuno strato intermedio.</p>
 <h3 id="lettura-proiezione-diretta-sul-response">Lettura: proiezione diretta sul response</h3>
-<pre><code class="language-csharp"><span class="hljs-keyword">var</span> items = <span class="hljs-keyword">await</span> db.Set&lt;Format&gt;()
+<pre><code class="language-csharp"><span class="hljs-keyword">var</span> items = <span class="hljs-keyword">await</span> db.Set&lt;Group&gt;()
     .AsNoTracking()
-    .OrderBy(f =&gt; f.Order)
-    .Select(f =&gt; <span class="hljs-keyword">new</span> FormatResponse(f.Id, f.DescIt, f.DescEn, f.Order))
+    .Select(g =&gt; <span class="hljs-keyword">new</span> GroupResponse(g.Id, g.Name, g.Description))
     .ToListAsync(ct);
 </code></pre>
 <p><code>Select</code> verso il record di response fa sì che EF generi una <code>SELECT</code> con le sole colonne che servono
 e non popoli il change tracker. Niente entità intermedie, niente mapping manuale.</p>
 <h3 id="scrittura-l-id-identity-esiste-solo-dopo-il-savechanges">Scrittura: l'id identity esiste solo dopo il <code>SaveChanges</code></h3>
-<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateFormatHandler</span>(<span class="hljs-params">
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateGroupHandler</span>(<span class="hljs-params">
     AppDbContext db,
-    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;CreateFormatCommand, CreateFormatResponse&gt;</span>
+    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;CreateGroupCommand, CreateGroupResponse&gt;</span>
 {
-    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;CreateFormatResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">CreateFormatCommand request, CancellationToken ct</span>)</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;CreateGroupResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">CreateGroupCommand request, CancellationToken ct</span>)</span>
     {
-        <span class="hljs-keyword">var</span> format = <span class="hljs-keyword">new</span> Format { DescIt = request.DescIt, DescEn = request.DescEn, Order = request.Order };
+        <span class="hljs-keyword">var</span> <span class="hljs-keyword">group</span> = <span class="hljs-keyword">new</span> Group { Name = request.Name, Description = request.Description };
 
-        db.Add(format);
+        db.Add(<span class="hljs-keyword">group</span>);
         <span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);   <span class="hljs-comment">// assegna l&#x27;id identity</span>
 
-        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Format&quot;</span>, format.Id, <span class="hljs-string">&quot;Created&quot;</span>));
+        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Group&quot;</span>, <span class="hljs-keyword">group</span>.Id, <span class="hljs-string">&quot;Created&quot;</span>));
         <span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);
 
-        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CreateFormatResponse(format.Id);
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CreateGroupResponse(<span class="hljs-keyword">group</span>.Id);
     }
 }
 </code></pre>
 <p>I due <code>SaveChangesAsync</code> non sono una svista: <strong>l'audit log ha bisogno dell'id</strong>, che il database
-assegna solo al primo salvataggio. È la conseguenza pratica più visibile del passaggio da id generati
-dal codice (<code>ObjectId.GenerateNewId()</code>) a id generati dal database.</p>
-<h3 id="delete-di-una-lookup-conteggio-prima-per-un-errore-leggibile">Delete di una lookup: conteggio prima, per un errore leggibile</h3>
-<pre><code class="language-csharp"><span class="hljs-keyword">var</span> format = <span class="hljs-keyword">await</span> db.Set&lt;Format&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, ct)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Format&quot;</span>, request.Id);
+assegna solo al primo salvataggio. È la conseguenza pratica più visibile della scelta di id generati
+dal database.</p>
+<h3 id="delete-con-dipendenze-conteggio-prima-per-un-errore-leggibile">Delete con dipendenze: conteggio prima, per un errore leggibile</h3>
+<p>Quando un'entità è referenziata da altre, il pattern del template è anticipare il vincolo del
+database con un controllo applicativo:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">var</span> role = <span class="hljs-keyword">await</span> db.Set&lt;Role&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, ct)
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Role&quot;</span>, request.Id);
 
-<span class="hljs-comment">// Conteggio prima della DELETE per dare un 409 con messaggio chiaro: la FK Restrict</span>
-<span class="hljs-comment">// su Products farebbe comunque fallire la cancellazione, ma con un errore generico.</span>
-<span class="hljs-keyword">var</span> count = <span class="hljs-keyword">await</span> db.Set&lt;Product&gt;().CountAsync(x =&gt; x.FormatId == request.Id, ct);
-<span class="hljs-keyword">if</span> (count &gt; <span class="hljs-number">0</span>)
-    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(<span class="hljs-string">$&quot;Impossibile eliminare questo formato: è ancora utilizzato in <span class="hljs-subst">{count}</span> prodotto/i. …&quot;</span>);
+<span class="hljs-keyword">if</span> (role.IsSystem)
+    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(<span class="hljs-string">&quot;Impossibile eliminare un ruolo di sistema.&quot;</span>);
 
-<span class="hljs-keyword">var</span> before = format.ToAuditJson();
-db.Remove(format);
+<span class="hljs-keyword">var</span> before = role.ToAuditJson();
+db.Remove(role);
 <span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);
 
-db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Format&quot;</span>, format.Id, <span class="hljs-string">&quot;Deleted&quot;</span>, before: before));
+db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Role&quot;</span>, role.Id, <span class="hljs-string">&quot;Deleted&quot;</span>, before: before));
 <span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);
 </code></pre>
-<p>Due difese sovrapposte, deliberatamente: l'handler dà il messaggio comprensibile, la FK <code>Restrict</code>
-è la stessa regola applicata anche a chi scrivesse sul database da fuori.</p>
+<p>Sulle entità di dominio con FK <code>Restrict</code> il controllo diventa un conteggio delle righe che
+puntano all'entità: l'handler dà il messaggio comprensibile (<code>409 Conflict</code>), la FK è la stessa
+regola applicata anche a chi scrivesse sul database da fuori. <strong>Due difese sovrapposte,
+deliberatamente.</strong></p>
 <h3 id="update-con-m2m-il-caso-di-updatedat">Update con M2M: il caso di <code>UpdatedAt</code></h3>
 <pre><code class="language-csharp"><span class="hljs-comment">// Include delle M2M: servono per lo snapshot audit e perché EF possa calcolare</span>
 <span class="hljs-comment">// il delta delle righe di join quando riassegnamo le liste.</span>
@@ -335,12 +356,16 @@ lista con le entità caricate → tocca <code>UpdatedAt</code>.</p>
 <p><code>ExecuteUpdateAsync</code> / <code>ExecuteDeleteAsync</code> emettono una sola <code>UPDATE</code>/<code>DELETE</code> senza materializzare
 le righe. Attenzione: <strong>bypassano il change tracker</strong>, quindi non passano da <code>ApplyTimestamps</code> e non
 aggiornano entità già in memoria.</p>
-<h2 id="4-le-due-migration-una-per-provider">4. Le due migration, una per provider</h2>
+<h2 id="5-le-due-migration-una-per-provider">5. Le due migration, una per provider</h2>
 <p>Ogni modifica al modello richiede <strong>due</strong> migration. I comandi sono nel commento di
 <code>DesignTimeFactories.cs</code>:</p>
 <pre><code class="language-bash">dotnet dotnet-ef migrations add &lt;Nome&gt; --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
 dotnet dotnet-ef migrations add &lt;Nome&gt; --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
 </code></pre>
+<blockquote>
+<p>Nel template le due cartelle sono <strong>vuote</strong>: la prima coppia di migration (<code>InitialCreate</code>) si
+genera alla nascita del progetto. Vedi <a href="../progetto/generazione.html">Generare e aggiornare</a>.</p>
+</blockquote>
 <p>Perché servano le factory: <code>dotnet ef</code> deve costruire il <code>DbContext</code> <strong>senza avviare l'app</strong>.</p>
 <pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">SqlServerDesignTimeFactory</span> : <span class="hljs-title">IDesignTimeDbContextFactory</span>&lt;<span class="hljs-title">SqlServerAppDbContext</span>&gt;
 {
@@ -348,7 +373,7 @@ dotnet dotnet-ef migrations add &lt;Nome&gt; --context PostgresAppDbContext  --o
     {
         <span class="hljs-keyword">var</span> connectionString =
             Environment.GetEnvironmentVariable(<span class="hljs-string">&quot;ConnectionStrings__SqlServer&quot;</span>)
-            ?? <span class="hljs-string">&quot;Server=(localdb)\\MSSQLLocalDB;Database=DelVoltone;Trusted_Connection=True;TrustServerCertificate=True&quot;</span>;
+            ?? <span class="hljs-string">&quot;Server=(localdb)\\MSSQLLocalDB;Database=&lt;Progetto&gt;;Trusted_Connection=True;TrustServerCertificate=True&quot;</span>;
 
         <span class="hljs-keyword">var</span> options = <span class="hljs-keyword">new</span> DbContextOptionsBuilder&lt;SqlServerAppDbContext&gt;()
             .UseSqlServer(connectionString)
@@ -362,14 +387,14 @@ dotnet dotnet-ef migrations add &lt;Nome&gt; --context PostgresAppDbContext  --o
 serve solo perché <code>UseSqlServer</code>/<code>UseNpgsql</code> ne pretendono una. Conta solo per <code>database update</code>.</p>
 <h3 id="lo-stesso-modello-tipi-nativi-diversi">Lo stesso modello, tipi nativi diversi</h3>
 <p>Le due migration generate dallo stesso <code>OnModelCreating</code> differiscono solo nei tipi:</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Migrations/SqlServer — 20260716172833_InitialCreate.cs</span>
+<pre><code class="language-csharp"><span class="hljs-comment">// Migrations/SqlServer</span>
 Id         = table.Column&lt;<span class="hljs-built_in">int</span>&gt;(type: <span class="hljs-string">&quot;int&quot;</span>, nullable: <span class="hljs-literal">false</span>)
                   .Annotation(<span class="hljs-string">&quot;SqlServer:Identity&quot;</span>, <span class="hljs-string">&quot;1, 1&quot;</span>),
 ActorEmail = table.Column&lt;<span class="hljs-built_in">string</span>&gt;(type: <span class="hljs-string">&quot;nvarchar(256)&quot;</span>, maxLength: <span class="hljs-number">256</span>, nullable: <span class="hljs-literal">false</span>),
 Before     = table.Column&lt;<span class="hljs-built_in">string</span>&gt;(type: <span class="hljs-string">&quot;nvarchar(max)&quot;</span>, nullable: <span class="hljs-literal">true</span>),
 Timestamp  = table.Column&lt;DateTime&gt;(type: <span class="hljs-string">&quot;datetime2&quot;</span>, nullable: <span class="hljs-literal">false</span>),
 </code></pre>
-<pre><code class="language-csharp"><span class="hljs-comment">// Migrations/Postgres — 20260716172847_InitialCreate.cs</span>
+<pre><code class="language-csharp"><span class="hljs-comment">// Migrations/Postgres</span>
 Id         = table.Column&lt;<span class="hljs-built_in">int</span>&gt;(type: <span class="hljs-string">&quot;integer&quot;</span>, nullable: <span class="hljs-literal">false</span>)
                   .Annotation(<span class="hljs-string">&quot;Npgsql:ValueGenerationStrategy&quot;</span>, NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
 ActorEmail = table.Column&lt;<span class="hljs-built_in">string</span>&gt;(type: <span class="hljs-string">&quot;character varying(256)&quot;</span>, maxLength: <span class="hljs-number">256</span>, nullable: <span class="hljs-literal">false</span>),
@@ -379,7 +404,7 @@ Timestamp  = table.Column&lt;DateTime&gt;(type: <span class="hljs-string">&quot;
 <blockquote>
 <p><strong>Regola</strong>: mai modificare una migration già committata. Una correzione è una <strong>nuova</strong> migration.</p>
 </blockquote>
-<h2 id="5-l-avvio-migrate-e-seed">5. L'avvio: migrate e seed</h2>
+<h2 id="6-l-avvio-migrate-e-seed">6. L'avvio: migrate e seed</h2>
 <p>In fondo a <code>Program.cs</code>, uguale per entrambi i provider:</p>
 <pre><code class="language-csharp"><span class="hljs-comment">// Applica le migration mancanti del provider attivo (mai EnsureCreated, mai drop).</span>
 <span class="hljs-comment">// MigrateAsync crea anche il database se non esiste.</span>
@@ -395,14 +420,34 @@ Timestamp  = table.Column&lt;DateTime&gt;(type: <span class="hljs-string">&quot;
 <pre><code class="language-csharp"><span class="hljs-comment">// Se esistono già dati non fare nulla</span>
 <span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> db.Set&lt;Role&gt;().AnyAsync(CancellationToken.None)) <span class="hljs-keyword">return</span>;
 </code></pre>
+<h3 id="il-seed-gira-in-transazione-dentro-la-strategia-di-retry">Il seed gira in transazione, dentro la strategia di retry</h3>
+<pre><code class="language-csharp"><span class="hljs-comment">// Con EnableRetryOnFailure attivo, una transazione aperta a mano va eseguita DENTRO</span>
+<span class="hljs-comment">// la strategia di esecuzione, altrimenti EF lancia</span>
+<span class="hljs-comment">// &quot;does not support user-initiated transactions&quot;.</span>
+<span class="hljs-keyword">var</span> strategy = db.Database.CreateExecutionStrategy();
+<span class="hljs-keyword">await</span> strategy.ExecuteAsync(() =&gt; SeedAllAsync(app, config, db));
+</code></pre>
+<p>Tre precauzioni che si spiegano a vicenda:</p>
+<ul>
+<li><strong>Tutto in una transazione.</strong> Senza, un'interruzione a metà lascerebbe dati parziali: il gate al
+riavvio riterrebbe il database vuoto e riscriverebbe tutto da capo, schiantandosi sull'indice
+unico dei permessi.</li>
+<li><strong><code>ChangeTracker.Clear()</code> all'inizio.</strong> <code>ExecuteAsync</code> può rieseguire il delegate da capo: senza il
+reset, le entità del tentativo fallito sarebbero ancora tracciate come <code>Added</code> e verrebbero
+reinserite.</li>
+<li><strong>Nessun rollback esplicito.</strong> Se qualcosa lancia, il dispose della transazione non committata
+annulla tutto quanto scritto fin lì.</li>
+</ul>
 <p>Poiché gli id li assegna il database, il seed <strong>non può</strong> usare id costanti: i legami si esprimono
 via navigation property, lasciando che EF risolva le FK al <code>SaveChanges</code>.</p>
+<p>La password dell'amministratore iniziale arriva da <code>Seed:AdminPassword</code>; se non è configurata ne
+viene generata una casuale — che, non essendo stampata in chiaro, di fatto obbliga a impostarla.</p>
 <blockquote>
 <p>Non esiste un comando di reset. Per ripartire da zero il database si droppa a mano.</p>
 </blockquote>
-<h2 id="6-il-servizio-di-pulizia-dei-token">6. Il servizio di pulizia dei token</h2>
-<p>Senza un TTL index (che era la soluzione ai tempi di Mongo), la tabella <code>RefreshTokens</code> crescerebbe
-all'infinito. Il sostituto è un <code>BackgroundService</code>:</p>
+<h2 id="7-il-servizio-di-pulizia-dei-token">7. Il servizio di pulizia dei token</h2>
+<p>Senza un meccanismo di scadenza automatica lato database, la tabella <code>RefreshTokens</code> crescerebbe
+all'infinito. La soluzione è un <code>BackgroundService</code>:</p>
 <pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ExpiredTokenCleanupService</span>(<span class="hljs-params">
     IServiceScopeFactory scopeFactory,
     ILogger&lt;ExpiredTokenCleanupService&gt; logger</span>) : BackgroundService</span>
@@ -450,9 +495,9 @@ all'infinito. Il sostituto è un <code>BackgroundService</code>:</p>
 <p>Tre dettagli deliberati: lo <strong>scope proprio</strong> (un singleton non può iniettare un <code>DbContext</code> scoped),
 il <code>catch</code> che <strong>non fa morire il servizio</strong> su un errore transitorio, e la distinzione fra
 cancellazione da shutdown ed errore vero.</p>
-<h2 id="7-l-unico-codice-provider-specifico-databasestats">7. L'unico codice provider-specifico: <code>DatabaseStats</code></h2>
+<h2 id="8-l-unico-codice-provider-specifico-databasestats">8. L'unico codice provider-specifico: <code>DatabaseStats</code></h2>
 <p>Le dimensioni del database non si ottengono con LINQ: servono i cataloghi di sistema. È l'unica
-astrazione per provider rimasta.</p>
+astrazione per provider dell'applicazione.</p>
 <pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-title">IDatabaseStatsProvider</span>
 {
     <span class="hljs-function">Task&lt;DatabaseSize&gt; <span class="hljs-title">GetSizeAsync</span>(<span class="hljs-params">CancellationToken ct</span>)</span>;
@@ -476,11 +521,11 @@ astrazione per provider rimasta.</p>
 <code>sys.database_files</code>). L'handler di monitoraggio inietta l'interfaccia e non sa quale delle due sta
 girando; le dimensioni tornano in <strong>byte</strong>, e la conversione in MB e la percentuale d'uso le fa
 l'handler, uguali per entrambi.</p>
-<h2 id="8-checklist-per-una-nuova-entita">8. Checklist per una nuova entità</h2>
+<h2 id="9-checklist-per-una-nuova-entita">9. Checklist per una nuova entità</h2>
 <ol>
 <li>Classe in <code>Entities/</code> — <code>int Id</code>, <code>ITimestamped</code> se ha i timestamp.</li>
 <li>Blocco in <code>OnModelCreating</code>: <code>ToTable</code>, <code>HasMaxLength</code> su ogni stringa, indici, FK/M2M.</li>
-<li><strong>Due</strong> migration (SqlServer + Postgres) con i comandi della sezione 4.</li>
+<li><strong>Due</strong> migration (SqlServer + Postgres) con i comandi della sezione 5.</li>
 <li>Verifica su <strong>entrambi</strong> i provider — in particolare le query con <code>Contains</code> su stringa, che
 cambiano comportamento fra i due.</li>
 </ol>
@@ -489,7 +534,7 @@ cambiano comportamento fra i due.</li>
 <h2 id="approfondimenti">Approfondimenti</h2>
 <ul>
 <li><strong><a href="architettura.html">Architettura</a></strong> — la struttura in cui questo codice si inserisce</li>
-<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché è caduto Mongo, che cosa è stato scartato</li>
+<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché niente repository, che cosa è stato scartato</li>
 </ul>
 
       </article>
@@ -497,7 +542,7 @@ cambiano comportamento fra i due.</li>
   </div>
 
   <footer class="footer">
-    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
   </footer>
 </body>
 </html>

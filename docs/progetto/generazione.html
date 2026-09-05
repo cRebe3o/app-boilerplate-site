@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generare e aggiornare — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html" aria-current="page">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Progetto</p>
+      <article class="prose">
+<h1 id="generare-e-aggiornare-un-progetto">Generare e aggiornare un progetto</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#le-variabili-del-template">Le variabili del template</a></li>
+          <li class="lvl-3"><a href="#come-il-template-usa-le-variabili">Come il template usa le variabili</a></li>
+          <li class="lvl-2"><a href="#generare-un-progetto-nuovo">Generare un progetto nuovo</a></li>
+          <li class="lvl-3"><a href="#subito-dopo-la-generazione">Subito dopo la generazione</a></li>
+          <li class="lvl-3"><a href="#verificare-che-il-progetto-sia-sano">Verificare che il progetto sia sano</a></li>
+          <li class="lvl-2"><a href="#aggiornare-un-progetto-quando-il-template-cambia">Aggiornare un progetto quando il template cambia</a></li>
+          <li class="lvl-3"><a href="#la-procedura-in-breve">La procedura, in breve</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Un progetto non si clona dal template: si <strong>genera</strong>. Lo strumento è
+<a href="https://copier.readthedocs.io" target="_blank" rel="noopener">Copier</a>, che rende il template ripetibile in due modi — crea un
+progetto nuovo rispondendo a delle domande, e sa <strong>riportare nei progetti già generati</strong> le
+migliorie fatte al template dopo.</p>
+<blockquote>
+<p>Il repository <code>app-boilerplate</code> contiene le due guide operative complete, con i comandi
+PowerShell passo per passo: <code>docs/01-new-project.md</code> e <code>docs/02-update-project.md</code>. Questa pagina
+ne è il riassunto ragionato.</p>
+</blockquote>
+<h2 id="le-variabili-del-template">Le variabili del template</h2>
+<p>Alla generazione Copier fa sette domande. Sono definite in <code>copier.yml</code> e determinano com'è fatto
+il progetto che ne esce:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Variabile</th>
+<th>Che cos'è</th>
+<th>Default</th>
+<th>Dove si vede nel generato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_name</code></td>
+<td>Nome leggibile del progetto (può contenere spazi)</td>
+<td>—</td>
+<td>Titoli, etichette dell'interfaccia</td>
+</tr>
+<tr>
+<td><code>project_slug</code></td>
+<td>Nome tecnico, <strong>PascalCase senza spazi</strong></td>
+<td><code>project_name</code> senza spazi</td>
+<td>Namespace C#, nomi di cartelle, <code>.csproj</code> e <code>.sln</code>, <code>Issuer</code>/<code>Audience</code> del JWT</td>
+</tr>
+<tr>
+<td><code>api_port</code></td>
+<td>Porta dell'API in sviluppo</td>
+<td><code>5080</code></td>
+<td><code>launchSettings.json</code>, <code>VITE_API_BASE_URL</code></td>
+</tr>
+<tr>
+<td><code>frontend_port</code></td>
+<td>Porta del dev server Vite</td>
+<td><code>5173</code></td>
+<td><code>vite.config.ts</code>, origin CORS di sviluppo</td>
+</tr>
+<tr>
+<td><code>db_provider</code></td>
+<td><code>SqlServer</code> o <code>PostgreSQL</code></td>
+<td><code>SqlServer</code></td>
+<td><code>Database:Provider</code> in <code>appsettings.json</code>, immagine del <code>docker-compose.yml</code></td>
+</tr>
+<tr>
+<td><code>access_mode</code></td>
+<td><code>public</code> o <code>private</code></td>
+<td><code>public</code></td>
+<td><code>VITE_APP_ACCESS_MODE</code>, comportamento del router</td>
+</tr>
+<tr>
+<td><code>include_docker</code></td>
+<td>Generare o no il <code>docker-compose.yml</code> del database</td>
+<td><code>true</code></td>
+<td>Presenza del file in radice</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Due avvertenze che costano tempo:</p>
+<blockquote>
+<p><strong><code>project_slug</code> non può contenere spazi.</strong> Diventa un namespace C# e dei nomi di file: usa
+PascalCase (<code>GestioneOrdini</code>, non <code>Gestione Ordini</code>). <code>project_name</code> invece è solo un'etichetta.</p>
+</blockquote>
+<blockquote>
+<p><strong><code>db_provider</code> non è una scelta definitiva.</strong> Decide il valore iniziale di <code>Database:Provider</code> e
+quale database avvia Docker, ma il codice generato supporta <strong>entrambi</strong> i provider in ogni caso:
+si cambia idea da configurazione. Vedi <a href="../infrastructure/panoramica.html">Infrastruttura</a>.</p>
+</blockquote>
+<h3 id="come-il-template-usa-le-variabili">Come il template usa le variabili</h3>
+<p>Nel repository del template i file portano i segnaposto in una sintassi Jinja <strong>ridefinita</strong>:</p>
+<pre><code>[[ project_slug ]]      una variabile
+[% if include_docker %] un blocco condizionale
+</code></pre>
+<p>I delimitatori standard <code>{{ }}</code> e <code>{% %}</code> non sono utilizzabili perché collidono con le
+interpolazioni dei template Vue e delle stringhe C#. Per la stessa ragione il template non usa il
+suffisso <code>.jinja</code>: <strong>ogni</strong> file viene renderizzato, comprese le cartelle
+(<code>apps/backend/[[ project_slug ]].Api/</code>).</p>
+<p>Conseguenza pratica: se in un progetto generato trovi un <code>[[</code> o un <code>[%</code>, una variabile non è stata
+sostituita — è il primo controllo da fare sul generato.</p>
+<h2 id="generare-un-progetto-nuovo">Generare un progetto nuovo</h2>
+<p>Serve Copier (via Python), preferibilmente in un ambiente isolato:</p>
+<pre><code class="language-powershell">python <span class="hljs-literal">-m</span> venv C:\tools\copier<span class="hljs-literal">-venv</span>
+C:\tools\copier<span class="hljs-literal">-venv</span>\Scripts\pip install copier
+</code></pre>
+<p>Poi la generazione, che chiede le variabili in modo interattivo:</p>
+<pre><code class="language-powershell">copier <span class="hljs-built_in">copy</span> <span class="hljs-literal">--trust</span> C:\repos\app<span class="hljs-literal">-boilerplate</span> C:\repos\mio<span class="hljs-literal">-progetto</span>
+</code></pre>
+<p><code>--trust</code> serve perché il template esegue dei task post-generazione — <code>git init</code>, <code>pnpm install</code>,
+<code>dotnet restore</code>, <code>dotnet tool restore</code> — che Copier non lancia senza autorizzazione esplicita. Con
+<code>--skip-tasks</code> si generano i soli file, e allora <code>--trust</code> non serve.</p>
+<p>Le risposte si possono passare anche da riga di comando con <code>--data project_slug=&quot;MioProgetto&quot;</code> e
+simili, utile per rigenerare lo stesso progetto più volte in modo identico.</p>
+<p><strong>Il progetto nasce già nella sua sede definitiva</strong>: non c'è un'area di staging da cui spostarlo. Se
+qualcosa non torna, si cancella la cartella e si rigenera.</p>
+<h3 id="subito-dopo-la-generazione">Subito dopo la generazione</h3>
+<p>Il template lo dice da sé, in coda ai task, ma vale la pena averlo qui:</p>
+<ol>
+<li>Copiare <code>apps/backend/&lt;Progetto&gt;.Api/appsettings.local.json.example</code> in
+<code>appsettings.local.json</code> (gitignored) e valorizzarlo: provider, connection string, secret JWT,
+password dell'amministratore iniziale.</li>
+<li>Copiare <code>apps/frontend/.env.local.example</code> in <code>apps/frontend/.env.local</code> e valorizzarlo.</li>
+<li><strong>Generare la prima migration</strong> — una per provider:</li>
+</ol>
+<pre><code class="language-bash">dotnet dotnet-ef migrations add InitialCreate --project apps/backend/&lt;Progetto&gt;.Api --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
+dotnet dotnet-ef migrations add InitialCreate --project apps/backend/&lt;Progetto&gt;.Api --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+</code></pre>
+<blockquote>
+<p><strong>Il template non contiene migration</strong>, e non è una dimenticanza: le cartelle
+<code>Migrations/SqlServer</code> e <code>Migrations/Postgres</code> nascono vuote. Una migration committata nel
+template diventerebbe un vincolo per ogni progetto generato — invece il primo <code>InitialCreate</code> è
+il primo file di storia del <em>tuo</em> progetto. Finché non le generi, l'applicazione parte ma il
+database resta senza schema.</p>
+</blockquote>
+<p>Le migration si applicano poi da sole a ogni avvio (<code>MigrateAsync</code>).</p>
+<h3 id="verificare-che-il-progetto-sia-sano">Verificare che il progetto sia sano</h3>
+<p>Tre controlli, in ordine di costo crescente:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Controllo</th>
+<th>Comando</th>
+<th>Cerca</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Residui del template</strong></td>
+<td>ricerca di <code>[[</code> o <code>[%</code> nei file generati</td>
+<td>nessun risultato</td>
+</tr>
+<tr>
+<td><strong>Nomi e porte coerenti</strong></td>
+<td>ispezione di <code>launchSettings.json</code>, <code>vite.config.ts</code>, <code>.sln</code></td>
+<td>lo slug e le porte che hai scelto</td>
+</tr>
+<tr>
+<td><strong>Compila</strong></td>
+<td><code>dotnet build apps/backend/&lt;Progetto&gt;.Api</code> e <code>npx vue-tsc --noEmit</code></td>
+<td>nessun errore</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="aggiornare-un-progetto-quando-il-template-cambia">Aggiornare un progetto quando il template cambia</h2>
+<p>È la ragione per cui si usa un template Copier invece di un <code>git clone</code> iniziale. Quando
+<code>app-boilerplate</code> riceve un bugfix, una convenzione nuova o dipendenze aggiornate, i progetti già
+generati <strong>non le prendono da soli</strong>: le si porta con <code>copier update</code>.</p>
+<pre><code>   template                progetto generato
+   ────────                ─────────────────
+   v1.0.0  ─────────────▶  generato da qui  (_commit: v1.0.0 in .copier-answers.yml)
+      │                          │
+      │  bugfix, migliorie       │  il tuo lavoro: feature di dominio
+      ▼                          ▼
+   v1.1.0  ── copier update ──▶  il DELTA v1.0.0→v1.1.0 applicato come patch,
+                                 conservando le tue modifiche
+</code></pre>
+<p>Il meccanismo si regge su un file: <strong><code>.copier-answers.yml</code></strong>, scritto in radice alla generazione.
+Contiene le risposte date e <code>_commit</code>, cioè la versione del template da cui sei partito. Va
+committato, e va committato di nuovo dopo ogni update.</p>
+<h3 id="la-procedura-in-breve">La procedura, in breve</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Passo</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Working tree <strong>pulito</strong>, meglio su un branch dedicato</td>
+<td><code>copier update</code> sovrascrive file: senza commit non vedi cosa ha cambiato né puoi annullarlo</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>copier update --trust</code></td>
+<td>Ri-pone le domande precompilate: Invio per tenere le risposte, oppure cambiane qualcuna</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Risolvi i <strong>conflitti</strong></td>
+<td>Dove il template e il tuo codice toccano le stesse righe restano i marcatori <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> / <code>=======</code> / <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>, in stile Git. Copier può anche lasciare file <code>.rej</code>: hunk non applicati, da riportare a mano</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Verifica che compili</td>
+<td>Stesso giro dei controlli sulla generazione</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Committa, <code>.copier-answers.yml</code> incluso</td>
+<td>È così che il prossimo update saprà da dove ripartire</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Opzioni utili: <code>--pretend</code> mostra che cosa succederebbe senza scrivere nulla, <code>--vcs-ref v1.2.0</code>
+aggiorna a una versione precisa invece che all'ultima.</p>
+<p><strong>Il template deve avere dei tag di versione</strong> (<code>v1.0.0</code>, <code>v1.1.0</code>, …): Copier aggiorna &quot;all'ultimo
+tag&quot;, e senza tag non ha una versione a cui puntare.</p>
+<blockquote>
+<p>Finché non committi, l'update vive solo nel working tree: se va storto, si scarta con Git come
+qualsiasi altra modifica.</p>
+</blockquote>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="panoramica.html">Panoramica</a> — che cosa contiene il progetto che hai appena generato</li>
+<li><a href="skill.html">Le skill Claude</a> — come aggiungere codice seguendo le convenzioni del template</li>
+<li><a href="../guide/nuova-feature.html">Aggiungere una feature</a> — la prima feature di dominio, end to end</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

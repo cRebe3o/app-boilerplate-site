@@ -1,22 +1,22 @@
-# Database — panoramica
+# Infrastruttura — panoramica
 
-> **Stato: implementato.** Da luglio 2026 DelVoltone si collega **esclusivamente a database SQL**.
-> Il supporto a MongoDB è stato rimosso. La versione precedente della documentazione è conservata,
-> come storico, in [Database (SQL + Mongo)](../database_sql-mongo/panoramica.md).
+L'impianto tecnico che un progetto generato ha già montato: dove finiscono i dati, come attraversa
+il sistema una richiesta, che cosa succede all'avvio. È la parte che non si riscrive per ogni
+progetto, ed è la ragione per cui il template esiste.
 
 ## In una frase
 
-DelVoltone salva i propri dati su **SQL Server** oppure su **PostgreSQL**, tramite **Entity Framework
-Core**: la scelta si fa in configurazione, senza modificare una riga di codice applicativo.
+L'applicazione salva i propri dati su **SQL Server** oppure su **PostgreSQL**, tramite **Entity
+Framework Core**: la scelta si fa in configurazione, senza modificare una riga di codice
+applicativo.
 
 | Provider | Come | Note |
 |---|---|---|
 | **SQL Server** | EF Core (`Microsoft.EntityFrameworkCore.SqlServer`) | Default se `Database:Provider` non è specificato |
 | **PostgreSQL** | EF Core (`Npgsql.EntityFrameworkCore.PostgreSQL`) | Si attiva con `Database:Provider=PostgreSQL` |
 
-**MongoDB non è più supportato.** Non esiste un provider Mongo, né una via di configurazione per
-attivarlo: un valore diverso da `SqlServer` o `PostgreSQL` fa fallire l'avvio con un messaggio
-esplicito.
+Un valore diverso da `SqlServer` o `PostgreSQL` fa fallire l'avvio con un messaggio esplicito: un
+errore di configurazione deve fermarsi subito, non a metà di una richiesta.
 
 ## Perché due provider SQL
 
@@ -26,18 +26,23 @@ esplicito.
   che non è tecnico ma organizzativo.
 - **Libertà di hosting.** SQL Server on-premise oggi, Postgres gestito su Render o Azure domani,
   senza riscrivere nulla.
-- **Costo quasi nullo.** A differenza del vecchio doppio supporto Mongo/SQL, qui i due provider
-  condividono **lo stesso identico modello EF Core**: cambia solo il driver e il set di migration.
-  Non ci sono due implementazioni da mantenere in parallelo.
+- **Costo quasi nullo.** I due provider condividono **lo stesso identico modello EF Core**: cambia
+  solo il driver e il set di migration. Non ci sono due implementazioni da mantenere in parallelo.
+
+Per un template è un requisito quasi obbligato: il provider giusto non lo decide chi scrive il
+boilerplate, lo decide il cliente del progetto che ne nascerà.
 
 ## Come si sceglie
+
+La variabile `db_provider` risposta alla generazione imposta il valore iniziale, ma resta una
+normale voce di configurazione:
 
 ```json
 {
   "Database": { "Provider": "SqlServer" },
   "ConnectionStrings": {
-    "SqlServer": "Server=.;Database=DelVoltone;Trusted_Connection=True;TrustServerCertificate=True",
-    "PostgreSQL": "Host=localhost;Database=delvoltone;Username=postgres;Password=postgres"
+    "SqlServer": "Server=.;Database=MioProgetto;Trusted_Connection=True;TrustServerCertificate=True",
+    "PostgreSQL": "Host=localhost;Database=mioprogetto;Username=postgres;Password=postgres"
   }
 }
 ```
@@ -47,22 +52,22 @@ esplicito.
 | `SqlServer` | SQL Server via EF Core |
 | `PostgreSQL` | PostgreSQL via EF Core (Npgsql) |
 | *chiave assente* | Default `SqlServer` |
-| *qualsiasi altro valore* (compreso `MongoDB`) | Errore esplicito **all'avvio**, con i valori ammessi nel messaggio |
+| *qualsiasi altro valore* | Errore esplicito **all'avvio**, con i valori ammessi nel messaggio |
 
-In sviluppo i segreti vanno in `appsettings.local.json` (gitignored), che vince su `appsettings.json`.
-In produzione non si toccano i file: si usano le variabili d'ambiente, dove il doppio underscore
-separa le sezioni. Una variabile d'ambiente vince su tutto.
+In sviluppo i segreti vanno in `appsettings.local.json` (gitignored), che vince su
+`appsettings.json`. In produzione non si toccano i file: si usano le variabili d'ambiente, dove il
+doppio underscore separa le sezioni. Una variabile d'ambiente vince su tutto.
 
 ```bash
 Database__Provider=PostgreSQL
-ConnectionStrings__PostgreSQL="Host=…;Database=delvoltone;Username=…;Password=…;SSL Mode=Require"
+ConnectionStrings__PostgreSQL="Host=…;Database=mioprogetto;Username=…;Password=…;SSL Mode=Require"
 ```
 
 ## Che cosa non cambia fra i due provider
 
 Cambiando provider non cambia **niente di visibile**:
 
-- **Le funzionalità**: accesso, utenti e permessi, catalogo, ricerca, audit, export, monitoraggio.
+- **Le funzionalità**: accesso, utenti e permessi, audit, configurazione, monitoraggio.
 - **Le API e il frontend**: gli identificativi sono **numeri interi** su entrambi; il frontend non sa
   quale database ci sia sotto, e non deve saperlo.
 - **Le regole sul seed**: i dati iniziali vengono creati **solo se il database è vuoto** (basta che
@@ -101,6 +106,54 @@ Cambiando provider non cambia **niente di visibile**:
 
 Chi scrive un handler inietta `AppDbContext` e non sa quale dei due sta girando.
 
+## La pipeline di una richiesta
+
+La persistenza è metà del quadro. L'altra metà è il percorso che ogni richiesta compie, uguale per
+tutte le feature:
+
+```
+HTTP
+ │
+ ├─ UseForwardedHeaders     IP e schema reali del client, prima di chiunque li legga
+ ├─ UseCors                 preflight OPTIONS
+ ├─ ExceptionHandling       ogni eccezione → ProblemDetails (RFC 7807)
+ ├─ RateLimiter             partizionato per IP
+ ├─ RequestLocalization     Accept-Language → it | en
+ ├─ Authentication          JWT Bearer (+ Negotiate su /windows-login)
+ └─ Authorization           policy sui claim "permissions"
+      │
+      ▼
+   Endpoint (solo routing)  →  IMediator.Send(comando)
+                                   │
+                                   ├─ LoggingBehavior      durata ed esito
+                                   ├─ ValidationBehavior   FluentValidation → 400
+                                   └─ Handler              la logica, qui e solo qui
+                                        │
+                                        └─ AppDbContext
+```
+
+Le tre regole che discendono da questo schema, e che valgono per ogni feature aggiunta dopo:
+
+- **Gli endpoint non contengono logica.** Instradano e dichiarano il permesso richiesto.
+- **I validator non si invocano.** Il `ValidationBehavior` li trova da sé: se la validazione
+  fallisce, l'handler non viene mai raggiunto.
+- **Le eccezioni non si catturano negli handler.** Si lancia `NotFoundException`,
+  `ConflictException` e simili; il middleware le traduce in risposte HTTP coerenti.
+
+## L'avvio
+
+| Passo | Che cosa succede |
+|---|---|
+| **Schema** | `Database.MigrateAsync()` applica le migration mancanti del provider attivo e crea il database se non esiste. Mai `EnsureCreated`, mai drop |
+| **Seed** | `SeedAsync()`: popola **solo uno store vuoto**. Se esiste anche un solo ruolo, esce subito |
+
+Il seed crea i 18 permessi di sistema, quattro ruoli (`SuperAdmin`, `Admin`, `Viewer`, `Custom`),
+due gruppi e gli utenti iniziali. Gira **dentro una transazione**: senza, un'interruzione a metà
+lascerebbe dati parziali che il gate al riavvio non riconoscerebbe come "database già popolato".
+
+> **Regola operativa**: non esiste wipe né reseed automatico. Per ripartire da zero il database si
+> droppa a mano.
+
 ## Che cosa cambia per chi sviluppa
 
 **Niente strato repository.** Gli handler iniettano `AppDbContext` e usano `db.Set<Entità>()` con
@@ -108,9 +161,9 @@ LINQ. Le letture proiettano direttamente sul response record — niente tracking
 intermedio:
 
 ```csharp
-var items = await db.Set<Format>()
+var items = await db.Set<Group>()
     .AsNoTracking()
-    .Select(f => new FormatResponse(f.Id, f.DescIt, f.DescEn, f.Order))
+    .Select(g => new GroupResponse(g.Id, g.Name, g.Description))
     .ToListAsync(ct);
 ```
 
@@ -128,8 +181,8 @@ La regola da non violare mai: **ogni query LINQ deve essere traducibile da entra
 Le uniche query provider-specifiche ammesse vivono in `DatabaseStats/`, dietro un'interfaccia.
 
 ⚠️ **Trappola nota**: `Contains` su stringa è **case-insensitive su SQL Server** (per la collation
-di default) e **case-sensitive su PostgreSQL**. Per questo le email si salvano in minuscolo e si
-confrontano con input già normalizzato in minuscolo.
+di default) e **case-sensitive su PostgreSQL**. Per questo l'username di login si salva in minuscolo
+e si confronta con input già normalizzato.
 
 ## Domande frequenti
 
@@ -137,23 +190,26 @@ confrontano con input già normalizzato in minuscolo.
 No. Un'istanza dell'applicazione usa un solo provider; lo switch è globale, non per entità.
 Istanze diverse possono usare provider diversi.
 
-**Posso ancora usare MongoDB?**
-No. Il provider è stato rimosso dal codice. La documentazione storica è in
-[Database (SQL + Mongo)](../database_sql-mongo/panoramica.md), ma descrive codice che non esiste più.
+**Ho scelto `SqlServer` alla generazione: posso passare a PostgreSQL?**
+Sì, ed è il punto di questa architettura. Si cambia `Database:Provider` e la connection string
+corrispondente. Il codice generato supporta entrambi in ogni caso.
 
 **Posso migrare i dati da SQL Server a PostgreSQL, o viceversa?**
 Non con gli strumenti inclusi. Lo schema è equivalente sui due provider, quindi un export/import è
 fattibile, ma è un lavoro a sé.
 
 **Serve creare lo schema a mano?**
-No. Le migration si applicano da sole all'avvio con `MigrateAsync()`, che crea anche il database se
-non esiste. Mai `EnsureCreated`, mai drop automatici.
+No, ma le **migration vanno generate una volta**, alla nascita del progetto: il template non ne
+contiene (vedi [Generare e aggiornare](../progetto/generazione.md)). Da lì in poi si applicano da
+sole all'avvio con `MigrateAsync()`, che crea anche il database se non esiste.
 
-**Che fine hanno fatto gli id `ObjectId` di 24 caratteri?**
-Sostituiti da `int` identity, assegnati dal database. Il perché è in [Decisioni](decisioni.md).
+**`MigrateAsync` crea sempre il database?**
+Solo dove l'utente ha il permesso di farlo. Dietro un connection pooler — Neon, per esempio, che
+espone host `*-pooler` — la `CREATE DATABASE` non è consentita e il login viene rifiutato: in quel
+caso il database va creato a monte.
 
 ## Approfondimenti
 
 - **[Architettura](architettura.md)** — il modello EF, lo schema relazionale, i due set di migration
-- **[Implementazione](implementazione.md)** — il codice: switch, `AppDbContext`, handler, seed
-- **[Decisioni](decisioni.md)** — perché la chiave primaria è `int`, perché è caduto Mongo
+- **[Implementazione](implementazione.md)** — il codice: switch, `AppDbContext`, pipeline, handler, seed
+- **[Decisioni](decisioni.md)** — perché la chiave primaria è `int`, perché niente repository

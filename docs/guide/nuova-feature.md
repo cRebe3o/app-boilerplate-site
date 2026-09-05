@@ -3,10 +3,18 @@
 Il percorso completo per portare una nuova entità dal database fino alla pagina, attraversando tutti
 i punti in cui il progetto chiede qualcosa di specifico.
 
-**L'esempio non è inventato: è la feature "Valli" (`Valleys`), che esiste nel repository.** Ogni
-frammento di codice qui sotto è il file reale, non una versione semplificata: si può aprire il
-progetto e confrontare riga per riga. È una lookup piatta — descrizione italiana, descrizione
-inglese, ordinamento — cioè il caso più frequente e il più facile da imitare.
+È l'operazione più frequente in un progetto generato: il template porta l'impianto, il dominio lo
+aggiungi tu, e lo aggiungi sempre così.
+
+**L'esempio è un'entità `Category`**: una lookup piatta — descrizione italiana, descrizione inglese,
+ordinamento — cioè il caso più semplice e il più facile da adattare. Non esiste nel template: è il
+tipo di entità che il tuo progetto aggiungerà per primo. Le feature già presenti (`Groups`, `Roles`,
+`Users`) seguono esattamente questa forma e si possono aprire per confronto.
+
+> **Scorciatoia.** Le [skill Claude](../progetto/skill.md) incluse nel progetto scaffoldano tutti i
+> passaggi che seguono — `db-entity` per l'entità e le migration, `vertical-slice-backend` per le
+> slice, `vue-feature` per il frontend, o `/new-feature Category` per l'intero giro. Questa pagina
+> descrive *che cosa* producono e perché, che è ciò che serve per rivederne l'output.
 
 ## La regola che governa tutto
 
@@ -22,19 +30,16 @@ case-sensitive su PostgreSQL.
 
 | # | File | Che cos'è |
 |---|---|---|
-| 1 | `_Shared/Entities/Valley.cs` | L'entità EF Core |
+| 1 | `_Shared/Entities/Category.cs` | L'entità EF Core |
 | 2 | `_Shared/Persistence/AppDbContext.cs` | La mappatura: tabella, colonne, indici |
 | 3 | `Migrations/SqlServer/` + `Migrations/Postgres/` | **Due** migration |
-| 4 | `Features/Valleys/GetValleys/` | La query |
-| 5 | `Features/Valleys/CreateValley/` | Il comando, con validazione e audit |
-| 6 | `Features/Valleys/UpdateValley/`, `DeleteValley/` | Modifica e cancellazione |
-| 7 | `Features/Valleys/ValleyEndpoints.cs` + `_Shared/Extensions/EndpointExtensions.cs` | Le rotte |
+| 4 | `Features/Categories/GetCategories/` | La query |
+| 5 | `Features/Categories/CreateCategory/` | Il comando, con validazione e audit |
+| 6 | `Features/Categories/UpdateCategory/`, `DeleteCategory/` | Modifica e cancellazione |
+| 7 | `Features/Categories/CategoryEndpoints.cs` + `_Shared/Extensions/EndpointExtensions.cs` | Le rotte |
 | 8 | `_Shared/Seed/DataSeeder.cs` | I permessi |
 | 9 | `types/api.types.ts` → `services/` → `stores/` → `pages/` | Il frontend |
 | 10 | `router/index.ts`, `locales/it.ts`, `locales/en.ts` | Rotte, testi |
-
-Rispetto al passato non c'è più nessun file di repository: gli handler usano direttamente
-`AppDbContext`.
 
 ---
 
@@ -43,8 +48,8 @@ Rispetto al passato non c'è più nessun file di repository: gli handler usano d
 ## 1. L'entità
 
 ```csharp
-// Features/_Shared/Entities/Valley.cs
-public class Valley : ITimestamped
+// Features/_Shared/Entities/Category.cs
+public class Category : ITimestamped
 {
     public int Id { get; set; }
     public string DescIt { get; set; } = string.Empty;
@@ -57,9 +62,9 @@ public class Valley : ITimestamped
 
 Le regole, tutte e quattro non negoziabili:
 
-- **Nessun suffisso**: `Valley`, non `ValleyDocument` né `ValleyEntity`.
+- **Nessun suffisso**: `Category`, non `CategoryDocument` né `CategoryEntity`.
 - **`Id` di tipo `int`**, mai `string` né `Guid`. È identity: lo assegna il database. Il perché è in
-  [Decisioni](../database_sql-only/decisioni.md).
+  [Decisioni](../infrastructure/decisioni.md).
 - **`ITimestamped`** se l'entità ha `CreatedAt`/`UpdatedAt`: è l'interfaccia che fa scattare
   l'assegnazione automatica dei timestamp in `SaveChanges`. Gli handler non li valorizzano mai a mano.
 - **Nessun attributo di persistenza.** Niente data annotation: tutta la configurazione sta in
@@ -69,38 +74,40 @@ Le regole, tutte e quattro non negoziabili:
 
 ```csharp
 // Features/_Shared/Persistence/AppDbContext.cs — dentro OnModelCreating
-mb.Entity<Valley>(e =>
+mb.Entity<Category>(e =>
 {
-    e.ToTable("Valleys");
+    e.ToTable("Categories");
     e.Property(x => x.DescIt).HasMaxLength(256);   // mai lasciare nvarchar(max)/text
     e.Property(x => x.DescEn).HasMaxLength(256);
 });
 ```
 
 `HasKey` non serve: EF riconosce `Id` per convenzione e lo rende identity su entrambi i provider.
+Non serve nemmeno un `DbSet`: le entità si raggiungono con `db.Set<Category>()`.
 
 **Ogni colonna stringa va dimensionata.** Senza `HasMaxLength` EF genera `nvarchar(max)` (SQL Server)
 o `text` (Postgres): pessimo per indici e storage, e su SQL Server un indice unique non è nemmeno
 ammesso su `nvarchar(max)`.
 
-Se l'entità avesse una **FK** verso un'altra (come `ProductTypes` → `Typologies`), andrebbe
-dichiarata con `Restrict`, mai `Cascade`:
+Se l'entità avesse una **FK** verso un'altra, andrebbe dichiarata con `Restrict`, mai `Cascade`:
 
 ```csharp
-e.HasOne(x => x.Typology).WithMany().HasForeignKey(x => x.TypologyId)
+e.HasOne(x => x.Parent).WithMany().HasForeignKey(x => x.ParentId)
     .OnDelete(DeleteBehavior.Restrict);
 ```
 
+`Cascade` qui sarebbe pericoloso: cancellare una categoria cancellerebbe tutto ciò che la usa.
+
 Se avesse una relazione **molti-a-molti**, servirebbe una join table con skip navigation
-unidirezionale — vedi [Architettura](../database_sql-only/architettura.md).
+unidirezionale — vedi [Architettura](../infrastructure/architettura.md).
 
 ## 3. Le due migration
 
 ```bash
-cd apps/backend/DelVoltone.Api
+cd apps/backend/<Progetto>.Api
 
-dotnet dotnet-ef migrations add AddValleys --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add AddValleys --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+dotnet dotnet-ef migrations add AddCategories --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
+dotnet dotnet-ef migrations add AddCategories --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
 ```
 
 Il `--context` seleziona quale delle due derivate usare, e quindi in quale cartella finisce la
@@ -114,22 +121,21 @@ Una slice è fatta di quattro file al massimo — richiesta, handler, validatore
 stessa cartella. Per una lettura ne bastano tre.
 
 ```csharp
-// Features/Valleys/GetValleys/ValleyResponse.cs
-public record ValleyResponse(
+// Features/Categories/GetCategories/CategoryResponse.cs
+public record CategoryResponse(
     int Id, string DescIt, string DescEn, int Order,
     DateTime CreatedAt, DateTime UpdatedAt);
 
-// Features/Valleys/GetValleys/GetValleysQuery.cs
-public record GetValleysQuery : IRequest<List<ValleyResponse>>;
+// Features/Categories/GetCategories/GetCategoriesQuery.cs
+public record GetCategoriesQuery : IRequest<List<CategoryResponse>>;
 
-// Features/Valleys/GetValleys/GetValleysHandler.cs
-public class GetValleysHandler(AppDbContext db) : IRequestHandler<GetValleysQuery, List<ValleyResponse>>
+// Features/Categories/GetCategories/GetCategoriesHandler.cs
+public class GetCategoriesHandler(AppDbContext db) : IRequestHandler<GetCategoriesQuery, List<CategoryResponse>>
 {
-    // Nessun OrderBy: l'ordinamento è a carico del chiamante (la scansione segue comunque
-    // la PK identity, cioè l'ordine di creazione).
-    public Task<List<ValleyResponse>> Handle(GetValleysQuery request, CancellationToken cancellationToken) =>
-        db.Set<Valley>()
-            .Select(x => new ValleyResponse(x.Id, x.DescIt, x.DescEn, x.Order, x.CreatedAt, x.UpdatedAt))
+    public Task<List<CategoryResponse>> Handle(GetCategoriesQuery request, CancellationToken cancellationToken) =>
+        db.Set<Category>()
+            .OrderBy(x => x.Order)
+            .Select(x => new CategoryResponse(x.Id, x.DescIt, x.DescEn, x.Order, x.CreatedAt, x.UpdatedAt))
             .ToListAsync(cancellationToken);
 }
 ```
@@ -144,19 +150,21 @@ Tre cose da notare:
 > In lettura, `Select` verso un record rende `AsNoTracking()` superfluo: una proiezione non traccia
 > nulla di per sé. `AsNoTracking()` serve quando si materializzano **entità**.
 
+L'handler non va registrato da nessuna parte: MediatR lo scopre da sé nell'assembly.
+
 ## 5. Il comando: validazione e audit
 
 ```csharp
-// Features/Valleys/CreateValley/CreateValleyCommand.cs
-public record CreateValleyCommand(string DescIt, string DescEn, int Order) : IRequest<CreateValleyResponse>;
+// Features/Categories/CreateCategory/CreateCategoryCommand.cs
+public record CreateCategoryCommand(string DescIt, string DescEn, int Order) : IRequest<CreateCategoryResponse>;
 
-// Features/Valleys/CreateValley/CreateValleyResponse.cs
-public record CreateValleyResponse(int Id);
+// Features/Categories/CreateCategory/CreateCategoryResponse.cs
+public record CreateCategoryResponse(int Id);
 
-// Features/Valleys/CreateValley/CreateValleyValidator.cs
-public class CreateValleyValidator : AbstractValidator<CreateValleyCommand>
+// Features/Categories/CreateCategory/CreateCategoryValidator.cs
+public class CreateCategoryValidator : AbstractValidator<CreateCategoryCommand>
 {
-    public CreateValleyValidator()
+    public CreateCategoryValidator()
     {
         RuleFor(x => x.DescIt).NotEmpty().MaximumLength(200);
         RuleFor(x => x.DescEn).NotEmpty().MaximumLength(200);
@@ -169,27 +177,27 @@ se fallisce, la richiesta non arriva mai all'handler — il middleware restituis
 ProblemDetails.
 
 ```csharp
-// Features/Valleys/CreateValley/CreateValleyHandler.cs
-public class CreateValleyHandler(
+// Features/Categories/CreateCategory/CreateCategoryHandler.cs
+public class CreateCategoryHandler(
     AppDbContext db,
-    IHttpContextAccessor httpContextAccessor) : IRequestHandler<CreateValleyCommand, CreateValleyResponse>
+    IHttpContextAccessor httpContextAccessor) : IRequestHandler<CreateCategoryCommand, CreateCategoryResponse>
 {
-    public async Task<CreateValleyResponse> Handle(CreateValleyCommand request, CancellationToken cancellationToken)
+    public async Task<CreateCategoryResponse> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)
     {
-        var valley = new Valley
+        var category = new Category
         {
             DescIt = request.DescIt,
             DescEn = request.DescEn,
             Order = request.Order,
         };
 
-        db.Add(valley);
+        db.Add(category);
         await db.SaveChangesAsync(cancellationToken);   // assegna l'id identity
 
-        db.Add(AuditTrail.New(httpContextAccessor, "Valley", valley.Id, "Created"));
+        db.Add(AuditTrail.New(httpContextAccessor, "Category", category.Id, "Created"));
         await db.SaveChangesAsync(cancellationToken);
 
-        return new CreateValleyResponse(valley.Id);
+        return new CreateCategoryResponse(category.Id);
     }
 }
 ```
@@ -211,19 +219,19 @@ Tre punti da non perdere:
 | `Deleted` | snapshot prima della cancellazione | — |
 
 ```csharp
-// UpdateValleyHandler — la forma dello snapshot
-var valley = await db.Set<Valley>().FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken)
-    ?? throw new NotFoundException("Valley", request.Id);
+// UpdateCategoryHandler — la forma dello snapshot
+var category = await db.Set<Category>().FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken)
+    ?? throw new NotFoundException("Category", request.Id);
 
-var before = valley.ToAuditJson();      // PRIMA di toccare l'oggetto
-valley.DescIt = request.Body.DescIt;
-valley.DescEn = request.Body.DescEn;
-valley.Order = request.Body.Order;
+var before = category.ToAuditJson();      // PRIMA di toccare l'oggetto
+category.DescIt = request.Body.DescIt;
+category.DescEn = request.Body.DescEn;
+category.Order = request.Body.Order;
 
 await db.SaveChangesAsync(cancellationToken);   // UpdatedAt lo imposta ApplyTimestamps
 
-db.Add(AuditTrail.New(httpContextAccessor, "Valley", valley.Id, "Updated",
-    before: before, after: valley.ToAuditJson()));
+db.Add(AuditTrail.New(httpContextAccessor, "Category", category.Id, "Updated",
+    before: before, after: category.ToAuditJson()));
 await db.SaveChangesAsync(cancellationToken);
 ```
 
@@ -236,34 +244,34 @@ perché l'entità è tracciata e mutarla cambierebbe anche lo snapshot.
 
 ⚠️ **Il caso M2M.** Se l'update tocca **solo** le collezioni molti-a-molti, l'entità non viene marcata
 `Modified` e `UpdatedAt` non si aggiorna da solo: va toccato esplicitamente (vedi `UpdateUserHandler`).
-Per una lookup piatta come `Valley` il problema non si pone.
+Per una lookup piatta come `Category` il problema non si pone.
 
 ## 6. La cancellazione: prima si controlla
 
 ```csharp
-// Features/Valleys/DeleteValley/DeleteValleyHandler.cs
-public class DeleteValleyHandler(
+// Features/Categories/DeleteCategory/DeleteCategoryHandler.cs
+public class DeleteCategoryHandler(
     AppDbContext db,
-    IHttpContextAccessor httpContextAccessor) : IRequestHandler<DeleteValleyCommand>
+    IHttpContextAccessor httpContextAccessor) : IRequestHandler<DeleteCategoryCommand>
 {
-    public async Task Handle(DeleteValleyCommand request, CancellationToken cancellationToken)
+    public async Task Handle(DeleteCategoryCommand request, CancellationToken cancellationToken)
     {
-        var valley = await db.Set<Valley>().FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken)
-            ?? throw new NotFoundException("Valley", request.Id);
+        var category = await db.Set<Category>().FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken)
+            ?? throw new NotFoundException("Category", request.Id);
 
         // Conteggio prima della DELETE per dare un 409 con messaggio chiaro: la FK Restrict
-        // su Products farebbe comunque fallire la cancellazione, ma con un errore generico.
-        var count = await db.Set<Product>().CountAsync(x => x.ValleyId == request.Id, cancellationToken);
+        // farebbe comunque fallire la cancellazione, ma con un errore generico.
+        var count = await db.Set<Article>().CountAsync(x => x.CategoryId == request.Id, cancellationToken);
         if (count > 0)
             throw new ConflictException(
-                $"Impossibile eliminare questa valle: è ancora utilizzata in {count} prodotto/i. " +
-                "Rimuovila da tutti i prodotti prima di eliminarla.");
+                $"Impossibile eliminare questa categoria: è ancora utilizzata in {count} elemento/i. " +
+                "Rimuovila da tutti gli elementi prima di eliminarla.");
 
-        var before = valley.ToAuditJson();
-        db.Remove(valley);
+        var before = category.ToAuditJson();
+        db.Remove(category);
         await db.SaveChangesAsync(cancellationToken);
 
-        db.Add(AuditTrail.New(httpContextAccessor, "Valley", valley.Id, "Deleted", before: before));
+        db.Add(AuditTrail.New(httpContextAccessor, "Category", category.Id, "Deleted", before: before));
         await db.SaveChangesAsync(cancellationToken);
     }
 }
@@ -271,67 +279,68 @@ public class DeleteValleyHandler(
 
 Il pattern si ritrova identico in tutte le lookup: **due difese sovrapposte, deliberatamente**.
 L'handler produce un `409 Conflict` con un messaggio comprensibile; la FK `Restrict` è la stessa
-regola applicata anche a chi scrivesse sul database da fuori.
+regola applicata anche a chi scrivesse sul database da fuori. (Il conteggio serve solo se qualche
+altra entità referenzia questa.)
 
-Non serve più validare la forma dell'id: il constraint di rotta `{id:int}` fa sì che un id malformato
-non arrivi nemmeno all'handler (404 dal routing).
+Non serve validare la forma dell'id: il constraint di rotta `{id:int}` fa sì che un id malformato non
+arrivi nemmeno all'handler (404 dal routing).
 
 Se l'operazione dovesse toccare più entità insieme, un singolo `SaveChangesAsync` è già atomico; per
-blocchi più ampi si usa `db.Database.BeginTransactionAsync`. Le cancellazioni a cascata delle join
-table le garantisce il database con le FK.
+blocchi più ampi si usa `db.Database.BeginTransactionAsync` — ricordando che con
+`EnableRetryOnFailure` attivo va eseguito dentro la strategia di esecuzione.
 
 ## 7. Le rotte
 
 ```csharp
-// Features/Valleys/ValleyEndpoints.cs
-public static class ValleyEndpoints
+// Features/Categories/CategoryEndpoints.cs
+public static class CategoryEndpoints
 {
-    public static IEndpointRouteBuilder MapValleyEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapCategoryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/valleys").WithTags("Valleys").RequireAuthorization();
+        var group = app.MapGroup("/api/categories").WithTags("Categories").RequireAuthorization();
 
         group.MapGet("/", async (IMediator mediator, CancellationToken ct) =>
-            Results.Ok(await mediator.Send(new GetValleysQuery(), ct)))
-            .RequireAuthorization(p => p.RequireClaim("permissions", "valleys.read"))
-            .WithName("GetValleys")
-            .WithSummary("Lista valli")
+            Results.Ok(await mediator.Send(new GetCategoriesQuery(), ct)))
+            .RequireAuthorization(p => p.RequireClaim("permissions", "categories.read"))
+            .WithName("GetCategories")
+            .WithSummary("Lista categorie")
             .Produces(StatusCodes.Status200OK);
 
         group.MapGet("/{id:int}", async (int id, IMediator mediator, CancellationToken ct) =>
-            Results.Ok(await mediator.Send(new GetValleyByIdQuery(id), ct)))
-            .RequireAuthorization(p => p.RequireClaim("permissions", "valleys.read"))
-            .WithName("GetValleyById")
-            .WithSummary("Dettaglio valle")
+            Results.Ok(await mediator.Send(new GetCategoryByIdQuery(id), ct)))
+            .RequireAuthorization(p => p.RequireClaim("permissions", "categories.read"))
+            .WithName("GetCategoryById")
+            .WithSummary("Dettaglio categoria")
             .Produces(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPost("/", async (CreateValleyCommand cmd, IMediator mediator, CancellationToken ct) =>
+        group.MapPost("/", async (CreateCategoryCommand cmd, IMediator mediator, CancellationToken ct) =>
         {
             var result = await mediator.Send(cmd, ct);
-            return Results.Created($"/api/valleys/{result.Id}", result);
+            return Results.Created($"/api/categories/{result.Id}", result);
         })
-            .RequireAuthorization(p => p.RequireClaim("permissions", "valleys.write"))
-            .WithName("CreateValley")
-            .WithSummary("Crea una nuova valle")
+            .RequireAuthorization(p => p.RequireClaim("permissions", "categories.write"))
+            .WithName("CreateCategory")
+            .WithSummary("Crea una nuova categoria")
             .Produces(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
-        group.MapPut("/{id:int}", async (int id, UpdateValleyRequest body, IMediator mediator, CancellationToken ct) =>
-            Results.Ok(await mediator.Send(new UpdateValleyCommand(id, body), ct)))
-            .RequireAuthorization(p => p.RequireClaim("permissions", "valleys.write"))
-            .WithName("UpdateValley")
-            .WithSummary("Aggiorna una valle")
+        group.MapPut("/{id:int}", async (int id, UpdateCategoryRequest body, IMediator mediator, CancellationToken ct) =>
+            Results.Ok(await mediator.Send(new UpdateCategoryCommand(id, body), ct)))
+            .RequireAuthorization(p => p.RequireClaim("permissions", "categories.write"))
+            .WithName("UpdateCategory")
+            .WithSummary("Aggiorna una categoria")
             .Produces(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/{id:int}", async (int id, IMediator mediator, CancellationToken ct) =>
         {
-            await mediator.Send(new DeleteValleyCommand(id), ct);
+            await mediator.Send(new DeleteCategoryCommand(id), ct);
             return Results.NoContent();
         })
-            .RequireAuthorization(p => p.RequireClaim("permissions", "valleys.delete"))
-            .WithName("DeleteValley")
-            .WithSummary("Elimina una valle")
+            .RequireAuthorization(p => p.RequireClaim("permissions", "categories.delete"))
+            .WithName("DeleteCategory")
+            .WithSummary("Elimina una categoria")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -345,20 +354,29 @@ L'endpoint **instrada e basta**: nessuna logica, nessun accesso al `DbContext`. 
 - **Il constraint `{id:int}`** su ogni rotta con id. Non è cosmetico: filtra gli id malformati prima
   che tocchino l'applicazione.
 - **Ogni rotta dichiara il permesso** che richiede (`read` / `write` / `delete`).
-- **`UpdateValleyRequest` è il body**, e l'handler riceve un `UpdateValleyCommand(id, body)`: l'id
+- **`UpdateCategoryRequest` è il body**, e l'handler riceve un `UpdateCategoryCommand(id, body)`: l'id
   viene dalla rotta, non dal corpo della richiesta.
 
 Poi va agganciato:
 
 ```csharp
 // Features/_Shared/Extensions/EndpointExtensions.cs
-app.MapValleyEndpoints();
+app.MapCategoryEndpoints();
 ```
 
 ## 8. I permessi
 
-Vanno aggiunti al seed (`_Shared/Seed/DataSeeder.cs`) come `valleys.read`, `valleys.write`,
-`valleys.delete`, e assegnati ai ruoli che devono averli.
+Vanno aggiunti al seed (`_Shared/Seed/DataSeeder.cs`) come `categories.read`, `categories.write`,
+`categories.delete`, e assegnati ai ruoli che devono averli.
+
+```csharp
+("categories.read",   "Categories", "read",   "Legge la lista categorie"),
+("categories.write",  "Categories", "write",  "Crea e modifica categorie"),
+("categories.delete", "Categories", "delete", "Elimina categorie"),
+```
+
+Il ruolo `Viewer` prende automaticamente tutti i permessi con azione `read`, quindi il nuovo
+`categories.read` ci finisce da solo; per gli altri ruoli va deciso caso per caso.
 
 > Il seed popola **solo un database vuoto**: su un'installazione già avviata i nuovi permessi **non
 > compaiono da soli**. Vanno creati dal pannello Permessi e assegnati ai ruoli — oppure, in sviluppo,
@@ -374,7 +392,7 @@ La catena è sempre la stessa, e non si salta un anello: **tipi → service → 
 
 ```typescript
 // types/api.types.ts
-export interface Valley {
+export interface Category {
   id: number
   descIt: string
   descEn: string
@@ -383,37 +401,37 @@ export interface Valley {
   updatedAt: string
 }
 
-export interface CreateValleyRequest {
+export interface CreateCategoryRequest {
   descIt: string
   descEn: string
   order: number
 }
 
-export type UpdateValleyRequest = CreateValleyRequest
+export type UpdateCategoryRequest = CreateCategoryRequest
 ```
 
 Gli id sono **`number`**, coerenti con gli `int` del backend.
 
 ```typescript
-// services/valleys.service.ts — le uniche righe del progetto in cui si usa axios
+// services/categories.service.ts — le uniche righe del progetto in cui si usa axios
 import { api } from '@/plugins/axios'
-import type { Valley, CreateValleyRequest, UpdateValleyRequest } from '@/types/api.types'
+import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '@/types/api.types'
 
-export const valleysService = {
-  getAll: () => api.get<Valley[]>('/api/valleys').then(r => r.data),
-  getById: (id: number) => api.get<Valley>(`/api/valleys/${id}`).then(r => r.data),
-  create: (data: CreateValleyRequest) => api.post<Valley>('/api/valleys', data).then(r => r.data),
-  update: (id: number, data: UpdateValleyRequest) =>
-    api.put<Valley>(`/api/valleys/${id}`, data).then(r => r.data),
-  delete: (id: number) => api.delete(`/api/valleys/${id}`),
+export const categoriesService = {
+  getAll: () => api.get<Category[]>('/api/categories').then(r => r.data),
+  getById: (id: number) => api.get<Category>(`/api/categories/${id}`).then(r => r.data),
+  create: (data: CreateCategoryRequest) => api.post<Category>('/api/categories', data).then(r => r.data),
+  update: (id: number, data: UpdateCategoryRequest) =>
+    api.put<Category>(`/api/categories/${id}`, data).then(r => r.data),
+  delete: (id: number) => api.delete(`/api/categories/${id}`),
 }
 ```
 
 ```typescript
-// stores/valleys.store.ts — composition API, mai options API
-export const useValleysStore = defineStore('valleys', () => {
-  const items = ref<Valley[]>([])
-  const selectedItem = ref<Valley | null>(null)
+// stores/categories.store.ts — composition API, mai options API
+export const useCategoriesStore = defineStore('categories', () => {
+  const items = ref<Category[]>([])
+  const selectedItem = ref<Category | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -421,23 +439,23 @@ export const useValleysStore = defineStore('valleys', () => {
     loading.value = true
     error.value = null
     try {
-      items.value = await valleysService.getAll()
+      items.value = await categoriesService.getAll()
     } catch {
-      error.value = i18n.global.t('errors.loadValleys')   // mai una stringa a mano
+      error.value = i18n.global.t('errors.loadCategories')   // mai una stringa a mano
     } finally {
       loading.value = false
     }
   }
 
-  async function create(data: CreateValleyRequest) {
+  async function create(data: CreateCategoryRequest) {
     loading.value = true
     error.value = null
     try {
-      const result = await valleysService.create(data)
+      const result = await categoriesService.create(data)
       await fetchAll()          // ricarica: la lista resta allineata al server
       return result
     } catch (e) {
-      error.value = i18n.global.t('errors.loadValleys')
+      error.value = i18n.global.t('errors.createCategory')
       throw e                   // rilancia: la pagina deve poter mostrare l'errore
     } finally {
       loading.value = false
@@ -455,26 +473,26 @@ se l'operazione fosse riuscita.
 
 ## 10. Le pagine
 
-Due: la lista (`ValleysPage.vue`) e il dettaglio, usato sia per la creazione sia per la modifica
-(`ValleyDetailPage.vue`).
+Due: la lista (`CategoriesPage.vue`) e il dettaglio, usato sia per la creazione sia per la modifica
+(`CategoryDetailPage.vue`).
 
 ```vue
 <script setup lang="ts">
 const { t } = useI18n()
 const { mobile } = useDisplay()
-const store = useValleysStore()
+const store = useCategoriesStore()
 const { can } = usePermission()
 
 onMounted(() => store.fetchAll())
 </script>
 
 <template>
-  <h1 class="text-h5">{{ t('valleys.title') }}</h1>
+  <h1 class="text-h5">{{ t('categories.title') }}</h1>
 
   <!-- il pulsante non esiste se manca il permesso -->
-  <v-btn v-if="can('valleys.write')" color="primary" prepend-icon="mdi-plus"
-         :to="{ name: 'valley-create' }">
-    {{ t('valleys.createButton') }}
+  <v-btn v-if="can('categories.write')" color="primary" prepend-icon="mdi-plus"
+         :to="{ name: 'category-create' }">
+    {{ t('categories.createButton') }}
   </v-btn>
 
   <!-- tabella su desktop, lista su mobile -->
@@ -498,48 +516,52 @@ Le convenzioni che si vedono qui:
 ```typescript
 // router/index.ts
 {
-  path: 'data/valleys',
-  name: 'valleys',
-  component: () => import('@/pages/data/ValleysPage.vue'),     // lazy load, sempre
-  meta: { requiresAuth: true, permission: 'valleys.read', title: 'routes.valleys', section: 'data' },
+  path: 'categories',
+  name: 'categories',
+  component: () => import('@/pages/categories/CategoriesPage.vue'),   // lazy load, sempre
+  meta: { requiresAuth: true, permission: 'categories.read', title: 'routes.categories' },
 },
 {
-  path: 'data/valleys/new',
-  name: 'valley-create',
-  component: () => import('@/pages/data/ValleyDetailPage.vue'),
-  meta: { requiresAuth: true, permission: 'valleys.write', title: 'routes.newValley', section: 'data' },
+  path: 'categories/new',
+  name: 'category-create',
+  component: () => import('@/pages/categories/CategoryDetailPage.vue'),
+  meta: { requiresAuth: true, permission: 'categories.write', title: 'routes.newCategory' },
 },
 {
-  path: 'data/valleys/:id(\d+)',
-  name: 'valley-detail',
-  component: () => import('@/pages/data/ValleyDetailPage.vue'),
-  meta: { requiresAuth: true, permission: 'valleys.read', title: 'routes.valleyDetail', section: 'data' },
+  path: 'categories/:id(\\d+)',
+  name: 'category-detail',
+  component: () => import('@/pages/categories/CategoryDetailPage.vue'),
+  meta: { requiresAuth: true, permission: 'categories.read', title: 'routes.categoryDetail' },
 },
 ```
 
 Due dettagli:
 
 - **`:id(\d+)`** è il corrispettivo frontend del constraint `{id:int}` del backend: con id numerici,
-  la rotta `data/valleys/new` non rischia di essere catturata dalla rotta di dettaglio.
+  la rotta `categories/new` non rischia di essere catturata dalla rotta di dettaglio.
 - **Ogni rotta dichiara `meta.permission`**: il navigation guard la usa per bloccare l'accesso diretto
-  via URL. Nota che la creazione richiede `valleys.write` mentre il dettaglio richiede `valleys.read`,
-  pur essendo lo stesso componente.
+  via URL. Nota che la creazione richiede `categories.write` mentre il dettaglio richiede
+  `categories.read`, pur essendo lo stesso componente.
 
 Infine i testi, in **entrambe** le lingue (`locales/it.ts` e `locales/en.ts`):
 
 ```typescript
 // locales/it.ts
-nav: { valleys: 'Valli' },
-routes: { valleys: 'Valli', newValley: 'Nuova valle', valleyDetail: 'Dettaglio valle' },
-valleys: {
-  title: 'Valli',
-  subtitle: 'Gestione valli',
-  createButton: 'Nuova valle',
-  deleteConfirm: 'Sei sicuro di voler eliminare questa valle?',
+nav: { categories: 'Categorie' },
+routes: { categories: 'Categorie', newCategory: 'Nuova categoria', categoryDetail: 'Dettaglio categoria' },
+categories: {
+  title: 'Categorie',
+  subtitle: 'Gestione categorie',
+  createButton: 'Nuova categoria',
+  deleteConfirm: 'Sei sicuro di voler eliminare questa categoria?',
   descIt: 'Descrizione (IT)',
   descEn: 'Descrizione (EN)',
 },
-errors: { loadValleys: 'Errore nel caricamento valli', deleteValley: 'Errore nell\'eliminazione della valle' },
+errors: {
+  loadCategories: 'Errore nel caricamento delle categorie',
+  createCategory: 'Errore nella creazione della categoria',
+  deleteCategory: 'Errore nell\'eliminazione della categoria',
+},
 ```
 
 ---
@@ -550,6 +572,7 @@ errors: { loadValleys: 'Errore nel caricamento valli', deleteValley: 'Errore nel
 - [ ] La mappatura in `OnModelCreating` c'è, le colonne stringa sono **dimensionate**, le FK sono `Restrict`
 - [ ] **Entrambe** le migration sono generate (SqlServer + Postgres) e committate
 - [ ] Le query LINQ sono traducibili da entrambi i provider — attenzione a `Contains` su stringa
-- [ ] Le rotte con id usano il constraint `{id:int}`
+- [ ] Le rotte con id usano il constraint `{id:int}`, e gli endpoint sono agganciati in `EndpointExtensions`
 - [ ] Ogni scrittura produce un audit log, con lo snapshot `Before` catturato **prima** della modifica
+- [ ] I permessi sono nel seed e assegnati ai ruoli giusti
 - [ ] I testi esistono in italiano **e** in inglese

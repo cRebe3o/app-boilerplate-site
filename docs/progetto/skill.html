@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le skill Claude — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html" aria-current="page">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Progetto</p>
+      <article class="prose">
+<h1 id="le-skill-claude">Le skill Claude</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#come-si-usano">Come si usano</a></li>
+          <li class="lvl-2"><a href="#backend">Backend</a></li>
+          <li class="lvl-2"><a href="#frontend">Frontend</a></li>
+          <li class="lvl-2"><a href="#test">Test</a></li>
+          <li class="lvl-2"><a href="#i-comandi">I comandi</a></li>
+          <li class="lvl-2"><a href="#le-combinazioni-che-ricorrono">Le combinazioni che ricorrono</a></li>
+          <li class="lvl-2"><a href="#quando-la-skill-non-basta">Quando la skill non basta</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Un progetto generato porta con sé una cartella <code>.claude/</code> con <strong>21 skill</strong> e <strong>6 comandi</strong>. Sono
+istruzioni scritte, versionate insieme al codice, che Claude Code carica quando il compito
+corrisponde: descrivono come si scrive <em>in questo progetto</em> una slice, un'entità, una pagina, un
+test.</p>
+<p>Non sono generatori di codice a scatola chiusa. Sono il modo in cui le convenzioni del template
+restano applicate anche mesi dopo, quando nessuno ricorda più perché gli endpoint non contengono
+logica o perché ogni entità richiede due migration.</p>
+<blockquote>
+<p><strong>A che cosa servono davvero.</strong> Il valore del boilerplate non è solo il codice iniziale: è che il
+codice aggiunto dopo continui ad assomigliargli. Le skill sono quel meccanismo — la
+documentazione operativa che l'assistente legge da sé.</p>
+</blockquote>
+<h2 id="come-si-usano">Come si usano</h2>
+<p>Nella maggior parte dei casi non serve invocarle: ogni skill dichiara i propri <em>trigger</em>, e Claude
+Code la carica quando la richiesta li tocca. Chiedere &quot;aggiungi l'endpoint per creare le categorie&quot;
+attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>pagination</code>.</p>
+<p>Si possono comunque richiamare per nome quando si vuole essere espliciti sul pattern da seguire.</p>
+<h2 id="backend">Backend</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Quando si attiva</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>vertical-slice-backend</code></strong></td>
+<td>Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend</td>
+</tr>
+<tr>
+<td><strong><code>db-entity</code></strong></td>
+<td>Una nuova entità EF Core: classe POCO, mappatura in <code>AppDbContext</code>, indici, relazioni e la <strong>doppia migration</strong> SQL Server + Postgres</td>
+</tr>
+<tr>
+<td><strong><code>audit-log</code></strong></td>
+<td>Ogni operazione di scrittura: come si registra l'audit con <code>AuditTrail</code> e gli snapshot <code>ToAuditJson()</code></td>
+</tr>
+<tr>
+<td><strong><code>permissions</code></strong></td>
+<td>Un permesso nuovo end-to-end: policy sull'endpoint, guardia di rotta, <code>v-if</code> nella UI e voce nel seed</td>
+</tr>
+<tr>
+<td><strong><code>pagination</code></strong></td>
+<td>Una lista che deve paginare lato server: <code>PagedResult</code> sul backend, <code>v-data-table-server</code> sul frontend</td>
+</tr>
+<tr>
+<td><strong><code>search-filter</code></strong></td>
+<td>Ricerca testuale o filtri su una lista, con il <code>Where</code> dinamico lato EF e il debounce lato Vue</td>
+</tr>
+<tr>
+<td><strong><code>bulk-operations</code></strong></td>
+<td>Cancellazioni o modifiche multiple, con <code>ExecuteDelete</code>/<code>ExecuteUpdate</code> e la selezione a checkbox</td>
+</tr>
+<tr>
+<td><strong><code>export-csv</code></strong></td>
+<td>Esportazione dei dati in CSV o Excel: endpoint che genera il file e pulsante di download</td>
+</tr>
+<tr>
+<td><strong><code>file-upload</code></strong></td>
+<td>Upload di file con <code>IFormFile</code>, storage e anteprima lato client</td>
+</tr>
+<tr>
+<td><strong><code>soft-delete</code></strong></td>
+<td>Cancellazione logica con <code>IsDeleted</code> e query filter globale. <strong>Da usare solo se richiesto esplicitamente</strong>: il default del template è la cancellazione fisica</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="frontend">Frontend</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Quando si attiva</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>vue-feature</code></strong></td>
+<td>Una nuova feature di frontend completa: service, store Pinia, pagina e rotta, nell'ordine previsto dalle convenzioni</td>
+</tr>
+<tr>
+<td><strong><code>detail-page</code></strong></td>
+<td>Una pagina di dettaglio su rotta <code>:id</code>, con breadcrumb, caricamento del singolo elemento ed eventuali tab</td>
+</tr>
+<tr>
+<td><strong><code>vuetify-dialog-form</code></strong></td>
+<td>Un dialog di creazione o modifica: validazione, stato di caricamento, gestione errori, reset e componente condiviso fra create ed edit</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="test">Test</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Quando si attiva</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>vitest-setup</code></strong></td>
+<td>Configurazione di Vitest per i componenti Vue 3</td>
+</tr>
+<tr>
+<td><strong><code>vue-component-test</code></strong></td>
+<td>Test unitari di componente con <code>@vue/test-utils</code>: props, eventi, slot</td>
+</tr>
+<tr>
+<td><strong><code>pinia-store-test</code></strong></td>
+<td>Test di uno store: stato, getter, azioni</td>
+</tr>
+<tr>
+<td><strong><code>api-mock-test</code></strong></td>
+<td>Test con chiamate HTTP mockate e gestione degli errori</td>
+</tr>
+<tr>
+<td><strong><code>crud-operations-test</code></strong></td>
+<td>Test del giro completo create / read / update / delete</td>
+</tr>
+<tr>
+<td><strong><code>form-validation-test</code></strong></td>
+<td>Test di validazione di un form: campi obbligatori, pattern, regole custom</td>
+</tr>
+<tr>
+<td><strong><code>page-integration-test</code></strong></td>
+<td>Test di integrazione di una pagina intera: interazioni, store e chiamate insieme</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="i-comandi">I comandi</h2>
+<p>Oltre alle skill, sei comandi per le operazioni ricorrenti:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Comando</th>
+<th>Che cosa fa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/new-feature &lt;Entità&gt;</code></td>
+<td>Crea una feature CRUD completa end-to-end, backend e frontend</td>
+</tr>
+<tr>
+<td><code>/add-field &lt;Entità&gt;</code></td>
+<td>Aggiunge un campo a un'entità esistente, propagandolo su tutti i punti che lo richiedono</td>
+</tr>
+<tr>
+<td><code>/remove-field &lt;Entità&gt;</code></td>
+<td>L'operazione inversa, con la stessa propagazione</td>
+</tr>
+<tr>
+<td><code>/review</code></td>
+<td>Rilegge il codice scritto verificandolo contro le convenzioni del progetto</td>
+</tr>
+<tr>
+<td><code>/fix</code></td>
+<td>Interviene su un problema descritto a parole</td>
+</tr>
+<tr>
+<td><code>/migrate-endpoints</code></td>
+<td><em>Legacy, una tantum</em>: sposta gli endpoint dalle <code>_Shared/Extensions/</code> alle cartelle delle slice. Serve solo su progetti generati prima di quella convenzione</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="le-combinazioni-che-ricorrono">Le combinazioni che ricorrono</h2>
+<p>Le skill sono pensate per comporsi, e le richieste reali ne toccano quasi sempre più d'una:</p>
+<pre><code>Una nuova entità di dominio, dal database alla pagina
+   db-entity  →  vertical-slice-backend  →  audit-log  →  permissions
+                                                              │
+                                          vue-feature  ←──────┘
+                                                │
+                                     vuetify-dialog-form  ·  detail-page
+</code></pre>
+<p>Una lista che deve crescere: <code>pagination</code> e <code>search-filter</code> insieme, perché il filtro va applicato
+prima della paginazione e non dopo.</p>
+<h2 id="quando-la-skill-non-basta">Quando la skill non basta</h2>
+<p>Le skill coprono i pattern del template. Se una richiesta esce da quei binari — una integrazione
+esterna, un calcolo di dominio, un job schedulato — vale la pena scriverne una nuova nella stessa
+cartella: è versionata con il progetto, e da lì in avanti quel pattern diventa ripetibile come gli
+altri.</p>
+<p>Le skill che nascono nei progetti e si rivelano generali sono anche il canale naturale per
+migliorare il template: portate in <code>app-boilerplate</code>, arrivano a tutti i progetti al successivo
+<a href="generazione.html#aggiornare-un-progetto-quando-il-template-cambia"><code>copier update</code></a>.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="../guide/nuova-feature.html">Aggiungere una feature</a> — lo stesso percorso delle skill, spiegato per esteso</li>
+<li><a href="panoramica.html">Panoramica</a> — le convenzioni che le skill applicano</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

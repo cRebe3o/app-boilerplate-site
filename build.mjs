@@ -17,8 +17,8 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DOCS = path.join(ROOT, 'docs');
 
 const SITE = {
-  title: 'DelVoltone',
-  subtitle: 'Documentazione tecnica',
+  title: 'app-boilerplate',
+  subtitle: 'Documentazione tecnica del template',
   sections: [
     {
       title: 'Progetto',
@@ -26,57 +26,42 @@ const SITE = {
         {
           file: 'progetto/panoramica.md',
           title: 'Panoramica',
-          summary: 'Che cos’è DelVoltone, com’è fatto il monorepo, quali sono i domini e le convenzioni.',
+          summary: 'Che cos’è il boilerplate, com’è fatto il monorepo generato, quali sono le convenzioni.',
+        },
+        {
+          file: 'progetto/generazione.md',
+          title: 'Generare e aggiornare',
+          summary: 'Le variabili del template, come nasce un progetto con Copier e come si aggiorna quando il template cambia.',
+        },
+        {
+          file: 'progetto/skill.md',
+          title: 'Le skill Claude',
+          summary: 'Le skill incluse nel template: che cosa scaffoldano e quando conviene invocarle.',
         },
       ],
     },
     {
-      title: 'Database',
+      title: 'Infrastruttura',
       pages: [
         {
-          file: 'database_sql-only/panoramica.md',
+          file: 'infrastructure/panoramica.md',
           title: 'Panoramica',
-          summary: 'Un’app, due provider SQL: che cosa significa e come si sceglie fra SQL Server e PostgreSQL.',
+          summary: 'L’impianto tecnico in breve: doppio provider SQL, pipeline delle richieste, che cosa è già pronto.',
         },
         {
-          file: 'database_sql-only/architettura.md',
+          file: 'infrastructure/architettura.md',
           title: 'Architettura',
           summary: 'Un solo AppDbContext, il modello EF Core, lo schema relazionale, i due set di migration.',
         },
         {
-          file: 'database_sql-only/implementazione.md',
+          file: 'infrastructure/implementazione.md',
           title: 'Implementazione',
-          summary: 'Il codice: switch in DI, AppDbContext, handler su EF Core, migration, seed.',
+          summary: 'Il codice: switch in DI, AppDbContext, pipeline MediatR, handler, migration, seed.',
         },
         {
-          file: 'database_sql-only/decisioni.md',
+          file: 'infrastructure/decisioni.md',
           title: 'Decisioni',
-          summary: 'Perché la chiave primaria è int identity, perché è caduto Mongo, che cosa è stato scartato.',
-        },
-      ],
-    },
-    {
-      title: 'Database — versione storica (obsoleta)',
-      pages: [
-        {
-          file: 'database_sql-mongo/panoramica.md',
-          title: 'Panoramica (SQL + Mongo)',
-          summary: 'OBSOLETO — la versione dual MongoDB/SQL Server, sostituita a luglio 2026.',
-        },
-        {
-          file: 'database_sql-mongo/architettura.md',
-          title: 'Architettura (SQL + Mongo)',
-          summary: 'OBSOLETO — il seam dei repository e il modello dati condiviso Mongo/SQL.',
-        },
-        {
-          file: 'database_sql-mongo/implementazione.md',
-          title: 'Implementazione (SQL + Mongo)',
-          summary: 'OBSOLETO — i due repository a confronto, conversioni ObjectId, transazioni.',
-        },
-        {
-          file: 'database_sql-mongo/decisioni.md',
-          title: 'Decisioni (SQL + Mongo)',
-          summary: 'OBSOLETO — perché la chiave primaria era ObjectId nella versione dual-provider.',
+          summary: 'Perché la chiave primaria è int identity, perché niente repository, che cosa è stato scartato.',
         },
       ],
     },
@@ -85,8 +70,8 @@ const SITE = {
       pages: [
         {
           file: 'autenticazione/autenticazione.md',
-          title: 'JWT e MSAL',
-          summary: 'Le due strategie di accesso, i flussi, il codice e la risoluzione dei permessi.',
+          title: 'JWT, MSAL e Windows',
+          summary: 'Le tre strategie di accesso, i flussi, il codice e la risoluzione dei permessi.',
         },
         {
           file: 'autenticazione/azure-app-registration.md',
@@ -106,7 +91,7 @@ const SITE = {
         {
           file: 'guide/nuova-feature.md',
           title: 'Aggiungere una feature',
-          summary: 'Il percorso completo backend + frontend, ricalcato su una slice che esiste davvero.',
+          summary: 'Il percorso completo backend + frontend, dall’entità EF Core fino alla pagina Vue.',
         },
       ],
     },
@@ -267,7 +252,7 @@ ${body}
   </div>
 
   <footer class="footer">
-    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
   </footer>
 </body>
 </html>
@@ -314,9 +299,20 @@ async function clean() {
 }
 
 async function build() {
+  let missing = 0;
   for (const page of pages) {
     const src = path.join(DOCS, page.file);
-    const raw = await fs.readFile(src, 'utf8');
+    let raw;
+    try {
+      raw = await fs.readFile(src, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        console.warn(`  ⚠ ${page.file} — file mancante, pagina saltata`);
+        missing++;
+        continue;
+      }
+      throw err;
+    }
 
     const toc = [];
     const renderer = new MarkdownIt(md.options);
@@ -347,7 +343,7 @@ async function build() {
     await fs.writeFile(out, html, 'utf8');
     console.log(`  ${page.file}  →  ${path.relative(ROOT, out).replace(/\\/g, '/')}`);
   }
-  console.log(`\n${pages.length} pagine generate.`);
+  console.log(`\n${pages.length - missing} pagine generate${missing ? `, ${missing} saltate (file mancanti)` : ''}.`);
 }
 
 if (process.argv.includes('--clean')) await clean();

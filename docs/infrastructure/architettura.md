@@ -1,12 +1,8 @@
-# Database — architettura
+# Infrastruttura — architettura
 
 Questa pagina spiega **come** l'applicazione riesce a girare su due provider SQL diversi con un solo
 modello: dove le due strade si separano, dove si riuniscono, e quali vincoli tengono in piedi la
 portabilità. Il codice corrispondente è in [Implementazione](implementazione.md).
-
-> La versione precedente di questa architettura — dual-provider MongoDB / SQL Server, con strato
-> repository — è documentata come storico in
-> [Architettura (SQL + Mongo)](../database_sql-mongo/architettura.md).
 
 ## Vista d'insieme
 
@@ -71,10 +67,9 @@ services.AddDbContext<AppDbContext, SqlServerAppDbContext>(...);
 
 Così ogni handler può iniettare `AppDbContext` e non sapere nulla del provider attivo.
 
-**Niente strato repository.** È la differenza più visibile rispetto all'architettura precedente: non
-esistono più 15 interfacce `I*Repository` con due implementazioni ciascuna. Gli handler usano
-direttamente `db.Set<Entità>()` con LINQ. Il seam non è più un insieme di interfacce da mantenere: è
-un tipo che EF Core fornisce già.
+**Niente strato repository.** Gli handler usano direttamente `db.Set<Entità>()` con LINQ: il seam
+non è un insieme di interfacce da mantenere, è un tipo che EF Core fornisce già. Il perché — e il
+prezzo che si paga — sono in [Decisioni](decisioni.md).
 
 ## Layout delle cartelle
 
@@ -82,8 +77,6 @@ un tipo che EF Core fornisce già.
 Features/_Shared/
 ├── Entities/                       # POCO EF: int Id identity, ITimestamped, navigation M2M
 │   ├── User.cs · Group.cs · Role.cs · Permission.cs
-│   ├── Product.cs · ProductType.cs · Typology.cs · Format.cs
-│   ├── Location.cs · Valley.cs · Working.cs
 │   ├── AuditLog.cs · ErrorLog.cs · ErrorLevel.cs · ErrorSource.cs
 │   ├── RefreshToken.cs · SystemConfig.cs
 │   └── ITimestamped.cs
@@ -94,29 +87,33 @@ Features/_Shared/
 │   ├── DesignTimeFactories.cs      # una factory per derivata, per `dotnet ef`
 │   ├── ExpiredTokenCleanupService.cs
 │   └── Migrations/
-│       ├── SqlServer/              # 20260716172833_InitialCreate + snapshot
-│       └── Postgres/               # 20260716172847_InitialCreate + snapshot
+│       ├── SqlServer/              # vuota nel template: la riempie il primo InitialCreate
+│       └── Postgres/
 ├── DatabaseStats/                  # l'unico punto con SQL provider-specifico
 │   ├── IDatabaseStatsProvider.cs
 │   ├── SqlServerDatabaseStatsProvider.cs
 │   └── PostgresDatabaseStatsProvider.cs
+├── Behaviors/                      # pipeline MediatR: logging, validazione
+├── Middleware/                     # ExceptionHandlingMiddleware
+├── Exceptions/                     # NotFound, Conflict, Forbidden, Unauthorized
+├── Helpers/                        # AuditTrail, Username.Normalize, snapshot JSON
 ├── Seed/DataSeeder.cs              # comune, solo su store vuoto
-└── Extensions/DatabaseExtensions.cs  # AddDatabase: lo switch
+└── Extensions/                     # AddDatabase, AddMediatRWithBehaviors, Auth, endpoint
 ```
 
-Rispetto alla versione con Mongo sono spariti interi rami: `Repositories/` (con le sottocartelle
-`Mongo/` e `Ef/`), `Transactions/`, `Documents/`, `Conversions.cs` e `Links.cs`.
+Le entità di dominio del progetto si aggiungono in `Entities/`, accanto a queste.
 
 ## Il modello dati
 
 Le POCO in `Entities/` sono l'**unico modello**: niente entità separate per provider, niente mapping
-layer, nessun suffisso `Document`.
+layer, nessun suffisso `Document` o `Entity`.
 
 ```csharp
 public class User : ITimestamped
 {
     public int Id { get; set; }                     // identity: lo assegna il DB
-    public string Email { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;   // l'identità di login, unica
+    public string? Email { get; set; }              // anagrafico, opzionale
     public List<Group> Groups { get; set; } = [];   // M2M → join table UserGroups
     public List<Role> Roles { get; set; } = [];     // M2M → join table UserRoles
     public DateTime CreatedAt { get; set; }
@@ -128,9 +125,9 @@ Regole del modello:
 
 | Aspetto | Regola |
 |---|---|
-| Chiave primaria | `int Id`, identity — mai `string`, `Guid` o `ObjectId` |
-| Nomi | Nessun suffisso: `User`, `Product`, `AuditLog` |
-| Stringhe | Sempre dimensionate con `HasMaxLength` in `OnModelCreating`; testo illimitato solo dove serve (Desc, Photo base64, StackTrace, snapshot audit) |
+| Chiave primaria | `int Id`, identity — mai `string` o `Guid` |
+| Nomi | Nessun suffisso: `User`, `Group`, `AuditLog` |
+| Stringhe | Sempre dimensionate con `HasMaxLength` in `OnModelCreating`; testo illimitato solo dove serve (messaggi, stack trace, snapshot audit) |
 | Enum | Mappati come **stringa** (`HasConversion<string>()`): leggibili nel DB e stabili se cambia l'ordine dei membri |
 | Date | `DateTime` UTC |
 | Timestamp | `CreatedAt`/`UpdatedAt` impostati automaticamente da `ApplyTimestamps` in `SaveChanges` |
@@ -148,22 +145,21 @@ utente deve toccare `UpdatedAt` esplicitamente (vedi `UpdateUserHandler`).
 
 ## Lo schema relazionale
 
-Relazionale classico — **19 tabelle**, identiche nella struttura sui due provider. Le relazioni
-molti-a-molti sono join table con chiave composta e `ON DELETE CASCADE`; i riferimenti singoli sono
-FK con `Restrict`, così una voce di lookup ancora usata non si può cancellare (il tentativo torna
-`409 Conflict`).
+Relazionale classico — **8 entità e 4 join table**, identiche nella struttura sui due provider. Le
+relazioni molti-a-molti sono join table con chiave composta e `ON DELETE CASCADE`.
 
 | Entità | Tabella | Vincoli principali |
 |---|---|---|
-| `User` | `Users` | `Email` unique |
+| `User` | `Users` | `Username` unique (è la chiave di login); `Email` indicizzata ma **non** unique, perché opzionale |
 | `Group` · `Role` · `Permission` | `Groups` · `Roles` · `Permissions` | `Permissions.Key` unique; nomi di gruppi e ruoli **non** unique (controllo applicativo) |
 | — | `UserGroups` · `UserRoles` · `GroupRoles` · `RolePermissions` | PK composta, FK **CASCADE** su entrambi i lati |
 | `RefreshToken` | `RefreshTokens` | `Token` unique (max 450 char), indice su `ExpiresAt`, FK `UserId` **CASCADE** |
 | `AuditLog` · `ErrorLog` | `AuditLogs` · `ErrorLogs` | **nessuna FK**: lo storico deve sopravvivere alle cancellazioni; indici su `Timestamp` e su `(EntityType, EntityId)` |
-| `Product` | `Products` | FK `ProductTypeId` (Restrict, obbligatoria) + FK nullable verso Location, Valley, Format, Working (Restrict); indice su `Title` |
-| `ProductType` | `ProductTypes` | FK `TypologyId` → `Typologies` (Restrict) |
-| `Format` · `Location` · `Typology` · `Valley` · `Working` | tabelle omonime | lookup piatte |
-| `SystemConfig` | `SystemConfigs` | i due `LogRetentionConfig` annidati sono `ComplexProperty` → colonne `ErrorLogs_*` / `AuditLogs_*` nella stessa tabella |
+| `SystemConfig` | `SystemConfigs` | riga singola; i due `LogRetentionConfig` annidati sono `ComplexProperty` → colonne `ErrorLogs_*` / `AuditLogs_*` nella stessa tabella |
+
+Le tabelle del dominio si aggiungono a queste. Per i riferimenti singoli la convenzione del
+template è la FK con `Restrict`, non `Cascade`: una voce di lookup ancora usata non si deve poter
+cancellare, e il tentativo torna `409 Conflict`.
 
 ### Perché audit ed error log non hanno FK
 
@@ -192,38 +188,23 @@ principale di questa architettura.
 
 ### La trappola della ricerca case-sensitive
 
-Una `Where(x => x.Email.Contains(term))` si comporta **diversamente** sui due provider. La
-contromisura adottata: le email si salvano **sempre in minuscolo** e si confrontano con input già
-normalizzato in minuscolo. Per le ricerche testuali del catalogo, qualunque nuova query deve essere
-verificata su entrambi i provider prima di considerarsi finita.
-
-## Il ciclo di vita, all'avvio
-
-Il codice è lo stesso per entrambi i provider, in fondo a `Program.cs`:
-
-| Passo | Che cosa succede |
-|---|---|
-| **Schema** | `Database.MigrateAsync()` applica le migration mancanti del provider attivo e **crea il database se non esiste**. Mai `EnsureCreated`, mai drop |
-| **Indici** | Dichiarati nel model → creati dalle migration |
-| **Seed** | `SeedAsync()`: popola **solo uno store vuoto**. Gate: se esiste anche un solo ruolo, esce subito |
-
-Il seed inserisce rispettando l'ordine delle FK — tipologie, formati, località, valli, lavorazioni,
-tipi prodotto, prodotti, poi permessi/ruoli/gruppi/utenti. Gli id li assegna il database, quindi i
-legami del seed sono espressi via **navigation property**, non via id costanti.
-
-> **Regola operativa**: non esiste wipe né reseed automatico. Per ripartire da zero il database si
-> droppa a mano.
+Una `Where(x => x.Username.Contains(term))` si comporta **diversamente** sui due provider. La
+contromisura adottata: l'username di login si salva **sempre in minuscolo**, normalizzato da un
+unico helper, e si confronta con input passato dallo stesso helper. Per le ricerche testuali del
+dominio, qualunque nuova query deve essere verificata su entrambi i provider prima di considerarsi
+finita.
 
 ## Transazioni
 
-`ITransactionRunner` **non esiste più**, ed è una semplificazione diretta della rimozione di Mongo.
-Serviva perché su MongoDB la transazione è un oggetto — la sessione — da passare a ogni operazione,
-mentre su EF Core vive sulla connessione del `DbContext`.
-
-Oggi tutti gli handler di una richiesta condividono lo stesso `AppDbContext` scoped: un singolo
+Tutti gli handler di una richiesta condividono lo stesso `AppDbContext` scoped: un singolo
 `SaveChangesAsync` è già atomico, e dove serve una transazione esplicita si usa direttamente
-`db.Database.BeginTransactionAsync`. Le cancellazioni a cascata che prima erano scritte a mano negli
-handler (`RemoveRoleFromAllUsersAsync`…) ora le garantisce il **database** con le FK `CASCADE`.
+`db.Database.BeginTransactionAsync`. Le cancellazioni a cascata delle join table le garantisce il
+**database** con le FK `CASCADE`, non codice scritto a mano negli handler.
+
+⚠️ Un dettaglio che si paga caro se lo si ignora: **entrambi i provider hanno
+`EnableRetryOnFailure`**, e con una strategia di retry attiva le transazioni aperte a mano vanno
+eseguite **dentro** la strategia, altrimenti EF lancia *"does not support user-initiated
+transactions"*. Il seed lo fa già, con `db.Database.CreateExecutionStrategy()`.
 
 ## Lifetime nella DI
 
@@ -242,7 +223,7 @@ iniettare un `DbContext` scoped direttamente in un singleton è l'errore classic
 | Situazione | Comportamento |
 |---|---|
 | `Database:Provider` assente | Default `SqlServer` |
-| `Database:Provider` con un valore sconosciuto (compreso `MongoDB`) | `InvalidOperationException` **all'avvio**, con i valori ammessi nel messaggio |
+| `Database:Provider` con un valore sconosciuto | `InvalidOperationException` **all'avvio**, con i valori ammessi nel messaggio |
 | Connection string del provider attivo mancante | `InvalidOperationException` all'avvio, che dice **dove** impostarla (`appsettings.local.json` o `ConnectionStrings__<Provider>`) |
 | Database irraggiungibile | Errore alla prima operazione: la connessione è pigra, non si apre all'avvio. `EnableRetryOnFailure` ritenta gli errori transitori |
 
@@ -252,4 +233,4 @@ si ripara, non fallire a metà di una richiesta.
 ## Approfondimenti
 
 - **[Implementazione](implementazione.md)** — il codice di ogni componente citato qui
-- **[Decisioni](decisioni.md)** — perché `int`, perché è caduto Mongo, che cosa è stato scartato
+- **[Decisioni](decisioni.md)** — perché `int`, perché niente repository, che cosa è stato scartato

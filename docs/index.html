@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DelVoltone</title>
+  <title>app-boilerplate</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">
-      <span class="brand-name">DelVoltone</span>
-      <span class="brand-sub">Documentazione tecnica</span>
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
     </a>
   </header>
 
@@ -24,30 +24,23 @@
           <p class="nav-title">Progetto</p>
           <ul>
             <li><a href="progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
         <div class="nav-group">
-          <p class="nav-title">Database</p>
+          <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="database_sql-only/panoramica.html">Panoramica</a></li>
-            <li><a href="database_sql-only/architettura.html">Architettura</a></li>
-            <li><a href="database_sql-only/implementazione.html">Implementazione</a></li>
-            <li><a href="database_sql-only/decisioni.html">Decisioni</a></li>
-          </ul>
-        </div>
-        <div class="nav-group">
-          <p class="nav-title">Database — versione storica (obsoleta)</p>
-          <ul>
-            <li><a href="database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
-            <li><a href="database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
-            <li><a href="database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
-            <li><a href="database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+            <li><a href="infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
         <div class="nav-group">
           <p class="nav-title">Autenticazione</p>
           <ul>
-            <li><a href="autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
             <li><a href="autenticazione/azure-app-registration.html">App registration Azure</a></li>
           </ul>
         </div>
@@ -63,67 +56,55 @@
     <main>
       
       <article class="prose">
-<h1 id="documentazione-delvoltone">Documentazione DelVoltone</h1>
-<p>DelVoltone è un gestionale di catalogo prodotti: un monorepo con <strong>API .NET 10</strong> organizzata a
-vertical slice e <strong>frontend Vue 3</strong>, che gira indifferentemente su <strong>SQL Server o PostgreSQL</strong>
-(via Entity Framework Core) e autentica gli utenti con credenziali locali o con <strong>Azure AD</strong>.</p>
-<blockquote>
-<p><strong>Nota.</strong> Il supporto a MongoDB è stato rimosso a luglio 2026: oggi l'applicazione si collega
-<strong>solo a database SQL</strong>. La documentazione della vecchia architettura dual MongoDB/SQL Server è
-conservata come storico nella sezione <em>Database — versione storica</em>.</p>
-</blockquote>
-<p>Queste pagine descrivono come è fatto e come si lavora sopra. Sono la documentazione di progetto:
-la fonte di verità ultima resta il codice in <a href="https://github.com/cRebe3o/del-voltone" target="_blank" rel="noopener"><code>del-voltone</code></a>,
-e ogni pagina rimanda ai file che descrive.</p>
+<h1 id="documentazione-app-boilerplate">Documentazione app-boilerplate</h1>
+<p><strong>app-boilerplate</strong> è un template <a href="https://copier.readthedocs.io" target="_blank" rel="noopener">Copier</a> da cui nascono
+applicazioni gestionali già impiantate: un monorepo con <strong>API .NET 10</strong> organizzata a vertical
+slice e <strong>frontend Vue 3 + Vuetify</strong>, che gira indifferentemente su <strong>SQL Server o PostgreSQL</strong>
+(via Entity Framework Core) e autentica gli utenti con credenziali locali, con <strong>Azure AD</strong> o con
+l'<strong>identità Windows</strong>.</p>
+<p>Il template non porta un dominio applicativo: porta tutto ciò che in un gestionale viene <em>prima</em>
+del dominio — accesso, utenti, gruppi, ruoli e permessi, audit log, log degli errori,
+configurazione di sistema, monitoraggio del database. Le feature del progetto si aggiungono sopra,
+seguendo il pattern già presente.</p>
+<p>Queste pagine descrivono com'è fatto un progetto generato e come ci si lavora sopra. Sono la
+documentazione del template: la fonte di verità ultima resta il codice del repository
+<code>app-boilerplate</code>, e ogni pagina rimanda ai file che descrive.</p>
 <p>Se non sai da dove partire, comincia dalla <a href="progetto/panoramica.html">Panoramica</a>.</p>
   <section class="home-section">
     <h2>Progetto</h2>
     <div class="card-grid">
       <a class="card" href="progetto/panoramica.html">
         <h3>Panoramica</h3>
-        <p>Che cos’è DelVoltone, com’è fatto il monorepo, quali sono i domini e le convenzioni.</p>
+        <p>Che cos’è il boilerplate, com’è fatto il monorepo generato, quali sono le convenzioni.</p>
+      </a>
+      <a class="card" href="progetto/generazione.html">
+        <h3>Generare e aggiornare</h3>
+        <p>Le variabili del template, come nasce un progetto con Copier e come si aggiorna quando il template cambia.</p>
+      </a>
+      <a class="card" href="progetto/skill.html">
+        <h3>Le skill Claude</h3>
+        <p>Le skill incluse nel template: che cosa scaffoldano e quando conviene invocarle.</p>
       </a>
     </div>
   </section>
   <section class="home-section">
-    <h2>Database</h2>
+    <h2>Infrastruttura</h2>
     <div class="card-grid">
-      <a class="card" href="database_sql-only/panoramica.html">
+      <a class="card" href="infrastructure/panoramica.html">
         <h3>Panoramica</h3>
-        <p>Un’app, due provider SQL: che cosa significa e come si sceglie fra SQL Server e PostgreSQL.</p>
+        <p>L’impianto tecnico in breve: doppio provider SQL, pipeline delle richieste, che cosa è già pronto.</p>
       </a>
-      <a class="card" href="database_sql-only/architettura.html">
+      <a class="card" href="infrastructure/architettura.html">
         <h3>Architettura</h3>
         <p>Un solo AppDbContext, il modello EF Core, lo schema relazionale, i due set di migration.</p>
       </a>
-      <a class="card" href="database_sql-only/implementazione.html">
+      <a class="card" href="infrastructure/implementazione.html">
         <h3>Implementazione</h3>
-        <p>Il codice: switch in DI, AppDbContext, handler su EF Core, migration, seed.</p>
+        <p>Il codice: switch in DI, AppDbContext, pipeline MediatR, handler, migration, seed.</p>
       </a>
-      <a class="card" href="database_sql-only/decisioni.html">
+      <a class="card" href="infrastructure/decisioni.html">
         <h3>Decisioni</h3>
-        <p>Perché la chiave primaria è int identity, perché è caduto Mongo, che cosa è stato scartato.</p>
-      </a>
-    </div>
-  </section>
-  <section class="home-section">
-    <h2>Database — versione storica (obsoleta)</h2>
-    <div class="card-grid">
-      <a class="card" href="database_sql-mongo/panoramica.html">
-        <h3>Panoramica (SQL + Mongo)</h3>
-        <p>OBSOLETO — la versione dual MongoDB/SQL Server, sostituita a luglio 2026.</p>
-      </a>
-      <a class="card" href="database_sql-mongo/architettura.html">
-        <h3>Architettura (SQL + Mongo)</h3>
-        <p>OBSOLETO — il seam dei repository e il modello dati condiviso Mongo/SQL.</p>
-      </a>
-      <a class="card" href="database_sql-mongo/implementazione.html">
-        <h3>Implementazione (SQL + Mongo)</h3>
-        <p>OBSOLETO — i due repository a confronto, conversioni ObjectId, transazioni.</p>
-      </a>
-      <a class="card" href="database_sql-mongo/decisioni.html">
-        <h3>Decisioni (SQL + Mongo)</h3>
-        <p>OBSOLETO — perché la chiave primaria era ObjectId nella versione dual-provider.</p>
+        <p>Perché la chiave primaria è int identity, perché niente repository, che cosa è stato scartato.</p>
       </a>
     </div>
   </section>
@@ -131,8 +112,8 @@ e ogni pagina rimanda ai file che descrive.</p>
     <h2>Autenticazione</h2>
     <div class="card-grid">
       <a class="card" href="autenticazione/autenticazione.html">
-        <h3>JWT e MSAL</h3>
-        <p>Le due strategie di accesso, i flussi, il codice e la risoluzione dei permessi.</p>
+        <h3>JWT, MSAL e Windows</h3>
+        <p>Le tre strategie di accesso, i flussi, il codice e la risoluzione dei permessi.</p>
       </a>
       <a class="card" href="autenticazione/azure-app-registration.html">
         <h3>App registration Azure</h3>
@@ -149,7 +130,7 @@ e ogni pagina rimanda ai file che descrive.</p>
       </a>
       <a class="card" href="guide/nuova-feature.html">
         <h3>Aggiungere una feature</h3>
-        <p>Il percorso completo backend + frontend, ricalcato su una slice che esiste davvero.</p>
+        <p>Il percorso completo backend + frontend, dall’entità EF Core fino alla pagina Vue.</p>
       </a>
     </div>
   </section>
@@ -159,7 +140,7 @@ e ogni pagina rimanda ai file che descrive.</p>
   </div>
 
   <footer class="footer">
-    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
   </footer>
 </body>
 </html>

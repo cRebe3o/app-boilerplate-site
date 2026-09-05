@@ -1,13 +1,8 @@
-# Database — implementazione
+# Infrastruttura — implementazione
 
 Il codice di ogni pezzo dell'architettura, nell'ordine in cui lo si incontra leggendo il backend.
-I frammenti riproducono i file reali in `apps/backend/DelVoltone.Api/Features/_Shared/`, che restano
+I frammenti riproducono i file reali in `apps/backend/<Progetto>.Api/Features/_Shared/`, che restano
 la fonte di verità: qui sono accompagnati dal **perché**, che nel codice non sempre c'è.
-
-> La versione precedente — con repository Mongo/EF, conversioni `ObjectId` e `ITransactionRunner` —
-> è documentata come storico in
-> [Implementazione (SQL + Mongo)](../database_sql-mongo/implementazione.md). **Quel codice non esiste
-> più nel repository.**
 
 ## 1. Lo switch di provider
 
@@ -59,8 +54,8 @@ Due dettagli che vale la pena notare:
 - **`AddDbContext<AppDbContext, SqlServerAppDbContext>`** registra la derivata *dietro il tipo base*.
   È la riga che rende il resto del codice provider-agnostico: gli handler chiedono `AppDbContext` e
   ricevono l'implementazione giusta.
-- Il `default:` **fa fallire l'avvio**. Un `Database:Provider=MongoDB` ereditato da un vecchio deploy
-  non viene ignorato in silenzio: l'applicazione si ferma dicendo quali valori sono ammessi.
+- Il `default:` **fa fallire l'avvio**. Un valore sbagliato ereditato da un vecchio deploy non viene
+  ignorato in silenzio: l'applicazione si ferma dicendo quali valori sono ammessi.
 
 La connection string viene letta con un messaggio d'errore che dice *dove* impostarla:
 
@@ -99,6 +94,9 @@ public class PostgresAppDbContext(DbContextOptions<PostgresAppDbContext> options
 ```
 
 Non contengono configurazione: esistono **solo** per dare un'identità ai due set di migration.
+
+Nota che non ci sono proprietà `DbSet` nominate: le entità si raggiungono con `db.Set<T>()`. Una
+entità in meno da dichiarare a ogni aggiunta.
 
 ### I timestamp automatici
 
@@ -147,37 +145,26 @@ e.HasMany(u => u.Groups).WithMany()
 `User.Groups` ma non `Group.Users`. Meno superficie da mantenere, e nessun rischio di cicli di
 serializzazione. La join table non ha una classe: le righe le gestisce EF quando si modifica la lista.
 
-### Le FK del catalogo: `Restrict`, non `Cascade`
-
-```csharp
-e.HasOne(p => p.ProductType).WithMany().HasForeignKey(p => p.ProductTypeId)
-    .OnDelete(DeleteBehavior.Restrict);     // obbligatoria: ogni prodotto ha un tipo
-
-e.HasOne(p => p.Location).WithMany().HasForeignKey(p => p.LocationId)
-    .OnDelete(DeleteBehavior.Restrict);     // int? → colonna nullable
-```
-
-`Cascade` qui sarebbe pericoloso: cancellare un formato cancellerebbe i prodotti che lo usano.
-`Restrict` fa rifiutare la cancellazione dal database — e gli handler la anticipano con un conteggio
-(vedi sotto).
-
 ### Le colonne vanno dimensionate
 
 ```csharp
+e.Property(u => u.Username).HasMaxLength(256).IsRequired();
 e.Property(u => u.Email).HasMaxLength(256);
 e.Property(u => u.PasswordHash).HasMaxLength(256);   // hash BCrypt = 60 char, teniamo margine
-e.HasIndex(u => u.Email).IsUnique();
+
+e.HasIndex(u => u.Username).IsUnique();   // è la chiave di login
+e.HasIndex(u => u.Email);                 // solo per le ricerche: NON unique, è opzionale
 ```
 
-Senza `HasMaxLength`, EF genera `nvarchar(max)` / `text`: pessimo per indici e storage. `Email`
-**deve** avere una lunghezza perché sotto è indicizzata unique — un indice unique non è ammesso su
+Senza `HasMaxLength`, EF genera `nvarchar(max)` / `text`: pessimo per indici e storage. `Username`
+**deve** avere una lunghezza perché sotto è indicizzato unique — un indice unique non è ammesso su
 `nvarchar(max)`.
 
 Un caso limite da ricordare: `RefreshToken.Token` è `HasMaxLength(450)`, perché 450 è il massimo
 indicizzabile su una colonna `nvarchar` in SQL Server (900 byte / 2).
 
-Restano senza limite solo le colonne che non ne hanno uno sensato: `Product.Desc`, `Product.Photo`
-(immagine in base64), `ErrorLog.Message`, `ErrorLog.StackTrace`, `AuditLog.Before`/`After`.
+Restano senza limite solo le colonne che non ne hanno uno sensato: `ErrorLog.Message`,
+`ErrorLog.StackTrace`, `AuditLog.Before`/`After`.
 
 ### Gli enum come stringa
 
@@ -204,17 +191,64 @@ I due `LogRetentionConfig` sono **valori, non entità**: `ComplexProperty` li ap
 della stessa tabella (`ErrorLogs_Enabled`, `AuditLogs_Enabled`, …). Nessuna tabella extra, nessuna
 chiave da gestire.
 
-## 3. Gli handler: `AppDbContext` diretto, niente repository
+## 3. La pipeline MediatR
+
+Un'unica extension registra MediatR, i behavior e tutti i validator dell'assembly:
+
+```csharp
+public static IServiceCollection AddMediatRWithBehaviors(this IServiceCollection services)
+{
+    services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+
+    // Pipeline: prima LoggingBehavior, poi ValidationBehavior
+    services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+    services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+    // Registra tutti i validator FluentValidation nell'assembly
+    services.AddValidatorsFromAssemblyContaining<Program>();
+
+    return services;
+}
+```
+
+Le due conseguenze pratiche, valide per ogni slice che si aggiungerà:
+
+- **Un validator non va registrato né invocato.** Basta che esista una classe
+  `AbstractValidator<TCommand>` nell'assembly: `AddValidatorsFromAssemblyContaining` la trova, e il
+  `ValidationBehavior` la esegue prima dell'handler. Se fallisce, l'handler non viene mai raggiunto.
+- **Un handler non va registrato.** `RegisterServicesFromAssemblyContaining` scopre da sé ogni
+  `IRequestHandler`.
+
+L'ordine conta: il logging avvolge la validazione, così anche una richiesta respinta a `400` compare
+nei log con la sua durata.
+
+### La gestione degli errori
+
+`ExceptionHandlingMiddleware` è il solo punto in cui un'eccezione diventa una risposta HTTP. Gli
+handler **lanciano** e non catturano:
+
+```csharp
+var group = await db.Set<Group>().FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+    ?? throw new NotFoundException("Group", request.Id);
+```
+
+Le eccezioni di dominio vivono in `_Shared/Exceptions/` — `NotFoundException`, `ConflictException`,
+`ForbiddenException`, `UnauthorizedException` — e il middleware le mappa su 404, 409, 403, 401. Tutto
+il resto è un 500, con il dettaglio nel log e non nella risposta.
+
+Il formato è sempre **ProblemDetails** (RFC 7807), quindi il frontend può tradurre ogni errore con
+un unico composable (`useApiErrors`) invece che caso per caso.
+
+## 4. Gli handler: `AppDbContext` diretto, niente repository
 
 Gli handler iniettano `AppDbContext` e usano `db.Set<T>()`. Non c'è nessuno strato intermedio.
 
 ### Lettura: proiezione diretta sul response
 
 ```csharp
-var items = await db.Set<Format>()
+var items = await db.Set<Group>()
     .AsNoTracking()
-    .OrderBy(f => f.Order)
-    .Select(f => new FormatResponse(f.Id, f.DescIt, f.DescEn, f.Order))
+    .Select(g => new GroupResponse(g.Id, g.Name, g.Description))
     .ToListAsync(ct);
 ```
 
@@ -224,51 +258,53 @@ e non popoli il change tracker. Niente entità intermedie, niente mapping manual
 ### Scrittura: l'id identity esiste solo dopo il `SaveChanges`
 
 ```csharp
-public class CreateFormatHandler(
+public class CreateGroupHandler(
     AppDbContext db,
-    IHttpContextAccessor httpContextAccessor) : IRequestHandler<CreateFormatCommand, CreateFormatResponse>
+    IHttpContextAccessor httpContextAccessor) : IRequestHandler<CreateGroupCommand, CreateGroupResponse>
 {
-    public async Task<CreateFormatResponse> Handle(CreateFormatCommand request, CancellationToken ct)
+    public async Task<CreateGroupResponse> Handle(CreateGroupCommand request, CancellationToken ct)
     {
-        var format = new Format { DescIt = request.DescIt, DescEn = request.DescEn, Order = request.Order };
+        var group = new Group { Name = request.Name, Description = request.Description };
 
-        db.Add(format);
+        db.Add(group);
         await db.SaveChangesAsync(ct);   // assegna l'id identity
 
-        db.Add(AuditTrail.New(httpContextAccessor, "Format", format.Id, "Created"));
+        db.Add(AuditTrail.New(httpContextAccessor, "Group", group.Id, "Created"));
         await db.SaveChangesAsync(ct);
 
-        return new CreateFormatResponse(format.Id);
+        return new CreateGroupResponse(group.Id);
     }
 }
 ```
 
 I due `SaveChangesAsync` non sono una svista: **l'audit log ha bisogno dell'id**, che il database
-assegna solo al primo salvataggio. È la conseguenza pratica più visibile del passaggio da id generati
-dal codice (`ObjectId.GenerateNewId()`) a id generati dal database.
+assegna solo al primo salvataggio. È la conseguenza pratica più visibile della scelta di id generati
+dal database.
 
-### Delete di una lookup: conteggio prima, per un errore leggibile
+### Delete con dipendenze: conteggio prima, per un errore leggibile
+
+Quando un'entità è referenziata da altre, il pattern del template è anticipare il vincolo del
+database con un controllo applicativo:
 
 ```csharp
-var format = await db.Set<Format>().FirstOrDefaultAsync(x => x.Id == request.Id, ct)
-    ?? throw new NotFoundException("Format", request.Id);
+var role = await db.Set<Role>().FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+    ?? throw new NotFoundException("Role", request.Id);
 
-// Conteggio prima della DELETE per dare un 409 con messaggio chiaro: la FK Restrict
-// su Products farebbe comunque fallire la cancellazione, ma con un errore generico.
-var count = await db.Set<Product>().CountAsync(x => x.FormatId == request.Id, ct);
-if (count > 0)
-    throw new ConflictException($"Impossibile eliminare questo formato: è ancora utilizzato in {count} prodotto/i. …");
+if (role.IsSystem)
+    throw new ConflictException("Impossibile eliminare un ruolo di sistema.");
 
-var before = format.ToAuditJson();
-db.Remove(format);
+var before = role.ToAuditJson();
+db.Remove(role);
 await db.SaveChangesAsync(ct);
 
-db.Add(AuditTrail.New(httpContextAccessor, "Format", format.Id, "Deleted", before: before));
+db.Add(AuditTrail.New(httpContextAccessor, "Role", role.Id, "Deleted", before: before));
 await db.SaveChangesAsync(ct);
 ```
 
-Due difese sovrapposte, deliberatamente: l'handler dà il messaggio comprensibile, la FK `Restrict`
-è la stessa regola applicata anche a chi scrivesse sul database da fuori.
+Sulle entità di dominio con FK `Restrict` il controllo diventa un conteggio delle righe che
+puntano all'entità: l'handler dà il messaggio comprensibile (`409 Conflict`), la FK è la stessa
+regola applicata anche a chi scrivesse sul database da fuori. **Due difese sovrapposte,
+deliberatamente.**
 
 ### Update con M2M: il caso di `UpdatedAt`
 
@@ -309,7 +345,7 @@ await db.Set<RefreshToken>()
 le righe. Attenzione: **bypassano il change tracker**, quindi non passano da `ApplyTimestamps` e non
 aggiornano entità già in memoria.
 
-## 4. Le due migration, una per provider
+## 5. Le due migration, una per provider
 
 Ogni modifica al modello richiede **due** migration. I comandi sono nel commento di
 `DesignTimeFactories.cs`:
@@ -318,6 +354,9 @@ Ogni modifica al modello richiede **due** migration. I comandi sono nel commento
 dotnet dotnet-ef migrations add <Nome> --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
 dotnet dotnet-ef migrations add <Nome> --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
 ```
+
+> Nel template le due cartelle sono **vuote**: la prima coppia di migration (`InitialCreate`) si
+> genera alla nascita del progetto. Vedi [Generare e aggiornare](../progetto/generazione.md).
 
 Perché servano le factory: `dotnet ef` deve costruire il `DbContext` **senza avviare l'app**.
 
@@ -328,7 +367,7 @@ public class SqlServerDesignTimeFactory : IDesignTimeDbContextFactory<SqlServerA
     {
         var connectionString =
             Environment.GetEnvironmentVariable("ConnectionStrings__SqlServer")
-            ?? "Server=(localdb)\\MSSQLLocalDB;Database=DelVoltone;Trusted_Connection=True;TrustServerCertificate=True";
+            ?? "Server=(localdb)\\MSSQLLocalDB;Database=<Progetto>;Trusted_Connection=True;TrustServerCertificate=True";
 
         var options = new DbContextOptionsBuilder<SqlServerAppDbContext>()
             .UseSqlServer(connectionString)
@@ -347,7 +386,7 @@ serve solo perché `UseSqlServer`/`UseNpgsql` ne pretendono una. Conta solo per 
 Le due migration generate dallo stesso `OnModelCreating` differiscono solo nei tipi:
 
 ```csharp
-// Migrations/SqlServer — 20260716172833_InitialCreate.cs
+// Migrations/SqlServer
 Id         = table.Column<int>(type: "int", nullable: false)
                   .Annotation("SqlServer:Identity", "1, 1"),
 ActorEmail = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
@@ -356,7 +395,7 @@ Timestamp  = table.Column<DateTime>(type: "datetime2", nullable: false),
 ```
 
 ```csharp
-// Migrations/Postgres — 20260716172847_InitialCreate.cs
+// Migrations/Postgres
 Id         = table.Column<int>(type: "integer", nullable: false)
                   .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
 ActorEmail = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
@@ -366,7 +405,7 @@ Timestamp  = table.Column<DateTime>(type: "timestamp with time zone", nullable: 
 
 > **Regola**: mai modificare una migration già committata. Una correzione è una **nuova** migration.
 
-## 5. L'avvio: migrate e seed
+## 6. L'avvio: migrate e seed
 
 In fondo a `Program.cs`, uguale per entrambi i provider:
 
@@ -389,15 +428,39 @@ Il gate del seeder è la prima riga utile di `DataSeeder`:
 if (await db.Set<Role>().AnyAsync(CancellationToken.None)) return;
 ```
 
+### Il seed gira in transazione, dentro la strategia di retry
+
+```csharp
+// Con EnableRetryOnFailure attivo, una transazione aperta a mano va eseguita DENTRO
+// la strategia di esecuzione, altrimenti EF lancia
+// "does not support user-initiated transactions".
+var strategy = db.Database.CreateExecutionStrategy();
+await strategy.ExecuteAsync(() => SeedAllAsync(app, config, db));
+```
+
+Tre precauzioni che si spiegano a vicenda:
+
+- **Tutto in una transazione.** Senza, un'interruzione a metà lascerebbe dati parziali: il gate al
+  riavvio riterrebbe il database vuoto e riscriverebbe tutto da capo, schiantandosi sull'indice
+  unico dei permessi.
+- **`ChangeTracker.Clear()` all'inizio.** `ExecuteAsync` può rieseguire il delegate da capo: senza il
+  reset, le entità del tentativo fallito sarebbero ancora tracciate come `Added` e verrebbero
+  reinserite.
+- **Nessun rollback esplicito.** Se qualcosa lancia, il dispose della transazione non committata
+  annulla tutto quanto scritto fin lì.
+
 Poiché gli id li assegna il database, il seed **non può** usare id costanti: i legami si esprimono
 via navigation property, lasciando che EF risolva le FK al `SaveChanges`.
 
+La password dell'amministratore iniziale arriva da `Seed:AdminPassword`; se non è configurata ne
+viene generata una casuale — che, non essendo stampata in chiaro, di fatto obbliga a impostarla.
+
 > Non esiste un comando di reset. Per ripartire da zero il database si droppa a mano.
 
-## 6. Il servizio di pulizia dei token
+## 7. Il servizio di pulizia dei token
 
-Senza un TTL index (che era la soluzione ai tempi di Mongo), la tabella `RefreshTokens` crescerebbe
-all'infinito. Il sostituto è un `BackgroundService`:
+Senza un meccanismo di scadenza automatica lato database, la tabella `RefreshTokens` crescerebbe
+all'infinito. La soluzione è un `BackgroundService`:
 
 ```csharp
 public class ExpiredTokenCleanupService(
@@ -449,10 +512,10 @@ Tre dettagli deliberati: lo **scope proprio** (un singleton non può iniettare u
 il `catch` che **non fa morire il servizio** su un errore transitorio, e la distinzione fra
 cancellazione da shutdown ed errore vero.
 
-## 7. L'unico codice provider-specifico: `DatabaseStats`
+## 8. L'unico codice provider-specifico: `DatabaseStats`
 
 Le dimensioni del database non si ottengono con LINQ: servono i cataloghi di sistema. È l'unica
-astrazione per provider rimasta.
+astrazione per provider dell'applicazione.
 
 ```csharp
 public interface IDatabaseStatsProvider
@@ -483,11 +546,11 @@ Su SQL Server la stessa interfaccia è servita dalle DMV (`sys.dm_db_partition_s
 girando; le dimensioni tornano in **byte**, e la conversione in MB e la percentuale d'uso le fa
 l'handler, uguali per entrambi.
 
-## 8. Checklist per una nuova entità
+## 9. Checklist per una nuova entità
 
 1. Classe in `Entities/` — `int Id`, `ITimestamped` se ha i timestamp.
 2. Blocco in `OnModelCreating`: `ToTable`, `HasMaxLength` su ogni stringa, indici, FK/M2M.
-3. **Due** migration (SqlServer + Postgres) con i comandi della sezione 4.
+3. **Due** migration (SqlServer + Postgres) con i comandi della sezione 5.
 4. Verifica su **entrambi** i provider — in particolare le query con `Contains` su stringa, che
    cambiano comportamento fra i due.
 
@@ -497,4 +560,4 @@ Il percorso end-to-end, backend + frontend, è in
 ## Approfondimenti
 
 - **[Architettura](architettura.md)** — la struttura in cui questo codice si inserisce
-- **[Decisioni](decisioni.md)** — perché `int`, perché è caduto Mongo, che cosa è stato scartato
+- **[Decisioni](decisioni.md)** — perché `int`, perché niente repository, che cosa è stato scartato

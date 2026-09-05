@@ -1,7 +1,7 @@
-# del-voltone-site
+# app-boilerplate-site
 
-Sito della documentazione del progetto [DelVoltone](https://github.com/cRebe3o/del-voltone),
-pubblicato con GitHub Pages.
+Sito della documentazione del template **app-boilerplate**, da cui nascono i progetti gestionali
+(monorepo .NET + Vue 3). Pubblicato con GitHub Pages.
 
 ## Come funziona
 
@@ -31,13 +31,20 @@ Da lì la pagina compare **da sola** nella barra laterale, nella home e nell'ord
 ## Struttura
 
 ```
-build.mjs              il generatore + la struttura del sito
+build.mjs               il generatore + la struttura del sito
 docs/
-├── index.md           la home (le schede le genera build.mjs)
-├── assets/style.css   l'unico foglio di stile
-├── progetto/          panoramica del monorepo
-├── database/          doppio provider: panoramica, architettura, implementazione, decisioni
-├── autenticazione/    JWT e MSAL, app registration Azure
-├── deploy/            Render
-└── guide/             come si aggiunge una feature
+├── index.md            la home (le schede le genera build.mjs)
+├── assets/style.css    l'unico foglio di stile
+├── progetto/           panoramica, generazione con Copier, skill Claude
+├── infrastructure/     doppio provider SQL e impianto: panoramica, architettura,
+│                       implementazione, decisioni
+├── autenticazione/     JWT, MSAL e Windows; app registration Azure
+├── deploy/             Render
+└── guide/              come si aggiunge una feature
 ```
+
+## Tenerlo allineato al template
+
+La documentazione descrive il codice di [`app-boilerplate`](https://github.com/cRebe3o/app-boilerplate):
+quando il template cambia in modo visibile — una convenzione, una variabile Copier, una skill, un
+pacchetto pinnato — la pagina corrispondente va aggiornata qui.

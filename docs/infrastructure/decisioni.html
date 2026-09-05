@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Decisioni — DelVoltone</title>
+  <title>Decisioni — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="../index.html">
-      <span class="brand-name">DelVoltone</span>
-      <span class="brand-sub">Documentazione tecnica</span>
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
     </a>
   </header>
 
@@ -24,30 +24,23 @@
           <p class="nav-title">Progetto</p>
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
         <div class="nav-group">
-          <p class="nav-title">Database</p>
+          <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
-            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
-            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
-            <li><a href="../database_sql-only/decisioni.html" aria-current="page">Decisioni</a></li>
-          </ul>
-        </div>
-        <div class="nav-group">
-          <p class="nav-title">Database — versione storica (obsoleta)</p>
-          <ul>
-            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html" aria-current="page">Decisioni</a></li>
           </ul>
         </div>
         <div class="nav-group">
           <p class="nav-title">Autenticazione</p>
           <ul>
-            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
             <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
           </ul>
         </div>
@@ -61,36 +54,30 @@
     </nav>
 
     <main>
-      <p class="eyebrow">Database</p>
+      <p class="eyebrow">Infrastruttura</p>
       <article class="prose">
-<h1 id="database-decisioni">Database — decisioni</h1>
+<h1 id="infrastruttura-decisioni">Infrastruttura — decisioni</h1>
 <nav class="toc" aria-label="Indice della pagina">
         <p class="toc-title">In questa pagina</p>
         <ul>
-          <li class="lvl-2"><a href="#le-decisioni-attuali">Le decisioni attuali</a></li>
-          <li class="lvl-2"><a href="#perche-e-caduto-mongodb">Perché è caduto MongoDB</a></li>
-          <li class="lvl-3"><a href="#che-cosa-costava-davvero">Che cosa costava davvero</a></li>
-          <li class="lvl-3"><a href="#che-cosa-si-e-guadagnato-rimuovendolo">Che cosa si è guadagnato rimuovendolo</a></li>
-          <li class="lvl-3"><a href="#che-cosa-si-e-perso">Che cosa si è perso</a></li>
+          <li class="lvl-2"><a href="#le-decisioni-in-breve">Le decisioni in breve</a></li>
+          <li class="lvl-2"><a href="#perche-due-provider-sql">Perché due provider SQL</a></li>
+          <li class="lvl-2"><a href="#perche-niente-strato-repository">Perché niente strato repository</a></li>
           <li class="lvl-2"><a href="#perche-la-chiave-primaria-e-int-identity">Perché la chiave primaria è <code>int</code> identity</a></li>
-          <li class="lvl-3"><a href="#la-vecchia-decisione-era-condizionata-e-lo-diceva">La vecchia decisione era condizionata, e lo diceva</a></li>
-          <li class="lvl-3"><a href="#i-vantaggi-che-ora-si-incassano">I vantaggi che ora si incassano</a></li>
+          <li class="lvl-3"><a href="#i-vantaggi-che-si-incassano">I vantaggi che si incassano</a></li>
           <li class="lvl-3"><a href="#i-costi-che-si-sono-accettati">I costi che si sono accettati</a></li>
           <li class="lvl-3"><a href="#perche-non-bigint">Perché non <code>bigint</code></a></li>
           <li class="lvl-3"><a href="#quando-andrebbe-rivista">Quando andrebbe rivista</a></li>
-          <li class="lvl-2"><a href="#perche-niente-strato-repository">Perché niente strato repository</a></li>
-          <li class="lvl-2"><a href="#perche-due-provider-sql-e-non-uno-solo">Perché due provider SQL, e non uno solo</a></li>
+          <li class="lvl-2"><a href="#perche-il-template-non-contiene-migration">Perché il template non contiene migration</a></li>
+          <li class="lvl-2"><a href="#perche-vertical-slice">Perché vertical slice</a></li>
           <li class="lvl-2"><a href="#approfondimenti">Approfondimenti</a></li>
         </ul>
       </nav>
 <p>Le scelte di progetto che conviene non rimettere in discussione a memoria, con il motivo per cui
 sono state prese e le condizioni alle quali andrebbero riviste.</p>
-<blockquote>
-<p>Questa pagina <strong>ribalta</strong> diverse decisioni della versione precedente, documentate in
-<a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a>. Dove una decisione è stata
-rovesciata, qui sotto è indicato perché.</p>
-</blockquote>
-<h2 id="le-decisioni-attuali">Le decisioni attuali</h2>
+<p>In un template contano più che altrove: una decisione presa qui si propaga a ogni progetto che ne
+nasce, e cambiarla dopo significa cambiarla in tutti.</p>
+<h2 id="le-decisioni-in-breve">Le decisioni in breve</h2>
 <div class="table-wrap">
 <table>
 <thead>
@@ -102,24 +89,29 @@ rovesciata, qui sotto è indicato perché.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Solo database SQL</strong> (SQL Server + PostgreSQL)</td>
-<td>Mantenere il supporto MongoDB</td>
-<td>Il doppio paradigma costava due implementazioni per ogni repository e vincolava il modello dati al minimo comune denominatore. Sotto, per esteso</td>
+<td><strong>Due provider SQL</strong> (SQL Server + PostgreSQL)</td>
+<td>Un solo database</td>
+<td>Il provider lo decide il cliente del progetto, non chi scrive il template. Il costo di supportarli entrambi è quasi nullo: stesso modello EF, cambia il driver</td>
 </tr>
 <tr>
 <td><strong>Niente strato repository</strong>: gli handler usano <code>AppDbContext</code></td>
-<td>Mantenere le 15 interfacce <code>I*Repository</code></td>
-<td>Con un solo paradigma di accesso ai dati, le interfacce non astraevano più niente: erano indirezione pura. EF Core <strong>è già</strong> il seam</td>
+<td>Interfacce <code>I*Repository</code> con implementazioni per provider</td>
+<td>Con due provider entrambi su EF Core, le interfacce non astrarrebbero nulla: sarebbero indirezione pura. <code>AppDbContext</code> <strong>è già</strong> il seam</td>
 </tr>
 <tr>
 <td><strong>PK <code>int</code> identity</strong></td>
-<td><code>ObjectId</code> come <code>char(24)</code>, <code>Guid</code>, <code>bigint</code></td>
-<td>Caduto il vincolo dual-paradigma, <code>int</code> è il default convenzionale e più efficiente. Sotto, per esteso</td>
+<td><code>Guid</code>, <code>bigint</code>, chiavi naturali</td>
+<td>Default convenzionale, compatto ed efficiente su entrambi i provider. Sotto, per esteso</td>
 </tr>
 <tr>
 <td><strong>Un <code>AppDbContext</code> astratto + due derivate vuote</strong></td>
 <td>Due DbContext indipendenti, o uno solo con migration condivise</td>
 <td>Pattern MS &quot;migrations with multiple providers&quot;: EF lega un set di migration a un tipo. Le derivate danno l'identità, il modello resta uno</td>
+</tr>
+<tr>
+<td><strong>Vertical slice</strong> invece di livelli tecnici</td>
+<td>Controller / Service / Repository</td>
+<td>Una feature si legge e si cancella in una cartella sola. Su un template conta doppio: l'aggiunta di codice è l'operazione più frequente</td>
 </tr>
 <tr>
 <td><strong>Snapshot audit come <code>string</code> JSON</strong></td>
@@ -129,63 +121,72 @@ rovesciata, qui sotto è indicato perché.</p>
 <tr>
 <td><strong>Nessun concurrency token</strong></td>
 <td><code>rowversion</code> / <code>xmin</code></td>
-<td>Last-wins, come prima. Scelta consapevole, rivalutabile se servisse davvero</td>
+<td>Last-wins. Scelta consapevole, da rivalutare in un progetto con scritture concorrenti sulla stessa riga</td>
 </tr>
 <tr>
 <td><strong>Enum come stringa</strong></td>
 <td>Enum come int</td>
 <td>Valore leggibile nel DB e stabile se cambia l'ordine dei membri</td>
 </tr>
+<tr>
+<td><strong>Nessuna migration nel template</strong></td>
+<td>Un <code>InitialCreate</code> già pronto</td>
+<td>Una migration committata nel template vincolerebbe ogni progetto generato. La prima è il primo file di storia del progetto</td>
+</tr>
 </tbody>
 </table>
 </div>
-<h2 id="perche-e-caduto-mongodb">Perché è caduto MongoDB</h2>
-<p>Il supporto a MongoDB è stato rimosso a <strong>luglio 2026</strong>. Non è stata una scelta contro Mongo come
-database, ma contro il <strong>costo di mantenere due paradigmi diversi</strong> nella stessa applicazione.</p>
-<h3 id="che-cosa-costava-davvero">Che cosa costava davvero</h3>
+<h2 id="perche-due-provider-sql">Perché due provider SQL</h2>
+<p>La domanda legittima è l'opposto: perché non sceglierne uno e semplificare?</p>
+<p>Perché un template non conosce il proprio contesto di installazione. Molte organizzazioni sono
+standardizzate su <strong>SQL Server</strong> — DBA, backup, procedure di ripristino, competenze già in casa.
+Altre, soprattutto in cloud e in hosting a basso costo, hanno <strong>PostgreSQL</strong>. Un boilerplate che ne
+supporta uno solo esclude a priori metà dei progetti possibili, per un motivo che non è tecnico ma
+organizzativo.</p>
+<p>Quello che rende la scelta sostenibile è il <strong>costo di mantenimento</strong>, che qui è quasi nullo: i due
+provider condividono lo <strong>stesso identico modello EF</strong> e lo stesso codice applicativo. Le uniche
+cose che raddoppiano sono:</p>
 <ul>
-<li><strong>Due implementazioni per ogni repository.</strong> 15 interfacce × 2 implementazioni: ogni nuova query
-andava scritta due volte, in due linguaggi di accesso ai dati diversi, e verificata due volte.</li>
-<li><strong>Il modello dati al minimo comune denominatore.</strong> La chiave primaria era <code>ObjectId</code> — un tipo
-della libreria di Mongo — anche quando girava su SQL Server, dove diventava un <code>char(24)</code>
-innaturale. Le liste di id erano array dentro il documento su Mongo e join table su SQL: quella
-singola differenza generava quasi tutto il lavoro extra del ramo SQL.</li>
-<li><strong>Astrazioni esistenti solo per la coesistenza.</strong> <code>ITransactionRunner</code> con la sessione &quot;ambient&quot;
-in un accessor scoped, <code>Conversions.cs</code>, <code>Links.cs</code>, <code>SaveAndDetachAsync</code> per il bug del change
-tracker: componenti nati per far convivere i due mondi, non per servire il dominio.</li>
-<li><strong>Funzioni da ricostruire da una parte all'altra.</strong> L'indice TTL di Mongo non esiste su SQL, e ha
-richiesto un <code>BackgroundService</code> dedicato — che infatti è rimasto.</li>
+<li>i file di <strong>migration</strong>, che però sono generati automaticamente;</li>
+<li><code>DatabaseStats</code>, che è <strong>un file per provider</strong> — l'unico punto dell'applicazione con SQL
+provider-specifico.</li>
 </ul>
-<h3 id="che-cosa-si-e-guadagnato-rimuovendolo">Che cosa si è guadagnato rimuovendolo</h3>
-<p>Sono spariti interi rami del codice: <code>Repositories/</code> (con <code>Mongo/</code> ed <code>Ef/</code>), <code>Transactions/</code>,
-<code>Documents/</code>, <code>Conversions.cs</code>, <code>Links.cs</code>. Gli handler sono diventati più corti e più diretti: una
-query LINQ che proietta sul response, senza passare da un'interfaccia che non astrae più niente.</p>
-<p>E soprattutto: <strong>il modello dati ha smesso di essere un compromesso</strong>. Chiavi intere, FK vere,
-cascade dichiarativa nel database invece che scritta a mano negli handler.</p>
-<h3 id="che-cosa-si-e-perso">Che cosa si è perso</h3>
-<p>Va detto con onestà: si è persa la possibilità di installare l'applicazione su MongoDB. Se un domani
-servisse — perché un cliente ha solo quello — la strada non sarebbe reintrodurre il vecchio doppio
-supporto, ma valutare il provider EF Core per MongoDB, che nel frattempo è maturato. Il modello EF
-oggi è unico e pulito: sarebbe un punto di partenza migliore di quello di allora.</p>
+<p>Il prezzo non è zero, però, ed è bene sapere dove si paga: la portabilità non è garantita dal
+compilatore, ma dalla <strong>disciplina nello scrivere query LINQ traducibili da entrambi</strong>. Il caso
+concreto è <code>Contains</code> su stringa, case-insensitive su SQL Server e case-sensitive su PostgreSQL.
+È il motivo per cui l'username di login si salva in minuscolo, ed è il controllo da fare su ogni
+nuova query di ricerca.</p>
+<h2 id="perche-niente-strato-repository">Perché niente strato repository</h2>
+<p>Un'interfaccia <code>IUserRepository</code> con una sola implementazione non astrae niente: aggiunge un file,
+un livello di indirezione e un punto in cui il codice può divergere dal modello, senza dare in
+cambio la libertà di sostituire l'implementazione.</p>
+<p>Il seam c'è già, ed è <code>AppDbContext</code>: è <code>abstract</code>, è provider-agnostico, e la DI decide quale
+derivata iniettare. Gli handler dipendono da lui e non sanno quale database c'è sotto — esattamente
+la garanzia che darebbero le interfacce, senza il codice da mantenere.</p>
+<p>Che cosa si guadagna concretamente:</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// Un handler di lettura, per intero.</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GetGroupsHandler</span>(<span class="hljs-params">AppDbContext db</span>) : IRequestHandler&lt;GetGroupsQuery, List&lt;GroupResponse&gt;&gt;</span>
+{
+    <span class="hljs-keyword">public</span> Task&lt;List&lt;GroupResponse&gt;&gt; Handle(GetGroupsQuery request, CancellationToken ct) =&gt;
+        db.Set&lt;Group&gt;()
+            .Select(g =&gt; <span class="hljs-keyword">new</span> GroupResponse(g.Id, g.Name, g.Description))
+            .ToListAsync(ct);
+}
+</code></pre>
+<p>Con uno strato repository la stessa lettura richiederebbe un metodo nell'interfaccia, la sua
+implementazione, e comunque questo handler — che a quel punto si limiterebbe a inoltrare la
+chiamata.</p>
+<p><strong>Quando andrebbe rivista.</strong> Se il progetto dovesse accedere a una sorgente dati che non è EF Core
+— un servizio esterno, una coda, un database non relazionale — quella sorgente merita la propria
+astrazione. Il punto non è &quot;mai interfacce&quot;: è non introdurre un'interfaccia dove esiste una sola
+implementazione possibile.</p>
 <h2 id="perche-la-chiave-primaria-e-int-identity">Perché la chiave primaria è <code>int</code> identity</h2>
-<p>Questa è la decisione <strong>ribaltata</strong> rispetto alla versione precedente, dove la PK era <code>ObjectId</code>
-salvato come <code>char(24)</code>. Vale la pena spiegare perché il ribaltamento è coerente e non un
-ripensamento.</p>
-<h3 id="la-vecchia-decisione-era-condizionata-e-lo-diceva">La vecchia decisione era condizionata, e lo diceva</h3>
-<p>La documentazione dell'epoca chiudeva l'analisi con una condizione esplicita:</p>
-<blockquote>
-<p><em>&quot;Se l'applicazione diventasse <strong>solo SQL Server</strong>, greenfield, senza Mongo: lì <code>int IDENTITY</code> — o
-<code>bigint</code> — è un default eccellente e convenzionale per un gestionale, perché sparisce il vincolo
-del modello condiviso.&quot;</em></p>
-</blockquote>
-<p>È esattamente quello che è successo. <code>ObjectId</code> non era stato scelto perché migliore in assoluto: era
-il <strong>minimo comune denominatore</strong> fra i due provider, dato che Mongo non ha auto-increment nativo e
-il modello POCO era condiviso. Caduto Mongo, è caduto il vincolo.</p>
-<h3 id="i-vantaggi-che-ora-si-incassano">I vantaggi che ora si incassano</h3>
+<h3 id="i-vantaggi-che-si-incassano">I vantaggi che si incassano</h3>
 <ul>
-<li><strong>Storage compatto</strong>: 4 byte contro 24. In SQL Server la chiave del clustered index viene copiata
-dentro <em>ogni</em> indice non-clustered, quindi una PK stretta alleggerisce tutti gli indici.</li>
-<li><strong>Insert sequenziali</strong>: essendo monotòni, niente page split da chiavi casuali.</li>
+<li><strong>Storage compatto</strong>: 4 byte. In SQL Server la chiave del clustered index viene copiata dentro
+<em>ogni</em> indice non-clustered, quindi una PK stretta alleggerisce tutti gli indici.</li>
+<li><strong>Insert sequenziali</strong>: essendo monotòni, niente page split da chiavi casuali — il difetto
+classico dei <code>Guid</code> come chiave clusterizzata.</li>
 <li><strong>Join più veloci</strong>: confronto fra interi invece che fra stringhe con collation.</li>
 <li><strong>Leggibilità operativa</strong>: <code>WHERE Id = 1042</code> è comodo da digitare e da citare in un ticket.</li>
 <li><strong>Convenzione di casa</strong>: è ciò che ogni DBA si aspetta, su entrambi i provider.</li>
@@ -197,21 +198,22 @@ dentro <em>ogni</em> indice non-clustered, quindi una PK stretta alleggerisce tu
 visibile ovunque: gli handler di creazione fanno <strong>due</strong> <code>SaveChangesAsync</code>, perché l'audit log ha
 bisogno dell'id. Nel seed, i legami si esprimono via navigation property invece che con id
 costanti.</li>
-<li><strong>Enumerabilità</strong>: <code>/users/1</code>, <code>/users/2</code>… sono indovinabili. Espone al scraping sequenziale e al
+<li><strong>Enumerabilità</strong>: <code>/users/1</code>, <code>/users/2</code>… sono indovinabili. Espone allo scraping sequenziale e al
 rischio IDOR <strong>se un controllo di autorizzazione fosse debole</strong> — per questo ogni endpoint è
 protetto da una policy sui permessi, che è la difesa vera. Espone anche informazioni di business
 (quanti utenti hai).</li>
 <li><strong>Non globalmente unici</strong>: unire due database o generare id offline richiederebbe una sequence
-centrale. Non è uno scenario previsto.</li>
+centrale. Non è uno scenario previsto dal template.</li>
 <li><strong>Collisioni fra ambienti</strong>: replicare dati fra sviluppo e produzione è meno immediato.</li>
 </ul>
 <p>Il primo costo è strutturale e si vede nel codice tutti i giorni. Gli altri tre sono accettabili in
-un gestionale di catalogo con endpoint autenticati e permessi granulari.</p>
+un gestionale con endpoint autenticati e permessi granulari — che è esattamente il profilo di
+applicazione per cui il template esiste.</p>
 <h3 id="perche-non-bigint">Perché non <code>bigint</code></h3>
-<p><code>int</code> arriva a ~2,1 miliardi di righe. DelVoltone è un catalogo — prodotti, località, formati,
-utenti, più i log — e non si avvicina neanche lontanamente a quel limite. Se una tabella di log
-dovesse crescere oltre le previsioni, la si può migrare a <code>bigint</code> singolarmente: è una migration
-mirata, non una decisione da prendere adesso per tutte le tabelle.</p>
+<p><code>int</code> arriva a ~2,1 miliardi di righe: un gestionale interno non si avvicina neanche lontanamente a
+quel limite. Se una tabella di log dovesse crescere oltre le previsioni, la si può migrare a
+<code>bigint</code> singolarmente — è una migration mirata, non una decisione da prendere adesso per tutte le
+tabelle.</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -233,49 +235,44 @@ mirata, non una decisione da prendere adesso per tutte le tabelle.</p>
 <td>Se una singola tabella dovesse superare il limite</td>
 </tr>
 <tr>
-<td><code>ObjectId</code> come <code>binary(12)</code></td>
-<td style="text-align:right">12</td>
-<td>Variante ottimizzata della vecchia scelta</td>
-</tr>
-<tr>
 <td><code>uniqueidentifier</code> (Guid)</td>
 <td style="text-align:right">16</td>
 <td>Casuale → frammentazione degli indici</td>
-</tr>
-<tr>
-<td><code>ObjectId</code> come <code>char(24)</code></td>
-<td style="text-align:right">24</td>
-<td>La <strong>vecchia</strong> scelta, legata al vincolo dual-provider</td>
 </tr>
 </tbody>
 </table>
 </div>
 <h3 id="quando-andrebbe-rivista">Quando andrebbe rivista</h3>
 <p>Se servisse esporre identificativi <strong>non enumerabili</strong> verso l'esterno — per esempio aprendo una
-parte delle API a un pubblico non autenticato — la strada non sarebbe tornare a <code>ObjectId</code> come PK,
-ma aggiungere una colonna <strong>chiave pubblica</strong> (<code>Guid</code> o slug, unique) accanto alla PK intera,
-lasciando le FK interne su <code>int</code>.</p>
-<h2 id="perche-niente-strato-repository">Perché niente strato repository</h2>
-<p>Nella versione dual-paradigma le interfacce <code>I*Repository</code> erano il seam: cambiare provider
-significava cambiare quali classi le implementavano. Con due provider <strong>entrambi SQL ed entrambi su
-EF Core</strong>, quella funzione è scomparsa — l'astrazione sarebbe stata un'interfaccia con una sola
-implementazione, cioè indirezione pura.</p>
-<p><code>AppDbContext</code> è già il punto di astrazione: è <code>abstract</code>, è provider-agnostico, e la DI decide quale
-derivata iniettare. Gli handler dipendono da lui e non sanno quale database c'è sotto — esattamente
-la garanzia che prima davano le interfacce, senza il codice da mantenere.</p>
-<p><strong>Il rovescio della medaglia</strong>, da tenere presente: la portabilità fra provider non è più garantita
-dal tipo, ma dalla <strong>disciplina nello scrivere query LINQ traducibili da entrambi</strong>. Il caso concreto
-è <code>Contains</code> su stringa, case-insensitive su SQL Server e case-sensitive su PostgreSQL. È il motivo
-per cui le email si salvano in minuscolo, ed è il controllo da fare su ogni nuova query di ricerca.</p>
-<h2 id="perche-due-provider-sql-e-non-uno-solo">Perché due provider SQL, e non uno solo</h2>
-<p>Si potrebbe obiettare che, avendo rimosso Mongo per semplificare, la conclusione coerente sarebbe
-stata restare su un solo database. La differenza è nel <strong>costo di mantenimento</strong>, che qui è quasi
-nullo: SQL Server e PostgreSQL condividono lo <strong>stesso identico modello EF</strong> e lo stesso codice
-applicativo. Le uniche cose che raddoppiano sono i file di migration — generati automaticamente — e
-<code>DatabaseStats</code>, che è un file per provider.</p>
-<p>Non era così con Mongo, dove a raddoppiare era ogni singola query.</p>
-<p>Il beneficio è concreto: SQL Server per le installazioni on-premise standardizzate, PostgreSQL per
-l'hosting cloud a basso costo, senza toccare il codice.</p>
+parte delle API a un pubblico non autenticato — la strada non sarebbe cambiare la PK, ma aggiungere
+una colonna <strong>chiave pubblica</strong> (<code>Guid</code> o slug, unique) accanto alla PK intera, lasciando le FK
+interne su <code>int</code>.</p>
+<h2 id="perche-il-template-non-contiene-migration">Perché il template non contiene migration</h2>
+<p>Le cartelle <code>Migrations/SqlServer</code> e <code>Migrations/Postgres</code> nascono <strong>vuote</strong>, e il primo comando che
+si esegue in un progetto nuovo genera l'<code>InitialCreate</code>.</p>
+<p>È deliberato. Una migration committata nel template sarebbe <strong>immutabile per sempre</strong> in ogni
+progetto generato: il primo file di storia dello schema, scritto da qualcun altro, in un momento in
+cui il modello del template poteva essere diverso da quello che il progetto riceve. Peggio, un
+<code>copier update</code> che modificasse le entità dovrebbe poi riconciliare migration già applicate su
+database reali.</p>
+<p>Generandola nel progetto, invece, la prima migration riflette esattamente il modello ricevuto ed è
+il primo commit di una storia che appartiene al progetto.</p>
+<p><strong>Il prezzo</strong>: è un passaggio in più da ricordare dopo la generazione, e se lo si dimentica
+l'applicazione parte con un database senza schema. Per questo compare nei task post-generazione,
+nel README del progetto e in <a href="../progetto/generazione.html">Generare e aggiornare</a>.</p>
+<h2 id="perche-vertical-slice">Perché vertical slice</h2>
+<p>Il criterio non è estetico: è il costo dell'operazione più frequente.</p>
+<p>In un'architettura a livelli, aggiungere un'operazione significa toccare quattro file in quattro
+cartelle diverse — e cancellarla significa ricordarsi di tutti e quattro. In vertical slice
+l'operazione <strong>è</strong> una cartella: si crea, si legge e si elimina in un posto solo.</p>
+<p>Per un template il vantaggio è doppio, perché rende meccanico ciò che deve accadere in ogni
+progetto: aggiungere feature. È anche il motivo per cui le <a href="../progetto/skill.html">skill</a> possono
+scaffoldare una slice in modo affidabile — c'è una forma sola, ripetuta.</p>
+<p><strong>Il rovescio</strong>: c'è più ripetizione fra slice simili di quanta ne avrebbe un service condiviso, e
+la tentazione di estrarre &quot;il metodo comune&quot; arriva presto. La regola del template è resistere
+finché la ripetizione non è <strong>identica e stabile</strong>: la duplicazione fra due slice è quasi sempre
+apparente, e il service condiviso estratto troppo presto diventa il punto in cui le feature si
+accoppiano di nuovo.</p>
 <h2 id="approfondimenti">Approfondimenti</h2>
 <ul>
 <li><strong><a href="architettura.html">Architettura</a></strong> — la struttura che queste decisioni hanno prodotto</li>
@@ -287,7 +284,7 @@ l'hosting cloud a basso costo, senza toccare il codice.</p>
   </div>
 
   <footer class="footer">
-    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
   </footer>
 </body>
 </html>

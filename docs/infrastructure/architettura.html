@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Architettura — DelVoltone</title>
+  <title>Architettura — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="../index.html">
-      <span class="brand-name">DelVoltone</span>
-      <span class="brand-sub">Documentazione tecnica</span>
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
     </a>
   </header>
 
@@ -24,30 +24,23 @@
           <p class="nav-title">Progetto</p>
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
         <div class="nav-group">
-          <p class="nav-title">Database</p>
+          <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
-            <li><a href="../database_sql-only/architettura.html" aria-current="page">Architettura</a></li>
-            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
-            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
-          </ul>
-        </div>
-        <div class="nav-group">
-          <p class="nav-title">Database — versione storica (obsoleta)</p>
-          <ul>
-            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
-            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html" aria-current="page">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
         <div class="nav-group">
           <p class="nav-title">Autenticazione</p>
           <ul>
-            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
             <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
           </ul>
         </div>
@@ -61,9 +54,9 @@
     </nav>
 
     <main>
-      <p class="eyebrow">Database</p>
+      <p class="eyebrow">Infrastruttura</p>
       <article class="prose">
-<h1 id="database-architettura">Database — architettura</h1>
+<h1 id="infrastruttura-architettura">Infrastruttura — architettura</h1>
 <nav class="toc" aria-label="Indice della pagina">
         <p class="toc-title">In questa pagina</p>
         <ul>
@@ -76,7 +69,6 @@
           <li class="lvl-3"><a href="#perche-audit-ed-error-log-non-hanno-fk">Perché audit ed error log non hanno FK</a></li>
           <li class="lvl-2"><a href="#le-differenze-fra-i-due-provider">Le differenze fra i due provider</a></li>
           <li class="lvl-3"><a href="#la-trappola-della-ricerca-case-sensitive">La trappola della ricerca case-sensitive</a></li>
-          <li class="lvl-2"><a href="#il-ciclo-di-vita-all-avvio">Il ciclo di vita, all'avvio</a></li>
           <li class="lvl-2"><a href="#transazioni">Transazioni</a></li>
           <li class="lvl-2"><a href="#lifetime-nella-di">Lifetime nella DI</a></li>
           <li class="lvl-2"><a href="#come-devono-fallire">Come devono fallire</a></li>
@@ -86,11 +78,6 @@
 <p>Questa pagina spiega <strong>come</strong> l'applicazione riesce a girare su due provider SQL diversi con un solo
 modello: dove le due strade si separano, dove si riuniscono, e quali vincoli tengono in piedi la
 portabilità. Il codice corrispondente è in <a href="implementazione.html">Implementazione</a>.</p>
-<blockquote>
-<p>La versione precedente di questa architettura — dual-provider MongoDB / SQL Server, con strato
-repository — è documentata come storico in
-<a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a>.</p>
-</blockquote>
 <h2 id="vista-d-insieme">Vista d'insieme</h2>
 <pre><code>                     appsettings.json / appsettings.local.json
                               / variabili d'ambiente
@@ -141,16 +128,13 @@ migration. È il pattern Microsoft <em>&quot;migrations with multiple providers&
 <pre><code class="language-csharp">services.AddDbContext&lt;AppDbContext, SqlServerAppDbContext&gt;(...);
 </code></pre>
 <p>Così ogni handler può iniettare <code>AppDbContext</code> e non sapere nulla del provider attivo.</p>
-<p><strong>Niente strato repository.</strong> È la differenza più visibile rispetto all'architettura precedente: non
-esistono più 15 interfacce <code>I*Repository</code> con due implementazioni ciascuna. Gli handler usano
-direttamente <code>db.Set&lt;Entità&gt;()</code> con LINQ. Il seam non è più un insieme di interfacce da mantenere: è
-un tipo che EF Core fornisce già.</p>
+<p><strong>Niente strato repository.</strong> Gli handler usano direttamente <code>db.Set&lt;Entità&gt;()</code> con LINQ: il seam
+non è un insieme di interfacce da mantenere, è un tipo che EF Core fornisce già. Il perché — e il
+prezzo che si paga — sono in <a href="decisioni.html">Decisioni</a>.</p>
 <h2 id="layout-delle-cartelle">Layout delle cartelle</h2>
 <pre><code>Features/_Shared/
 ├── Entities/                       # POCO EF: int Id identity, ITimestamped, navigation M2M
 │   ├── User.cs · Group.cs · Role.cs · Permission.cs
-│   ├── Product.cs · ProductType.cs · Typology.cs · Format.cs
-│   ├── Location.cs · Valley.cs · Working.cs
 │   ├── AuditLog.cs · ErrorLog.cs · ErrorLevel.cs · ErrorSource.cs
 │   ├── RefreshToken.cs · SystemConfig.cs
 │   └── ITimestamped.cs
@@ -161,24 +145,28 @@ un tipo che EF Core fornisce già.</p>
 │   ├── DesignTimeFactories.cs      # una factory per derivata, per `dotnet ef`
 │   ├── ExpiredTokenCleanupService.cs
 │   └── Migrations/
-│       ├── SqlServer/              # 20260716172833_InitialCreate + snapshot
-│       └── Postgres/               # 20260716172847_InitialCreate + snapshot
+│       ├── SqlServer/              # vuota nel template: la riempie il primo InitialCreate
+│       └── Postgres/
 ├── DatabaseStats/                  # l'unico punto con SQL provider-specifico
 │   ├── IDatabaseStatsProvider.cs
 │   ├── SqlServerDatabaseStatsProvider.cs
 │   └── PostgresDatabaseStatsProvider.cs
+├── Behaviors/                      # pipeline MediatR: logging, validazione
+├── Middleware/                     # ExceptionHandlingMiddleware
+├── Exceptions/                     # NotFound, Conflict, Forbidden, Unauthorized
+├── Helpers/                        # AuditTrail, Username.Normalize, snapshot JSON
 ├── Seed/DataSeeder.cs              # comune, solo su store vuoto
-└── Extensions/DatabaseExtensions.cs  # AddDatabase: lo switch
+└── Extensions/                     # AddDatabase, AddMediatRWithBehaviors, Auth, endpoint
 </code></pre>
-<p>Rispetto alla versione con Mongo sono spariti interi rami: <code>Repositories/</code> (con le sottocartelle
-<code>Mongo/</code> e <code>Ef/</code>), <code>Transactions/</code>, <code>Documents/</code>, <code>Conversions.cs</code> e <code>Links.cs</code>.</p>
+<p>Le entità di dominio del progetto si aggiungono in <code>Entities/</code>, accanto a queste.</p>
 <h2 id="il-modello-dati">Il modello dati</h2>
 <p>Le POCO in <code>Entities/</code> sono l'<strong>unico modello</strong>: niente entità separate per provider, niente mapping
-layer, nessun suffisso <code>Document</code>.</p>
+layer, nessun suffisso <code>Document</code> o <code>Entity</code>.</p>
 <pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">User</span> : <span class="hljs-title">ITimestamped</span>
 {
     <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Id { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }                     <span class="hljs-comment">// identity: lo assegna il DB</span>
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Email { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Username { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;   <span class="hljs-comment">// l&#x27;identità di login, unica</span>
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span>? Email { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }              <span class="hljs-comment">// anagrafico, opzionale</span>
     <span class="hljs-keyword">public</span> List&lt;Group&gt; Groups { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = [];   <span class="hljs-comment">// M2M → join table UserGroups</span>
     <span class="hljs-keyword">public</span> List&lt;Role&gt; Roles { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = [];     <span class="hljs-comment">// M2M → join table UserRoles</span>
     <span class="hljs-keyword">public</span> DateTime CreatedAt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
@@ -197,15 +185,15 @@ layer, nessun suffisso <code>Document</code>.</p>
 <tbody>
 <tr>
 <td>Chiave primaria</td>
-<td><code>int Id</code>, identity — mai <code>string</code>, <code>Guid</code> o <code>ObjectId</code></td>
+<td><code>int Id</code>, identity — mai <code>string</code> o <code>Guid</code></td>
 </tr>
 <tr>
 <td>Nomi</td>
-<td>Nessun suffisso: <code>User</code>, <code>Product</code>, <code>AuditLog</code></td>
+<td>Nessun suffisso: <code>User</code>, <code>Group</code>, <code>AuditLog</code></td>
 </tr>
 <tr>
 <td>Stringhe</td>
-<td>Sempre dimensionate con <code>HasMaxLength</code> in <code>OnModelCreating</code>; testo illimitato solo dove serve (Desc, Photo base64, StackTrace, snapshot audit)</td>
+<td>Sempre dimensionate con <code>HasMaxLength</code> in <code>OnModelCreating</code>; testo illimitato solo dove serve (messaggi, stack trace, snapshot audit)</td>
 </tr>
 <tr>
 <td>Enum</td>
@@ -234,10 +222,8 @@ non li valorizzano mai a mano.</strong></p>
 come <code>Modified</code>, quindi <code>UpdatedAt</code> non si aggiorna da solo. Chi cambia solo i ruoli o i gruppi di un
 utente deve toccare <code>UpdatedAt</code> esplicitamente (vedi <code>UpdateUserHandler</code>).</p>
 <h2 id="lo-schema-relazionale">Lo schema relazionale</h2>
-<p>Relazionale classico — <strong>19 tabelle</strong>, identiche nella struttura sui due provider. Le relazioni
-molti-a-molti sono join table con chiave composta e <code>ON DELETE CASCADE</code>; i riferimenti singoli sono
-FK con <code>Restrict</code>, così una voce di lookup ancora usata non si può cancellare (il tentativo torna
-<code>409 Conflict</code>).</p>
+<p>Relazionale classico — <strong>8 entità e 4 join table</strong>, identiche nella struttura sui due provider. Le
+relazioni molti-a-molti sono join table con chiave composta e <code>ON DELETE CASCADE</code>.</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -251,7 +237,7 @@ FK con <code>Restrict</code>, così una voce di lookup ancora usata non si può 
 <tr>
 <td><code>User</code></td>
 <td><code>Users</code></td>
-<td><code>Email</code> unique</td>
+<td><code>Username</code> unique (è la chiave di login); <code>Email</code> indicizzata ma <strong>non</strong> unique, perché opzionale</td>
 </tr>
 <tr>
 <td><code>Group</code> · <code>Role</code> · <code>Permission</code></td>
@@ -274,28 +260,16 @@ FK con <code>Restrict</code>, così una voce di lookup ancora usata non si può 
 <td><strong>nessuna FK</strong>: lo storico deve sopravvivere alle cancellazioni; indici su <code>Timestamp</code> e su <code>(EntityType, EntityId)</code></td>
 </tr>
 <tr>
-<td><code>Product</code></td>
-<td><code>Products</code></td>
-<td>FK <code>ProductTypeId</code> (Restrict, obbligatoria) + FK nullable verso Location, Valley, Format, Working (Restrict); indice su <code>Title</code></td>
-</tr>
-<tr>
-<td><code>ProductType</code></td>
-<td><code>ProductTypes</code></td>
-<td>FK <code>TypologyId</code> → <code>Typologies</code> (Restrict)</td>
-</tr>
-<tr>
-<td><code>Format</code> · <code>Location</code> · <code>Typology</code> · <code>Valley</code> · <code>Working</code></td>
-<td>tabelle omonime</td>
-<td>lookup piatte</td>
-</tr>
-<tr>
 <td><code>SystemConfig</code></td>
 <td><code>SystemConfigs</code></td>
-<td>i due <code>LogRetentionConfig</code> annidati sono <code>ComplexProperty</code> → colonne <code>ErrorLogs_*</code> / <code>AuditLogs_*</code> nella stessa tabella</td>
+<td>riga singola; i due <code>LogRetentionConfig</code> annidati sono <code>ComplexProperty</code> → colonne <code>ErrorLogs_*</code> / <code>AuditLogs_*</code> nella stessa tabella</td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>Le tabelle del dominio si aggiungono a queste. Per i riferimenti singoli la convenzione del
+template è la FK con <code>Restrict</code>, non <code>Cascade</code>: una voce di lookup ancora usata non si deve poter
+cancellare, e il tentativo torna <code>409 Conflict</code>.</p>
 <h3 id="perche-audit-ed-error-log-non-hanno-fk">Perché audit ed error log non hanno FK</h3>
 <p><code>ActorId</code> ed <code>EntityId</code> <strong>non</strong> sono chiavi esterne, ed è una scelta deliberata. Se <code>ActorId</code> fosse
 una FK verso <code>Users</code>, cancellare un utente cancellerebbe (o bloccherebbe) le tracce di ciò che ha
@@ -351,51 +325,20 @@ database:</p>
 <code>IDatabaseStatsProvider</code>. <strong>La sesta è l'unica che riguarda chi scrive codice</strong>, ed è la trappola
 principale di questa architettura.</p>
 <h3 id="la-trappola-della-ricerca-case-sensitive">La trappola della ricerca case-sensitive</h3>
-<p>Una <code>Where(x =&gt; x.Email.Contains(term))</code> si comporta <strong>diversamente</strong> sui due provider. La
-contromisura adottata: le email si salvano <strong>sempre in minuscolo</strong> e si confrontano con input già
-normalizzato in minuscolo. Per le ricerche testuali del catalogo, qualunque nuova query deve essere
-verificata su entrambi i provider prima di considerarsi finita.</p>
-<h2 id="il-ciclo-di-vita-all-avvio">Il ciclo di vita, all'avvio</h2>
-<p>Il codice è lo stesso per entrambi i provider, in fondo a <code>Program.cs</code>:</p>
-<div class="table-wrap">
-<table>
-<thead>
-<tr>
-<th>Passo</th>
-<th>Che cosa succede</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Schema</strong></td>
-<td><code>Database.MigrateAsync()</code> applica le migration mancanti del provider attivo e <strong>crea il database se non esiste</strong>. Mai <code>EnsureCreated</code>, mai drop</td>
-</tr>
-<tr>
-<td><strong>Indici</strong></td>
-<td>Dichiarati nel model → creati dalle migration</td>
-</tr>
-<tr>
-<td><strong>Seed</strong></td>
-<td><code>SeedAsync()</code>: popola <strong>solo uno store vuoto</strong>. Gate: se esiste anche un solo ruolo, esce subito</td>
-</tr>
-</tbody>
-</table>
-</div>
-<p>Il seed inserisce rispettando l'ordine delle FK — tipologie, formati, località, valli, lavorazioni,
-tipi prodotto, prodotti, poi permessi/ruoli/gruppi/utenti. Gli id li assegna il database, quindi i
-legami del seed sono espressi via <strong>navigation property</strong>, non via id costanti.</p>
-<blockquote>
-<p><strong>Regola operativa</strong>: non esiste wipe né reseed automatico. Per ripartire da zero il database si
-droppa a mano.</p>
-</blockquote>
+<p>Una <code>Where(x =&gt; x.Username.Contains(term))</code> si comporta <strong>diversamente</strong> sui due provider. La
+contromisura adottata: l'username di login si salva <strong>sempre in minuscolo</strong>, normalizzato da un
+unico helper, e si confronta con input passato dallo stesso helper. Per le ricerche testuali del
+dominio, qualunque nuova query deve essere verificata su entrambi i provider prima di considerarsi
+finita.</p>
 <h2 id="transazioni">Transazioni</h2>
-<p><code>ITransactionRunner</code> <strong>non esiste più</strong>, ed è una semplificazione diretta della rimozione di Mongo.
-Serviva perché su MongoDB la transazione è un oggetto — la sessione — da passare a ogni operazione,
-mentre su EF Core vive sulla connessione del <code>DbContext</code>.</p>
-<p>Oggi tutti gli handler di una richiesta condividono lo stesso <code>AppDbContext</code> scoped: un singolo
+<p>Tutti gli handler di una richiesta condividono lo stesso <code>AppDbContext</code> scoped: un singolo
 <code>SaveChangesAsync</code> è già atomico, e dove serve una transazione esplicita si usa direttamente
-<code>db.Database.BeginTransactionAsync</code>. Le cancellazioni a cascata che prima erano scritte a mano negli
-handler (<code>RemoveRoleFromAllUsersAsync</code>…) ora le garantisce il <strong>database</strong> con le FK <code>CASCADE</code>.</p>
+<code>db.Database.BeginTransactionAsync</code>. Le cancellazioni a cascata delle join table le garantisce il
+<strong>database</strong> con le FK <code>CASCADE</code>, non codice scritto a mano negli handler.</p>
+<p>⚠️ Un dettaglio che si paga caro se lo si ignora: <strong>entrambi i provider hanno
+<code>EnableRetryOnFailure</code></strong>, e con una strategia di retry attiva le transazioni aperte a mano vanno
+eseguite <strong>dentro</strong> la strategia, altrimenti EF lancia <em>&quot;does not support user-initiated
+transactions&quot;</em>. Il seed lo fa già, con <code>db.Database.CreateExecutionStrategy()</code>.</p>
 <h2 id="lifetime-nella-di">Lifetime nella DI</h2>
 <div class="table-wrap">
 <table>
@@ -443,7 +386,7 @@ iniettare un <code>DbContext</code> scoped direttamente in un singleton è l'err
 <td>Default <code>SqlServer</code></td>
 </tr>
 <tr>
-<td><code>Database:Provider</code> con un valore sconosciuto (compreso <code>MongoDB</code>)</td>
+<td><code>Database:Provider</code> con un valore sconosciuto</td>
 <td><code>InvalidOperationException</code> <strong>all'avvio</strong>, con i valori ammessi nel messaggio</td>
 </tr>
 <tr>
@@ -462,7 +405,7 @@ si ripara, non fallire a metà di una richiesta.</p>
 <h2 id="approfondimenti">Approfondimenti</h2>
 <ul>
 <li><strong><a href="implementazione.html">Implementazione</a></strong> — il codice di ogni componente citato qui</li>
-<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché è caduto Mongo, che cosa è stato scartato</li>
+<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché niente repository, che cosa è stato scartato</li>
 </ul>
 
       </article>
@@ -470,7 +413,7 @@ si ripara, non fallire a metà di una richiesta.</p>
   </div>
 
   <footer class="footer">
-    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
   </footer>
 </body>
 </html>
