@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panoramica — DelVoltone</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">DelVoltone</span>
+      <span class="brand-sub">Documentazione tecnica</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html" aria-current="page">Panoramica</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database</p>
+          <ul>
+            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
+            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
+            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
+            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database — versione storica (obsoleta)</p>
+          <ul>
+            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Progetto</p>
+      <article class="prose">
+<h1 id="panoramica-del-progetto">Panoramica del progetto</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#che-cos-e">Che cos'è</a></li>
+          <li class="lvl-2"><a href="#il-monorepo">Il monorepo</a></li>
+          <li class="lvl-2"><a href="#backend-vertical-slice">Backend — vertical slice</a></li>
+          <li class="lvl-3"><a href="#le-api">Le API</a></li>
+          <li class="lvl-3"><a href="#cosa-c-e-in-programcs">Cosa c'è in <code>Program.cs</code></a></li>
+          <li class="lvl-2"><a href="#frontend-vue-3">Frontend — Vue 3</a></li>
+          <li class="lvl-2"><a href="#permessi">Permessi</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<h2 id="che-cos-e">Che cos'è</h2>
+<p>DelVoltone è un <strong>gestionale di catalogo</strong>: anagrafiche di prodotti con la loro classificazione
+(tipologie, tipi prodotto, formati, lavorazioni) e la loro collocazione geografica (località, valli),
+più tutto quello che serve a governarlo: utenti, gruppi, ruoli e permessi, tracciamento delle
+modifiche, log degli errori, configurazione e monitoraggio del database.</p>
+<p>Non è un'applicazione qualsiasi appoggiata a un database: due scelte la caratterizzano, e sono
+il motivo per cui esiste buona parte di questa documentazione.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Scelta</th>
+<th>In pratica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Doppio provider di database</strong></td>
+<td>La stessa applicazione gira su SQL Server o su PostgreSQL, via Entity Framework Core. Si sceglie da configurazione, senza toccare il codice. Vedi <a href="../database_sql-only/panoramica.html">Database</a>.</td>
+</tr>
+<tr>
+<td><strong>Doppia strategia di autenticazione</strong></td>
+<td>Accesso con email e password oppure con account Microsoft (Azure AD). In entrambi i casi il backend emette un JWT interno. Vedi <a href="../autenticazione/autenticazione.html">Autenticazione</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="il-monorepo">Il monorepo</h2>
+<p>Un workspace <strong>Nx</strong> con <strong>pnpm</strong>, due applicazioni:</p>
+<pre><code>del-voltone/
+├── apps/
+│   ├── backend/DelVoltone.Api/    # ASP.NET Core 10 — Minimal API, vertical slice
+│   └── frontend/                  # Vue 3 + Vite + TypeScript
+└── package.json                   # gli script di comodo del workspace
+</code></pre>
+<pre><code class="language-bash">pnpm serve:backend      <span class="hljs-comment"># API su http://localhost:5000</span>
+pnpm serve:frontend     <span class="hljs-comment"># SPA su http://localhost:5173</span>
+pnpm build              <span class="hljs-comment"># build di entrambe</span>
+pnpm <span class="hljs-built_in">test</span>:frontend      <span class="hljs-comment"># Vitest</span>
+</code></pre>
+<p>Questa documentazione spiega <em>com'è fatto e perché</em>. Le convenzioni operative di scrittura del
+codice — naming, struttura di una slice, regole dei repository — vivono <strong>accanto al codice</strong>, nel
+repository dell'applicazione.</p>
+<h2 id="backend-vertical-slice">Backend — vertical slice</h2>
+<p>Il backend non è diviso per livelli tecnici (controller / service / repository), ma <strong>per
+funzionalità</strong>: ogni operazione vive in una cartella che contiene tutto ciò che le serve.</p>
+<pre><code>Features/
+├── Valleys/                       # una feature
+│   ├── CreateValley/              # una slice: comando + handler + validator + response
+│   │   ├── CreateValleyCommand.cs
+│   │   ├── CreateValleyHandler.cs
+│   │   ├── CreateValleyValidator.cs
+│   │   └── CreateValleyResponse.cs
+│   ├── GetValleys/  GetValleyById/  UpdateValley/  DeleteValley/
+│   └── ValleyEndpoints.cs         # solo routing, nessuna logica
+└── _Shared/                       # ciò che è davvero comune a tutte le feature
+    ├── Entities/                  # le POCO EF Core (int Id identity)
+    ├── Persistence/               # AppDbContext + derivate per provider, migration
+    ├── DatabaseStats/             # dimensioni DB e readiness, per provider
+    ├── Seed/                      # DataSeeder (solo su DB vuoto)
+    ├── Behaviors/                 # pipeline MediatR
+    ├── Middleware/                # gestione errori
+    └── Extensions/                # registrazione servizi ed endpoint
+</code></pre>
+<p>Il percorso di una richiesta è sempre lo stesso:</p>
+<pre><code>HTTP  →  Endpoint (routing)  →  IMediator.Send(comando)
+                                     │
+                                     ├── LoggingBehavior      (durata, esito)
+                                     ├── ValidationBehavior   (FluentValidation → 400)
+                                     └── Handler              (la logica, qui e solo qui)
+                                              │
+                                              └── AppDbContext  →  SQL Server | PostgreSQL
+</code></pre>
+<p>Regole che tengono in piedi l'impianto:</p>
+<ul>
+<li>La logica sta <strong>negli handler</strong>. Gli endpoint instradano e basta; <code>Program.cs</code> non contiene logica.</li>
+<li>Gli handler dipendono <strong>solo da <code>AppDbContext</code></strong>, che è astratto e provider-agnostico: è questo che
+rende possibile il doppio provider. Niente strato repository.</li>
+<li>Ogni scrittura (Create / Update / Delete) registra un <strong>audit log</strong> con attore, entità, azione, IP
+e — per modifiche e cancellazioni — gli snapshot JSON dell'entità.</li>
+<li>Le eccezioni non si gestiscono negli handler: <code>ExceptionHandlingMiddleware</code> le traduce in
+risposte <strong>ProblemDetails</strong> (RFC 7807).</li>
+</ul>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Eccezione</th>
+<th>HTTP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ValidationException</code> (FluentValidation)</td>
+<td>400</td>
+</tr>
+<tr>
+<td><code>UnauthorizedException</code></td>
+<td>401</td>
+</tr>
+<tr>
+<td><code>ForbiddenException</code></td>
+<td>403</td>
+</tr>
+<tr>
+<td><code>NotFoundException</code></td>
+<td>404</td>
+</tr>
+<tr>
+<td><code>ConflictException</code></td>
+<td>409</td>
+</tr>
+<tr>
+<td>qualsiasi altra</td>
+<td>500</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="le-api">Le API</h3>
+<p>Diciotto gruppi di endpoint, tutti sotto <code>/api</code>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Rotte</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Accesso</td>
+<td><code>/api/auth</code></td>
+</tr>
+<tr>
+<td>Identità</td>
+<td><code>/api/users</code> · <code>/api/groups</code> · <code>/api/roles</code> · <code>/api/permissions</code></td>
+</tr>
+<tr>
+<td>Catalogo</td>
+<td><code>/api/products</code> · <code>/api/product-types</code> · <code>/api/typologies</code> · <code>/api/formats</code> · <code>/api/workings</code></td>
+</tr>
+<tr>
+<td>Geografia</td>
+<td><code>/api/locations</code> · <code>/api/valleys</code></td>
+</tr>
+<tr>
+<td>Trasversali</td>
+<td><code>/api/lookups</code> · <code>/api/public</code></td>
+</tr>
+<tr>
+<td>Sistema</td>
+<td><code>/api/audit-logs</code> · <code>/api/error-logs</code> · <code>/api/system-config</code> · <code>/api/monitoring</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>In esecuzione l'API espone la propria specifica OpenAPI, navigabile con Scalar (<code>/scalar</code>) o con
+Swagger UI (<code>/swagger</code>).</p>
+<h3 id="cosa-c-e-in-programcs">Cosa c'è in <code>Program.cs</code></h3>
+<p>Oltre alla registrazione dei servizi, alcune scelte che vale la pena conoscere perché si notano
+solo quando mancano:</p>
+<ul>
+<li><strong><code>UseForwardedHeaders</code> come primissimo middleware.</strong> Dietro il proxy di Render l'IP del client
+arriva in <code>X-Forwarded-For</code>: senza questo, ogni richiesta sembrerebbe provenire dal load balancer
+e il rate limiting per IP diventerebbe di fatto globale.</li>
+<li><strong>Rate limiting partizionato per IP</strong>, non globale: 10 richieste ogni 15 minuti sugli endpoint di
+autenticazione (anti brute-force), 20 al minuto sull'endpoint pubblico di raccolta errori.</li>
+<li><strong>Localizzazione della richiesta</strong> in base ad <code>Accept-Language</code> (<code>it</code> predefinito, <code>en</code> supportato):
+i messaggi di errore dell'API seguono la lingua dell'utente.</li>
+<li><strong>Inizializzazione del database all'avvio</strong>: <code>MigrateAsync()</code> applica le migration mancanti del
+provider attivo (e crea il database se non esiste); poi il seed, identico per i due provider, che
+popola <strong>solo uno store vuoto</strong> — mai un wipe, mai un reseed.</li>
+</ul>
+<h2 id="frontend-vue-3">Frontend — Vue 3</h2>
+<pre><code>src/
+├── pages/          # una pagina per rotta (data/, users/, groups/, roles/, system/, audit-logs/…)
+├── components/     # layout (AppShell, AppNav, AppTopBar), maps/, shared/
+├── stores/         # Pinia, uno per dominio (composition API)
+├── services/       # le chiamate HTTP: solo qui si usa axios
+├── composables/    # usePermission, useApiErrors, useTheme, useBreadcrumb…
+├── plugins/        # vuetify, axios (interceptor), i18n, msal
+├── locales/        # it.ts (predefinito) ed en.ts
+└── router/         # rotte con meta.permission
+</code></pre>
+<p>La catena è sempre <strong>service → store → pagina</strong>: i componenti non chiamano mai <code>axios</code>
+direttamente e non contengono logica di business; i testi passano tutti da <code>t('chiave')</code>.</p>
+<p>L'istanza axios in <code>plugins/axios.ts</code> aggiunge il Bearer token a ogni richiesta, propaga la lingua
+in <code>Accept-Language</code> e su <code>401</code> esegue il logout.</p>
+<p>Oltre alle pagine di gestione ci sono una <strong>ricerca</strong> trasversale e alcune <strong>mappe</strong> (mondo, Europa,
+Italia, Emilia-Romagna, Piacenza) usate per la visualizzazione geografica del catalogo.</p>
+<h2 id="permessi">Permessi</h2>
+<p>Il modello di autorizzazione è lo stesso da un capo all'altro dello stack.</p>
+<p>Un permesso è una stringa <code>risorsa.azione</code> — <code>valleys.read</code>, <code>users.write</code>, <code>products.delete</code>.
+I permessi sono raccolti in <strong>ruoli</strong>; i ruoli si assegnano a un utente <strong>direttamente</strong> o
+<strong>tramite i gruppi</strong> a cui appartiene. Al login il backend risolve la lista completa (ruoli diretti</p>
+<ul>
+<li>ruoli ereditati dai gruppi → permessi, deduplicati) e la scrive nel JWT come claim ripetuti.</li>
+</ul>
+<p>Il seed iniziale crea <strong>39 permessi</strong>: le tre azioni <code>read</code> / <code>write</code> / <code>delete</code> sulle risorse del
+catalogo e dell'identità, più <code>audit.*</code>, <code>errors.*</code>, <code>config.*</code>, <code>monitoring.read</code>,
+<code>permissions.manage</code> e i tre permessi trasversali <code>data.*</code>.</p>
+<p>Lo stesso permesso viene verificato in tre punti:</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// Backend — l&#x27;endpoint richiede il claim</span>
+<span class="hljs-keyword">group</span>.MapDelete(<span class="hljs-string">&quot;/{id}&quot;</span>, …)
+    .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;valleys.delete&quot;</span>));
+</code></pre>
+<pre><code class="language-typescript"><span class="hljs-comment">// Frontend — la rotta non è raggiungibile senza il permesso</span>
+<span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;valleys.read&#x27;</span> }
+</code></pre>
+<pre><code class="language-vue"><span class="hljs-comment">&lt;!-- Frontend — il pulsante non viene nemmeno mostrato --&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">v-btn</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;can(&#x27;valleys.delete&#x27;)&quot;</span> <span class="hljs-attr">color</span>=<span class="hljs-string">&quot;error&quot;</span> @<span class="hljs-attr">click</span>=<span class="hljs-string">&quot;remove&quot;</span> /&gt;</span>
+</code></pre>
+<p>Nascondere il pulsante è cortesia verso l'utente; a <strong>negare</strong> l'operazione è sempre e solo il backend.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="../database_sql-only/panoramica.html">Database</a> — perché due provider SQL e come sono tenuti insieme</li>
+<li><a href="../autenticazione/autenticazione.html">Autenticazione</a> — JWT, Azure AD, permessi</li>
+<li><a href="../guide/nuova-feature.html">Aggiungere una feature</a> — il percorso completo, su una slice reale</li>
+<li><a href="../deploy/render.html">Deploy su Render</a> — come va in produzione</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

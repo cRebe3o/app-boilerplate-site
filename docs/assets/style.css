@@ -1,0 +1,619 @@
+/* Foglio di stile unico della documentazione DelVoltone.
+   Tutte le pagine sono generate da build.mjs e usano solo questo file. */
+
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f6f7f9;
+  --bg-code: #f6f7f9;
+  --text: #1c2024;
+  --text-soft: #5b6570;
+  --text-faint: #838d98;
+  --border: #e2e5e9;
+  --border-strong: #cfd4da;
+  --accent: #1f6f8b;
+  --accent-soft: #e8f1f4;
+  --mark: #b45309;
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "Cascadia Mono", "SF Mono", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+
+  --sidebar: 250px;
+  --content: 800px;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16191d;
+    --bg-soft: #1d2126;
+    --bg-code: #1b1f24;
+    --text: #dfe3e8;
+    --text-soft: #a2acb6;
+    --text-faint: #7c8894;
+    --border: #2b3138;
+    --border-strong: #3a424b;
+    --accent: #6bb6cf;
+    --accent-soft: #1e2c33;
+    --mark: #d99a4e;
+
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ── Barra superiore ─────────────────────────────────────────────────────── */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  height: 3.5rem;
+  padding: 0 1.5rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  color: var(--text);
+}
+
+.brand:hover {
+  text-decoration: none;
+}
+
+.brand-name {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  font-size: 0.85rem;
+  color: var(--text-faint);
+}
+
+/* ── Struttura ───────────────────────────────────────────────────────────── */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar) minmax(0, 1fr);
+  gap: 3rem;
+  max-width: calc(var(--sidebar) + var(--content) + 6rem);
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+main {
+  min-width: 0;
+  max-width: var(--content);
+}
+
+/* ── Navigazione laterale ────────────────────────────────────────────────── */
+
+.sidebar {
+  position: sticky;
+  top: 5rem;
+  align-self: start;
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+.nav-home {
+  display: block;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.nav-group + .nav-group {
+  margin-top: 1.5rem;
+}
+
+.nav-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+.sidebar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar li a {
+  display: block;
+  padding: 0.3rem 0.7rem;
+  margin-left: -0.7rem;
+  border-radius: 5px;
+  color: var(--text-soft);
+}
+
+.sidebar li a:hover {
+  color: var(--text);
+  background: var(--bg-soft);
+  text-decoration: none;
+}
+
+.sidebar li a[aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.nav-toggle,
+.nav-toggle-label {
+  display: none;
+}
+
+/* ── Testo ───────────────────────────────────────────────────────────────── */
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+.prose > *:first-child {
+  margin-top: 0;
+}
+
+.prose h1 {
+  margin: 0 0 1.5rem;
+  font-size: 2rem;
+  font-weight: 680;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.prose h2 {
+  margin: 3rem 0 1rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 1.35rem;
+  font-weight: 640;
+  letter-spacing: -0.01em;
+}
+
+.prose h3 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 640;
+}
+
+.prose h4 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 640;
+  color: var(--text-soft);
+}
+
+.prose p,
+.prose ul,
+.prose ol {
+  margin: 0 0 1rem;
+}
+
+.prose li {
+  margin-bottom: 0.35rem;
+}
+
+.prose li > ul,
+.prose li > ol {
+  margin-top: 0.35rem;
+}
+
+.prose strong {
+  font-weight: 640;
+}
+
+.prose hr {
+  height: 1px;
+  margin: 2.5rem 0;
+  border: 0;
+  background: var(--border);
+}
+
+/* ── Indice della pagina ─────────────────────────────────────────────────────
+   Vive dentro .prose (viene iniettato sotto l'h1): le regole stanno qui sotto,
+   dopo quelle del testo, così vincono a parità di specificità. */
+
+.toc {
+  padding: 1rem 1.25rem;
+  margin: 0 0 2.5rem;
+  font-size: 0.88rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.toc-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+.toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc li {
+  margin: 0;
+  padding: 0.15rem 0;
+}
+
+.toc li.lvl-3 {
+  padding-left: 1rem;
+  font-size: 0.85rem;
+}
+
+.toc a {
+  color: var(--text-soft);
+}
+
+.toc a:hover {
+  color: var(--accent);
+}
+
+/* .prose code arriva dopo nel foglio: serve più specificità per non ereditarne lo sfondo */
+.prose .toc code {
+  padding: 0;
+  font-size: 0.92em;
+  background: none;
+}
+
+/* ── Nota / avvertenza ───────────────────────────────────────────────────── */
+
+.prose blockquote {
+  margin: 1.5rem 0;
+  padding: 0.9rem 1.25rem;
+  background: var(--bg-soft);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 6px 6px 0;
+  color: var(--text-soft);
+}
+
+.prose blockquote > *:first-child {
+  margin-top: 0;
+}
+
+.prose blockquote > *:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Codice ──────────────────────────────────────────────────────────────── */
+
+.prose code {
+  padding: 0.12em 0.4em;
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--accent-soft);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.prose pre {
+  margin: 1.25rem 0;
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.prose pre code {
+  padding: 0;
+  font-size: inherit;
+  background: none;
+  white-space: pre;
+}
+
+/* ── Tabelle ─────────────────────────────────────────────────────────────── */
+
+.table-wrap {
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table-wrap th,
+.table-wrap td {
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-wrap th {
+  font-weight: 640;
+  white-space: nowrap;
+  background: var(--bg-soft);
+}
+
+.table-wrap tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-wrap td code {
+  white-space: nowrap;
+}
+
+/* ── Home ────────────────────────────────────────────────────────────────── */
+
+.home-section {
+  margin-top: 2.5rem;
+}
+
+.home-section h2 {
+  margin: 0 0 1rem;
+  padding-top: 0;
+  border-top: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.85rem;
+}
+
+.card {
+  display: block;
+  padding: 1.1rem 1.25rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.card:hover {
+  background: var(--bg-soft);
+  border-color: var(--border-strong);
+  text-decoration: none;
+}
+
+.card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 640;
+  color: var(--accent);
+}
+
+.card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-soft);
+}
+
+/* ── Piè di pagina ───────────────────────────────────────────────────────── */
+
+.footer {
+  padding: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+
+.footer p {
+  max-width: var(--content);
+  margin: 0 auto;
+}
+
+.footer code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+}
+
+/* ── Schermi stretti ─────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .shell {
+    display: block;
+    padding: 1.5rem 1.25rem 3rem;
+  }
+
+  .nav-toggle-label {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .sidebar {
+    position: static;
+    display: none;
+    max-height: none;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-toggle:checked ~ .sidebar {
+    display: block;
+  }
+
+  .prose h1 {
+    font-size: 1.6rem;
+  }
+
+  .prose h2 {
+    margin-top: 2.25rem;
+    font-size: 1.2rem;
+  }
+}
+
+/* ── Colori della sintassi (highlight.js) ────────────────────────────────── */
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-doctag,
+.hljs-name {
+  color: #8250df;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: #0a7a4a;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-variable,
+.hljs-template-variable {
+  color: #b45309;
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.function_,
+.hljs-built_in,
+.hljs-class .hljs-title {
+  color: #1f6f8b;
+}
+
+.hljs-attr,
+.hljs-property,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #0550ae;
+}
+
+.hljs-meta,
+.hljs-type,
+.hljs-params {
+  color: var(--text-soft);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-literal,
+  .hljs-section,
+  .hljs-doctag,
+  .hljs-name {
+    color: #c297f0;
+  }
+
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-addition,
+  .hljs-attribute,
+  .hljs-meta .hljs-string {
+    color: #7ec99f;
+  }
+
+  .hljs-number,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-link,
+  .hljs-variable,
+  .hljs-template-variable {
+    color: #e0a458;
+  }
+
+  .hljs-title,
+  .hljs-title.class_,
+  .hljs-title.function_,
+  .hljs-built_in,
+  .hljs-class .hljs-title {
+    color: #7fc4dc;
+  }
+
+  .hljs-attr,
+  .hljs-property,
+  .hljs-selector-attr,
+  .hljs-selector-class,
+  .hljs-selector-id {
+    color: #86b7f7;
+  }
+}

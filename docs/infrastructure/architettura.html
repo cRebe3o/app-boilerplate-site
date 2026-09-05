@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architettura — DelVoltone</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">DelVoltone</span>
+      <span class="brand-sub">Documentazione tecnica</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database</p>
+          <ul>
+            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
+            <li><a href="../database_sql-only/architettura.html" aria-current="page">Architettura</a></li>
+            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
+            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database — versione storica (obsoleta)</p>
+          <ul>
+            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Database</p>
+      <article class="prose">
+<h1 id="database-architettura">Database — architettura</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#vista-d-insieme">Vista d'insieme</a></li>
+          <li class="lvl-2"><a href="#il-seam-appdbcontext-astratto">Il seam: <code>AppDbContext</code> astratto</a></li>
+          <li class="lvl-2"><a href="#layout-delle-cartelle">Layout delle cartelle</a></li>
+          <li class="lvl-2"><a href="#il-modello-dati">Il modello dati</a></li>
+          <li class="lvl-3"><a href="#i-timestamp-sono-automatici">I timestamp sono automatici</a></li>
+          <li class="lvl-2"><a href="#lo-schema-relazionale">Lo schema relazionale</a></li>
+          <li class="lvl-3"><a href="#perche-audit-ed-error-log-non-hanno-fk">Perché audit ed error log non hanno FK</a></li>
+          <li class="lvl-2"><a href="#le-differenze-fra-i-due-provider">Le differenze fra i due provider</a></li>
+          <li class="lvl-3"><a href="#la-trappola-della-ricerca-case-sensitive">La trappola della ricerca case-sensitive</a></li>
+          <li class="lvl-2"><a href="#il-ciclo-di-vita-all-avvio">Il ciclo di vita, all'avvio</a></li>
+          <li class="lvl-2"><a href="#transazioni">Transazioni</a></li>
+          <li class="lvl-2"><a href="#lifetime-nella-di">Lifetime nella DI</a></li>
+          <li class="lvl-2"><a href="#come-devono-fallire">Come devono fallire</a></li>
+          <li class="lvl-2"><a href="#approfondimenti">Approfondimenti</a></li>
+        </ul>
+      </nav>
+<p>Questa pagina spiega <strong>come</strong> l'applicazione riesce a girare su due provider SQL diversi con un solo
+modello: dove le due strade si separano, dove si riuniscono, e quali vincoli tengono in piedi la
+portabilità. Il codice corrispondente è in <a href="implementazione.html">Implementazione</a>.</p>
+<blockquote>
+<p>La versione precedente di questa architettura — dual-provider MongoDB / SQL Server, con strato
+repository — è documentata come storico in
+<a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a>.</p>
+</blockquote>
+<h2 id="vista-d-insieme">Vista d'insieme</h2>
+<pre><code>                     appsettings.json / appsettings.local.json
+                              / variabili d'ambiente
+                       Database:Provider + ConnectionStrings
+                                     │
+                                Program.cs
+                        builder.Services.AddDatabase(config)
+                                     │
+              ┌──────────────────────┴──────────────────────┐
+      &quot;SqlServer&quot; (default)                          &quot;PostgreSQL&quot;
+              │                                              │
+    AddDbContext&lt;AppDbContext,                     AddDbContext&lt;AppDbContext,
+      SqlServerAppDbContext&gt;                         PostgresAppDbContext&gt;
+    · UseSqlServer(...)                            · UseNpgsql(...)
+    · EnableRetryOnFailure                         · EnableRetryOnFailure
+    · IDatabaseStatsProvider → DMV                 · IDatabaseStatsProvider → pg_*
+              │                                              │
+              └──────────────────────┬──────────────────────┘
+                                     │
+                      ExpiredTokenCleanupService  (comune)
+                                     │
+                        ── all'avvio, in Program.cs ──
+                          Database.MigrateAsync()
+                               SeedAsync()
+                                     ▼
+                     AppDbContext (abstract, provider-agnostico)
+                                     ▲
+                                     │  unica dipendenza consentita
+                          Handler MediatR (Features/**)
+</code></pre>
+<p>Le due catene <strong>divergono in un punto solo</strong> — <code>AddDatabase</code> — e <strong>riconvergono su un tipo solo</strong>:
+<code>AppDbContext</code>. Tutto ciò che sta sopra e sotto è provider-agnostico.</p>
+<h2 id="il-seam-appdbcontext-astratto">Il seam: <code>AppDbContext</code> astratto</h2>
+<p>Il punto architetturale che rende possibile tutto è un <code>DbContext</code> <strong>astratto</strong> che contiene
+<strong>l'intera</strong> configurazione del modello, e due derivate <strong>vuote</strong>:</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">DbContextOptions options</span>) : <span class="hljs-title">DbContext</span>(<span class="hljs-params">options</span>)</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">protected</span> <span class="hljs-keyword">override</span> <span class="hljs-keyword">void</span> <span class="hljs-title">OnModelCreating</span>(<span class="hljs-params">ModelBuilder mb</span>)</span> { <span class="hljs-comment">/* tutto il model config */</span> }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">SqlServerAppDbContext</span>(<span class="hljs-params">DbContextOptions&lt;SqlServerAppDbContext&gt; options</span>) : <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">options</span>)</span>;
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">PostgresAppDbContext</span>(<span class="hljs-params">DbContextOptions&lt;PostgresAppDbContext&gt; options</span>) : <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">options</span>)</span>;
+</code></pre>
+<p>Le derivate non aggiungono <strong>niente</strong>. Esistono per una ragione sola: EF Core associa un set di
+migration a un tipo di <code>DbContext</code>, quindi servono due tipi distinti per avere due cartelle di
+migration. È il pattern Microsoft <em>&quot;migrations with multiple providers&quot;</em>.</p>
+<p>La DI registra la derivata giusta <strong>dietro il tipo base</strong>:</p>
+<pre><code class="language-csharp">services.AddDbContext&lt;AppDbContext, SqlServerAppDbContext&gt;(...);
+</code></pre>
+<p>Così ogni handler può iniettare <code>AppDbContext</code> e non sapere nulla del provider attivo.</p>
+<p><strong>Niente strato repository.</strong> È la differenza più visibile rispetto all'architettura precedente: non
+esistono più 15 interfacce <code>I*Repository</code> con due implementazioni ciascuna. Gli handler usano
+direttamente <code>db.Set&lt;Entità&gt;()</code> con LINQ. Il seam non è più un insieme di interfacce da mantenere: è
+un tipo che EF Core fornisce già.</p>
+<h2 id="layout-delle-cartelle">Layout delle cartelle</h2>
+<pre><code>Features/_Shared/
+├── Entities/                       # POCO EF: int Id identity, ITimestamped, navigation M2M
+│   ├── User.cs · Group.cs · Role.cs · Permission.cs
+│   ├── Product.cs · ProductType.cs · Typology.cs · Format.cs
+│   ├── Location.cs · Valley.cs · Working.cs
+│   ├── AuditLog.cs · ErrorLog.cs · ErrorLevel.cs · ErrorSource.cs
+│   ├── RefreshToken.cs · SystemConfig.cs
+│   └── ITimestamped.cs
+├── Persistence/
+│   ├── AppDbContext.cs             # abstract: TUTTO il model config + ApplyTimestamps
+│   ├── SqlServerAppDbContext.cs    # derivata vuota → Migrations/SqlServer
+│   ├── PostgresAppDbContext.cs     # derivata vuota → Migrations/Postgres
+│   ├── DesignTimeFactories.cs      # una factory per derivata, per `dotnet ef`
+│   ├── ExpiredTokenCleanupService.cs
+│   └── Migrations/
+│       ├── SqlServer/              # 20260716172833_InitialCreate + snapshot
+│       └── Postgres/               # 20260716172847_InitialCreate + snapshot
+├── DatabaseStats/                  # l'unico punto con SQL provider-specifico
+│   ├── IDatabaseStatsProvider.cs
+│   ├── SqlServerDatabaseStatsProvider.cs
+│   └── PostgresDatabaseStatsProvider.cs
+├── Seed/DataSeeder.cs              # comune, solo su store vuoto
+└── Extensions/DatabaseExtensions.cs  # AddDatabase: lo switch
+</code></pre>
+<p>Rispetto alla versione con Mongo sono spariti interi rami: <code>Repositories/</code> (con le sottocartelle
+<code>Mongo/</code> e <code>Ef/</code>), <code>Transactions/</code>, <code>Documents/</code>, <code>Conversions.cs</code> e <code>Links.cs</code>.</p>
+<h2 id="il-modello-dati">Il modello dati</h2>
+<p>Le POCO in <code>Entities/</code> sono l'<strong>unico modello</strong>: niente entità separate per provider, niente mapping
+layer, nessun suffisso <code>Document</code>.</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">User</span> : <span class="hljs-title">ITimestamped</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Id { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }                     <span class="hljs-comment">// identity: lo assegna il DB</span>
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Email { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
+    <span class="hljs-keyword">public</span> List&lt;Group&gt; Groups { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = [];   <span class="hljs-comment">// M2M → join table UserGroups</span>
+    <span class="hljs-keyword">public</span> List&lt;Role&gt; Roles { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = [];     <span class="hljs-comment">// M2M → join table UserRoles</span>
+    <span class="hljs-keyword">public</span> DateTime CreatedAt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+    <span class="hljs-keyword">public</span> DateTime UpdatedAt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+}
+</code></pre>
+<p>Regole del modello:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Aspetto</th>
+<th>Regola</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chiave primaria</td>
+<td><code>int Id</code>, identity — mai <code>string</code>, <code>Guid</code> o <code>ObjectId</code></td>
+</tr>
+<tr>
+<td>Nomi</td>
+<td>Nessun suffisso: <code>User</code>, <code>Product</code>, <code>AuditLog</code></td>
+</tr>
+<tr>
+<td>Stringhe</td>
+<td>Sempre dimensionate con <code>HasMaxLength</code> in <code>OnModelCreating</code>; testo illimitato solo dove serve (Desc, Photo base64, StackTrace, snapshot audit)</td>
+</tr>
+<tr>
+<td>Enum</td>
+<td>Mappati come <strong>stringa</strong> (<code>HasConversion&lt;string&gt;()</code>): leggibili nel DB e stabili se cambia l'ordine dei membri</td>
+</tr>
+<tr>
+<td>Date</td>
+<td><code>DateTime</code> UTC</td>
+</tr>
+<tr>
+<td>Timestamp</td>
+<td><code>CreatedAt</code>/<code>UpdatedAt</code> impostati automaticamente da <code>ApplyTimestamps</code> in <code>SaveChanges</code></td>
+</tr>
+<tr>
+<td>M2M</td>
+<td>Skip navigation <strong>unidirezionale</strong> (<code>User.Groups</code>, non <code>Group.Users</code>); la join table la gestisce EF</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="i-timestamp-sono-automatici">I timestamp sono automatici</h3>
+<p><code>AppDbContext.SaveChangesAsync</code> percorre il change tracker e imposta i timestamp sulle entità
+<code>ITimestamped</code>: <code>CreatedAt</code>+<code>UpdatedAt</code> sugli insert, il solo <code>UpdatedAt</code> sugli update. <strong>Gli handler
+non li valorizzano mai a mano.</strong></p>
+<p>⚠️ <strong>Unica eccezione da ricordare</strong>: modificare <strong>solo</strong> le collezioni M2M di un'entità non la marca
+come <code>Modified</code>, quindi <code>UpdatedAt</code> non si aggiorna da solo. Chi cambia solo i ruoli o i gruppi di un
+utente deve toccare <code>UpdatedAt</code> esplicitamente (vedi <code>UpdateUserHandler</code>).</p>
+<h2 id="lo-schema-relazionale">Lo schema relazionale</h2>
+<p>Relazionale classico — <strong>19 tabelle</strong>, identiche nella struttura sui due provider. Le relazioni
+molti-a-molti sono join table con chiave composta e <code>ON DELETE CASCADE</code>; i riferimenti singoli sono
+FK con <code>Restrict</code>, così una voce di lookup ancora usata non si può cancellare (il tentativo torna
+<code>409 Conflict</code>).</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Entità</th>
+<th>Tabella</th>
+<th>Vincoli principali</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>User</code></td>
+<td><code>Users</code></td>
+<td><code>Email</code> unique</td>
+</tr>
+<tr>
+<td><code>Group</code> · <code>Role</code> · <code>Permission</code></td>
+<td><code>Groups</code> · <code>Roles</code> · <code>Permissions</code></td>
+<td><code>Permissions.Key</code> unique; nomi di gruppi e ruoli <strong>non</strong> unique (controllo applicativo)</td>
+</tr>
+<tr>
+<td>—</td>
+<td><code>UserGroups</code> · <code>UserRoles</code> · <code>GroupRoles</code> · <code>RolePermissions</code></td>
+<td>PK composta, FK <strong>CASCADE</strong> su entrambi i lati</td>
+</tr>
+<tr>
+<td><code>RefreshToken</code></td>
+<td><code>RefreshTokens</code></td>
+<td><code>Token</code> unique (max 450 char), indice su <code>ExpiresAt</code>, FK <code>UserId</code> <strong>CASCADE</strong></td>
+</tr>
+<tr>
+<td><code>AuditLog</code> · <code>ErrorLog</code></td>
+<td><code>AuditLogs</code> · <code>ErrorLogs</code></td>
+<td><strong>nessuna FK</strong>: lo storico deve sopravvivere alle cancellazioni; indici su <code>Timestamp</code> e su <code>(EntityType, EntityId)</code></td>
+</tr>
+<tr>
+<td><code>Product</code></td>
+<td><code>Products</code></td>
+<td>FK <code>ProductTypeId</code> (Restrict, obbligatoria) + FK nullable verso Location, Valley, Format, Working (Restrict); indice su <code>Title</code></td>
+</tr>
+<tr>
+<td><code>ProductType</code></td>
+<td><code>ProductTypes</code></td>
+<td>FK <code>TypologyId</code> → <code>Typologies</code> (Restrict)</td>
+</tr>
+<tr>
+<td><code>Format</code> · <code>Location</code> · <code>Typology</code> · <code>Valley</code> · <code>Working</code></td>
+<td>tabelle omonime</td>
+<td>lookup piatte</td>
+</tr>
+<tr>
+<td><code>SystemConfig</code></td>
+<td><code>SystemConfigs</code></td>
+<td>i due <code>LogRetentionConfig</code> annidati sono <code>ComplexProperty</code> → colonne <code>ErrorLogs_*</code> / <code>AuditLogs_*</code> nella stessa tabella</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="perche-audit-ed-error-log-non-hanno-fk">Perché audit ed error log non hanno FK</h3>
+<p><code>ActorId</code> ed <code>EntityId</code> <strong>non</strong> sono chiavi esterne, ed è una scelta deliberata. Se <code>ActorId</code> fosse
+una FK verso <code>Users</code>, cancellare un utente cancellerebbe (o bloccherebbe) le tracce di ciò che ha
+fatto — l'opposto dello scopo di un audit log. Inoltre <code>EntityId</code> è <strong>polimorfo</strong>: punta a tabelle
+diverse a seconda di <code>EntityType</code>, quindi una FK non sarebbe nemmeno esprimibile.</p>
+<h2 id="le-differenze-fra-i-due-provider">Le differenze fra i due provider</h2>
+<p>Il modello è unico, ma i tipi generati dalle migration sono naturalmente quelli nativi di ciascun
+database:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Concetto</th>
+<th>SQL Server</th>
+<th>PostgreSQL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chiave primaria</td>
+<td><code>int</code> + <code>IDENTITY(1,1)</code></td>
+<td><code>integer</code> + <code>GENERATED BY DEFAULT AS IDENTITY</code></td>
+</tr>
+<tr>
+<td>Stringa dimensionata</td>
+<td><code>nvarchar(256)</code></td>
+<td><code>character varying(256)</code></td>
+</tr>
+<tr>
+<td>Testo illimitato</td>
+<td><code>nvarchar(max)</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td>Data/ora</td>
+<td><code>datetime2</code></td>
+<td><code>timestamp with time zone</code></td>
+</tr>
+<tr>
+<td>Statistiche DB</td>
+<td>DMV (<code>sys.dm_db_partition_stats</code>, <code>sys.database_files</code>)</td>
+<td>cataloghi <code>pg_*</code> (<code>pg_database_size</code>, …)</td>
+</tr>
+<tr>
+<td><code>Contains</code> su stringa</td>
+<td><strong>case-insensitive</strong> (collation di default)</td>
+<td><strong>case-sensitive</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le prime quattro righe le gestisce EF Core da solo. La quinta è astratta dietro
+<code>IDatabaseStatsProvider</code>. <strong>La sesta è l'unica che riguarda chi scrive codice</strong>, ed è la trappola
+principale di questa architettura.</p>
+<h3 id="la-trappola-della-ricerca-case-sensitive">La trappola della ricerca case-sensitive</h3>
+<p>Una <code>Where(x =&gt; x.Email.Contains(term))</code> si comporta <strong>diversamente</strong> sui due provider. La
+contromisura adottata: le email si salvano <strong>sempre in minuscolo</strong> e si confrontano con input già
+normalizzato in minuscolo. Per le ricerche testuali del catalogo, qualunque nuova query deve essere
+verificata su entrambi i provider prima di considerarsi finita.</p>
+<h2 id="il-ciclo-di-vita-all-avvio">Il ciclo di vita, all'avvio</h2>
+<p>Il codice è lo stesso per entrambi i provider, in fondo a <code>Program.cs</code>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Passo</th>
+<th>Che cosa succede</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Schema</strong></td>
+<td><code>Database.MigrateAsync()</code> applica le migration mancanti del provider attivo e <strong>crea il database se non esiste</strong>. Mai <code>EnsureCreated</code>, mai drop</td>
+</tr>
+<tr>
+<td><strong>Indici</strong></td>
+<td>Dichiarati nel model → creati dalle migration</td>
+</tr>
+<tr>
+<td><strong>Seed</strong></td>
+<td><code>SeedAsync()</code>: popola <strong>solo uno store vuoto</strong>. Gate: se esiste anche un solo ruolo, esce subito</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il seed inserisce rispettando l'ordine delle FK — tipologie, formati, località, valli, lavorazioni,
+tipi prodotto, prodotti, poi permessi/ruoli/gruppi/utenti. Gli id li assegna il database, quindi i
+legami del seed sono espressi via <strong>navigation property</strong>, non via id costanti.</p>
+<blockquote>
+<p><strong>Regola operativa</strong>: non esiste wipe né reseed automatico. Per ripartire da zero il database si
+droppa a mano.</p>
+</blockquote>
+<h2 id="transazioni">Transazioni</h2>
+<p><code>ITransactionRunner</code> <strong>non esiste più</strong>, ed è una semplificazione diretta della rimozione di Mongo.
+Serviva perché su MongoDB la transazione è un oggetto — la sessione — da passare a ogni operazione,
+mentre su EF Core vive sulla connessione del <code>DbContext</code>.</p>
+<p>Oggi tutti gli handler di una richiesta condividono lo stesso <code>AppDbContext</code> scoped: un singolo
+<code>SaveChangesAsync</code> è già atomico, e dove serve una transazione esplicita si usa direttamente
+<code>db.Database.BeginTransactionAsync</code>. Le cancellazioni a cascata che prima erano scritte a mano negli
+handler (<code>RemoveRoleFromAllUsersAsync</code>…) ora le garantisce il <strong>database</strong> con le FK <code>CASCADE</code>.</p>
+<h2 id="lifetime-nella-di">Lifetime nella DI</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Servizio</th>
+<th>Lifetime</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AppDbContext</code> (via derivata)</td>
+<td><strong>Scoped</strong></td>
+<td>Non è thread-safe e porta con sé il change tracker: deve nascere e morire con la richiesta</td>
+</tr>
+<tr>
+<td><code>IDatabaseStatsProvider</code></td>
+<td><strong>Scoped</strong></td>
+<td>Usa la connessione del contesto della richiesta</td>
+</tr>
+<tr>
+<td><code>ExpiredTokenCleanupService</code></td>
+<td><strong>Singleton</strong> (<code>HostedService</code>)</td>
+<td>È un <code>BackgroundService</code>; crea uno <strong>scope proprio</strong> a ogni passata per ottenere un <code>AppDbContext</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il <code>BackgroundService</code> che si crea lo scope da solo è il dettaglio che vale la pena ricordare:
+iniettare un <code>DbContext</code> scoped direttamente in un singleton è l'errore classico, e qui è evitato in
+<code>CleanupAsync</code> con <code>scopeFactory.CreateScope()</code>.</p>
+<h2 id="come-devono-fallire">Come devono fallire</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Situazione</th>
+<th>Comportamento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Database:Provider</code> assente</td>
+<td>Default <code>SqlServer</code></td>
+</tr>
+<tr>
+<td><code>Database:Provider</code> con un valore sconosciuto (compreso <code>MongoDB</code>)</td>
+<td><code>InvalidOperationException</code> <strong>all'avvio</strong>, con i valori ammessi nel messaggio</td>
+</tr>
+<tr>
+<td>Connection string del provider attivo mancante</td>
+<td><code>InvalidOperationException</code> all'avvio, che dice <strong>dove</strong> impostarla (<code>appsettings.local.json</code> o <code>ConnectionStrings__&lt;Provider&gt;</code>)</td>
+</tr>
+<tr>
+<td>Database irraggiungibile</td>
+<td>Errore alla prima operazione: la connessione è pigra, non si apre all'avvio. <code>EnableRetryOnFailure</code> ritenta gli errori transitori</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il principio: un errore di configurazione deve fermare l'applicazione <strong>all'avvio</strong> e spiegare come
+si ripara, non fallire a metà di una richiesta.</p>
+<h2 id="approfondimenti">Approfondimenti</h2>
+<ul>
+<li><strong><a href="implementazione.html">Implementazione</a></strong> — il codice di ogni componente citato qui</li>
+<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché è caduto Mongo, che cosa è stato scartato</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

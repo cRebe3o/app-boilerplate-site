@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App registration Azure — DelVoltone</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">DelVoltone</span>
+      <span class="brand-sub">Documentazione tecnica</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database</p>
+          <ul>
+            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
+            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
+            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
+            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database — versione storica (obsoleta)</p>
+          <ul>
+            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html" aria-current="page">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Autenticazione</p>
+      <article class="prose">
+<h1 id="app-registration-su-azure">App registration su Azure</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#il-modello-due-app-non-una">Il modello: due app, non una</a></li>
+          <li class="lvl-2"><a href="#1-registrare-l-app-dell-api">1. Registrare l'app dell'API</a></li>
+          <li class="lvl-3"><a href="#esporre-l-api-e-lo-scope">Esporre l'API e lo scope</a></li>
+          <li class="lvl-2"><a href="#2-registrare-l-app-della-spa">2. Registrare l'app della SPA</a></li>
+          <li class="lvl-3"><a href="#dare-alla-spa-il-permesso-di-chiamare-l-api">Dare alla SPA il permesso di chiamare l'API</a></li>
+          <li class="lvl-2"><a href="#3-configurare-delvoltone">3. Configurare DelVoltone</a></li>
+          <li class="lvl-3"><a href="#backend">Backend</a></li>
+          <li class="lvl-3"><a href="#frontend">Frontend</a></li>
+          <li class="lvl-3"><a href="#la-corrispondenza-in-un-colpo-d-occhio">La corrispondenza, in un colpo d'occhio</a></li>
+          <li class="lvl-2"><a href="#4-creare-l-utente-in-delvoltone">4. Creare l'utente in DelVoltone</a></li>
+          <li class="lvl-2"><a href="#5-verificare">5. Verificare</a></li>
+          <li class="lvl-3"><a href="#checklist">Checklist</a></li>
+          <li class="lvl-2"><a href="#produzione">Produzione</a></li>
+          <li class="lvl-2"><a href="#domande-ricorrenti">Domande ricorrenti</a></li>
+          <li class="lvl-2"><a href="#errori-comuni">Errori comuni</a></li>
+          <li class="lvl-2"><a href="#riferimenti">Riferimenti</a></li>
+        </ul>
+      </nav>
+<p>Guida operativa per far funzionare l'accesso con account Microsoft. Serve una sola volta, per
+ambiente. Il funzionamento a valle è descritto in <a href="autenticazione.html">JWT e MSAL</a>.</p>
+<blockquote>
+<p><strong>Prerequisito</strong>: un account Azure con il ruolo <em>Amministratore globale</em> o <em>Amministratore
+applicazioni</em>. Il portale è su <a href="https://portal.azure.com" target="_blank" rel="noopener">portal.azure.com</a>; il servizio si chiama
+<strong>Microsoft Entra ID</strong> (l'ex Azure Active Directory: stessa cosa, nome nuovo).</p>
+</blockquote>
+<h2 id="il-modello-due-app-non-una">Il modello: due app, non una</h2>
+<p>È il punto in cui ci si perde, quindi conviene chiarirlo subito. In produzione DelVoltone usa <strong>due
+app registration distinte</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>App registration</th>
+<th>Che cos'è</th>
+<th>Chi la usa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SPA</strong></td>
+<td>Il frontend Vue che apre la finestra di login</td>
+<td><code>VITE_MSAL_CLIENT_ID</code></td>
+</tr>
+<tr>
+<td><strong>API</strong></td>
+<td>Il backend, cioè il <em>destinatario</em> del token</td>
+<td><code>Auth:Msal:ClientId</code> (backend) e <code>VITE_MSAL_API_CLIENT_ID</code> (frontend, per chiedere il token giusto)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il motivo è nel claim <code>aud</code> (<em>audience</em>) del token: dice <strong>a chi</strong> il token è destinato. Il backend
+accetta solo token il cui <code>aud</code> è la propria app registration. Se la SPA chiede un token senza
+specificare lo scope dell'API, Azure emette un token destinato <strong>alla SPA</strong>, e il backend
+giustamente lo rifiuta — è l'errore <code>IDX10214</code>.</p>
+<pre><code>   SPA (ClientId A)                              API (ClientId B)
+        │                                              ▲
+        │  chiede un token per lo scope               │  aud = B  ✔ accettato
+        │  api://B/access_as_user                     │
+        ▼                                              │
+   Azure AD  ──────────  token con aud = B  ───────────┘
+</code></pre>
+<p><strong>Si può usare una sola app</strong> per entrambi i ruoli: in quel caso <code>VITE_MSAL_API_CLIENT_ID</code> resta
+vuoto e il frontend assume che SPA e API condividano lo stesso ClientId. È la configurazione più
+semplice, va benissimo per lo sviluppo. La separazione è preferibile in produzione, perché isola i
+permessi dei due componenti.</p>
+<p>Il resto della guida descrive il caso completo, con due app.</p>
+<h2 id="1-registrare-l-app-dell-api">1. Registrare l'app dell'API</h2>
+<ol>
+<li><strong>Microsoft Entra ID</strong> → <strong>Registrazioni app</strong> → <strong>+ Nuova registrazione</strong>.</li>
+<li>Nome: <code>DelVoltone-API</code> (o come preferisci).</li>
+<li>Tipi di account supportati: <strong>Solo questa directory organizzativa</strong> (single tenant) — è la scelta
+giusta se tutti gli utenti appartengono alla stessa organizzazione.</li>
+<li>Nessun URI di reindirizzamento: l'API non ne ha bisogno.</li>
+<li><strong>Registra</strong>.</li>
+</ol>
+<p>Dalla pagina <strong>Panoramica</strong> annota <strong>ID applicazione (client)</strong> e <strong>ID directory (tenant)</strong>.</p>
+<h3 id="esporre-l-api-e-lo-scope">Esporre l'API e lo scope</h3>
+<ol>
+<li>
+<p><strong>Esponi un'API</strong> → accanto a <em>URI ID applicazione</em> clicca <strong>Aggiungi</strong> e accetta la proposta di
+Azure (<code>api://{clientId}</code>) → <strong>Salva</strong>.</p>
+</li>
+<li>
+<p><strong>+ Aggiungi un ambito</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nome ambito</td>
+<td><code>access_as_user</code></td>
+</tr>
+<tr>
+<td>Chi può consentire</td>
+<td>Amministratori e utenti</td>
+</tr>
+<tr>
+<td>Nome visualizzato</td>
+<td>Accedi a DelVoltone come utente</td>
+</tr>
+<tr>
+<td>Descrizione</td>
+<td>Consente all'app di accedere a DelVoltone per conto dell'utente connesso</td>
+</tr>
+<tr>
+<td>Stato</td>
+<td>Abilitato</td>
+</tr>
+</tbody>
+</table>
+</div>
+</li>
+</ol>
+<p>Lo scope completo diventa <code>api://{API_CLIENT_ID}/access_as_user</code>: è quello che la SPA chiederà.</p>
+<h2 id="2-registrare-l-app-della-spa">2. Registrare l'app della SPA</h2>
+<ol>
+<li>
+<p><strong>+ Nuova registrazione</strong>, nome <code>DelVoltone-SPA</code>, single tenant.</p>
+</li>
+<li>
+<p><strong>Autenticazione</strong> → <strong>+ Aggiungi una piattaforma</strong> → <strong>Applicazione a pagina singola (SPA)</strong>.</p>
+<blockquote>
+<p>Deve essere <strong>SPA</strong>, non <em>Web</em>. La piattaforma Web usa il flusso implicito e produce l'errore
+<code>AADSTS700054</code>. La SPA usa Authorization Code con PKCE, che è più sicuro e non richiede alcun
+client secret.</p>
+</blockquote>
+</li>
+<li>
+<p>URI di reindirizzamento: <strong>deve coincidere esattamente</strong> con <code>window.location.origin + '/login'</code>.</p>
+<pre><code>http://localhost:5173/login          sviluppo
+https://&lt;frontend&gt;.onrender.com/login   produzione
+</code></pre>
+<p>Attenzione a protocollo, porta, path e trailing slash: ogni differenza produce
+<code>redirect_uri_mismatch</code> (o <code>AADSTS50011</code>, che è la stessa cosa detta in altro modo).</p>
+</li>
+<li>
+<p>Nella stessa pagina, sotto <em>Concessione implicita e flussi ibridi</em>: lascia <strong>entrambe le caselle
+deselezionate</strong>.</p>
+</li>
+</ol>
+<h3 id="dare-alla-spa-il-permesso-di-chiamare-l-api">Dare alla SPA il permesso di chiamare l'API</h3>
+<ol>
+<li>Nell'app <strong>SPA</strong> → <strong>Autorizzazioni API</strong> → <strong>+ Aggiungi un'autorizzazione</strong>.</li>
+<li>Scheda <strong>Le mie API</strong> → seleziona <code>DelVoltone-API</code>.</li>
+<li><strong>Autorizzazioni delegate</strong> → spunta <code>access_as_user</code> → <strong>Aggiungi autorizzazioni</strong>.</li>
+<li>Clicca <strong>Concedi consenso amministratore</strong> e conferma.</li>
+</ol>
+<p>Senza il consenso amministratore ogni utente dovrà accettare i permessi al primo accesso; con il
+consenso, la cosa è trasparente. Se lo stato resta <em>Non concesso</em>, l'accesso fallisce con
+<code>AADSTS65001</code>.</p>
+<h2 id="3-configurare-delvoltone">3. Configurare DelVoltone</h2>
+<h3 id="backend">Backend</h3>
+<pre><code class="language-json"><span class="hljs-comment">// appsettings.local.json (sviluppo) — in produzione: variabili d&#x27;ambiente</span>
+<span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;Auth&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;Msal&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+      <span class="hljs-attr">&quot;TenantId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;&lt;ID directory (tenant)&gt;&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;ClientId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;&lt;ClientId dell&#x27;app API&gt;&quot;</span>
+    <span class="hljs-punctuation">}</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<blockquote>
+<p><code>Auth:Msal:ClientId</code> è il ClientId dell'<strong>API</strong>, non della SPA. È il valore che il backend confronta
+con il claim <code>aud</code> del token in arrivo (accettandolo sia nudo sia nella forma <code>api://{clientId}</code>).</p>
+</blockquote>
+<h3 id="frontend">Frontend</h3>
+<pre><code class="language-env"><span class="hljs-comment"># apps/frontend/.env.local</span>
+<span class="hljs-attr">VITE_API_BASE_URL</span>=http://localhost:<span class="hljs-number">5000</span>
+<span class="hljs-attr">VITE_AUTH_STRATEGY</span>=msal
+<span class="hljs-attr">VITE_MSAL_CLIENT_ID</span>=&lt;ClientId dell<span class="hljs-string">&#x27;app SPA&gt;
+VITE_MSAL_TENANT_ID=&lt;ID directory (tenant)&gt;
+VITE_MSAL_API_CLIENT_ID=&lt;ClientId dell&#x27;</span>app API&gt;   <span class="hljs-comment"># vuoto se SPA e API sono la stessa app</span>
+</code></pre>
+<h3 id="la-corrispondenza-in-un-colpo-d-occhio">La corrispondenza, in un colpo d'occhio</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Azure</th>
+<th>Backend</th>
+<th>Frontend</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ID directory (tenant)</td>
+<td><code>Auth:Msal:TenantId</code></td>
+<td><code>VITE_MSAL_TENANT_ID</code></td>
+</tr>
+<tr>
+<td>ClientId dell'app <strong>API</strong></td>
+<td><code>Auth:Msal:ClientId</code></td>
+<td><code>VITE_MSAL_API_CLIENT_ID</code></td>
+</tr>
+<tr>
+<td>ClientId dell'app <strong>SPA</strong></td>
+<td>—</td>
+<td><code>VITE_MSAL_CLIENT_ID</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>L'authority non si configura: il frontend la costruisce da sé come
+<code>https://login.microsoftonline.com/{VITE_MSAL_TENANT_ID}</code>.</p>
+<h2 id="4-creare-l-utente-in-delvoltone">4. Creare l'utente in DelVoltone</h2>
+<p>Azure verifica <strong>l'identità</strong>; i <strong>permessi</strong> vengono dal database locale. Quindi:</p>
+<blockquote>
+<p>L'utente deve esistere <strong>anche</strong> in DelVoltone, con la <strong>stessa email</strong> dell'account Azure
+(quella del claim <code>preferred_username</code>, di norma l'UPN), e deve avere ruoli assegnati —
+direttamente o tramite un gruppo.</p>
+</blockquote>
+<p>Se manca, l'accesso fallisce con <em>&quot;Nessun utente locale con email …&quot;</em>. Se c'è ma non ha ruoli,
+l'accesso riesce e l'utente non vede nulla.</p>
+<h2 id="5-verificare">5. Verificare</h2>
+<pre><code class="language-bash">pnpm serve:backend      <span class="hljs-comment"># http://localhost:5000</span>
+pnpm serve:frontend     <span class="hljs-comment"># http://localhost:5173</span>
+</code></pre>
+<p>Nella pagina di accesso deve comparire il pulsante <strong>Accedi con Microsoft</strong>. Dopo il login, in
+DevTools → Network:</p>
+<pre><code>POST /api/auth/msal-login      { &quot;azureToken&quot;: &quot;eyJ…&quot; }
+  → 200 OK  { &quot;accessToken&quot;: &quot;eyJ…&quot;, &quot;permissions&quot;: [ … ] }
+
+GET  /api/…                    Authorization: Bearer eyJ…   ← da qui in poi, il JWT interno
+</code></pre>
+<p>Se qualcosa non torna, incolla il token Azure su <a href="https://jwt.ms" target="_blank" rel="noopener">jwt.ms</a> e guarda il claim <code>aud</code>:
+deve essere il ClientId dell'<strong>API</strong> (o <code>api://{clientId}</code>). È la diagnosi più rapida.</p>
+<h3 id="checklist">Checklist</h3>
+<ul>
+<li>[ ] App <strong>API</strong> registrata, con <code>api://{clientId}</code> e lo scope <code>access_as_user</code></li>
+<li>[ ] App <strong>SPA</strong> registrata, piattaforma <strong>SPA</strong>, redirect URI identico a quello reale</li>
+<li>[ ] La SPA ha il permesso delegato <code>access_as_user</code> sull'API, <strong>con consenso amministratore</strong></li>
+<li>[ ] Backend: <code>Auth:Msal:TenantId</code> e <code>Auth:Msal:ClientId</code> (= app API)</li>
+<li>[ ] Frontend: <code>VITE_AUTH_STRATEGY=msal</code>, <code>VITE_MSAL_CLIENT_ID</code> (= app SPA), <code>VITE_MSAL_TENANT_ID</code>,
+<code>VITE_MSAL_API_CLIENT_ID</code> (= app API)</li>
+<li>[ ] L'utente Azure esiste anche in DelVoltone, con la stessa email, e ha dei ruoli</li>
+</ul>
+<h2 id="produzione">Produzione</h2>
+<p>Aggiungi l'URI di produzione fra i redirect URI della SPA (<strong>in HTTPS</strong>: obbligatorio).</p>
+<p>Meglio ancora: <strong>app registration separate per ambiente</strong> — <code>DelVoltone-SPA-Dev</code> e
+<code>DelVoltone-SPA-Prod</code> — così gli ambienti restano isolati e possono avere policy diverse.</p>
+<p>I valori non vanno nei file versionati: sul backend usa le variabili d'ambiente
+(<code>Auth__Msal__TenantId</code>, <code>Auth__Msal__ClientId</code>, <code>Auth__Jwt__Secret</code>), sul frontend le variabili di
+build (le <code>VITE_*</code> sono iniettate <strong>al momento del build</strong>, non a runtime: cambiarle richiede un
+nuovo build). Vedi <a href="../deploy/render.html">Deploy su Render</a>.</p>
+<h2 id="domande-ricorrenti">Domande ricorrenti</h2>
+<p><strong>Serve un client secret?</strong>
+No, e non va creato. La SPA è un <em>public client</em>: non può custodire segreti, e infatti usa
+Authorization Code con PKCE, che non ne richiede. Nemmeno l'API ne ha bisogno, perché non chiama
+Azure: si limita a validare i token con le chiavi pubbliche.</p>
+<p><strong>Serve la sezione &quot;Certificati e segreti&quot;?</strong>
+No, per lo stesso motivo.</p>
+<p><strong>Posso limitare chi accede?</strong>
+Sì, in due punti. Su Azure: <em>Applicazioni aziendali</em> → <em>Assegnazione utenti obbligatoria</em> → assegna
+solo le persone o i gruppi desiderati. Su DelVoltone: chi non ha un utente locale non entra comunque.</p>
+<p><strong>Posso usare account Microsoft personali (<a href="http://outlook.com" target="_blank" rel="noopener">outlook.com</a>)?</strong>
+Solo se nella registrazione hai scelto un tipo di account che li include. Per l'uso aziendale,
+<em>single tenant</em> è la scelta corretta.</p>
+<h2 id="errori-comuni">Errori comuni</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Errore</th>
+<th>Causa</th>
+<th>Rimedio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>redirect_uri_mismatch</code> · <code>AADSTS50011</code></td>
+<td>L'URI nel browser non è identico a quello registrato</td>
+<td>Confronta protocollo, porta, path, trailing slash</td>
+</tr>
+<tr>
+<td><code>AADSTS700054</code></td>
+<td>Piattaforma <strong>Web</strong> invece di <strong>SPA</strong></td>
+<td>Rimuovi la piattaforma Web, aggiungi la SPA</td>
+</tr>
+<tr>
+<td><code>AADSTS65001</code></td>
+<td>Manca il consenso amministratore</td>
+<td><em>Autorizzazioni API</em> → <strong>Concedi consenso amministratore</strong></td>
+</tr>
+<tr>
+<td><code>IDX10214: Audience validation failed</code></td>
+<td>Il token è destinato alla SPA, non all'API</td>
+<td>Imposta <code>VITE_MSAL_API_CLIENT_ID</code> e verifica che lo scope richiesto sia <code>api://{API}/access_as_user</code></td>
+</tr>
+<tr>
+<td><em>Nessun utente locale con email …</em></td>
+<td>L'utente non esiste in DelVoltone</td>
+<td>Crealo con la stessa email</td>
+</tr>
+<tr>
+<td>Accede, ma non vede nulla</td>
+<td>L'utente locale non ha ruoli</td>
+<td>Assegnagli ruoli, direttamente o via gruppo</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="riferimenti">Riferimenti</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Risorsa</th>
+<th>Link</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Portale Azure</td>
+<td><a href="https://portal.azure.com" target="_blank" rel="noopener">https://portal.azure.com</a></td>
+</tr>
+<tr>
+<td>Documentazione Entra ID</td>
+<td><a href="https://learn.microsoft.com/it-it/entra/identity/" target="_blank" rel="noopener">https://learn.microsoft.com/it-it/entra/identity/</a></td>
+</tr>
+<tr>
+<td>Authorization Code con PKCE</td>
+<td><a href="https://learn.microsoft.com/it-it/entra/identity-platform/v2-oauth2-auth-code-flow" target="_blank" rel="noopener">https://learn.microsoft.com/it-it/entra/identity-platform/v2-oauth2-auth-code-flow</a></td>
+</tr>
+<tr>
+<td>Ispezionare un token Azure</td>
+<td><a href="https://jwt.ms" target="_blank" rel="noopener">https://jwt.ms</a></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

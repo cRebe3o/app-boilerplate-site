@@ -1,0 +1,23 @@
+# Impostazioni locali degli strumenti di sviluppo (non pubblicare)
+.claude/
+
+# File temporanei di Office (lock file aperti da Word/Excel)
+~$*
+*.tmp
+
+# File di sistema Windows
+Thumbs.db
+Desktop.ini
+
+# File di sistema macOS (se mai ci lavori da Mac)
+.DS_Store
+
+# Impostazioni personali degli editor
+.vscode/
+.idea/
+
+# Log
+*.log
+
+# Dipendenze del generatore (npm install)
+node_modules/

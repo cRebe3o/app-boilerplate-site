@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panoramica — DelVoltone</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">DelVoltone</span>
+      <span class="brand-sub">Documentazione tecnica</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database</p>
+          <ul>
+            <li><a href="../database_sql-only/panoramica.html" aria-current="page">Panoramica</a></li>
+            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
+            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
+            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database — versione storica (obsoleta)</p>
+          <ul>
+            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Database</p>
+      <article class="prose">
+<h1 id="database-panoramica">Database — panoramica</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#in-una-frase">In una frase</a></li>
+          <li class="lvl-2"><a href="#perche-due-provider-sql">Perché due provider SQL</a></li>
+          <li class="lvl-2"><a href="#come-si-sceglie">Come si sceglie</a></li>
+          <li class="lvl-2"><a href="#che-cosa-non-cambia-fra-i-due-provider">Che cosa non cambia fra i due provider</a></li>
+          <li class="lvl-2"><a href="#come-funziona-in-parole-semplici">Come funziona, in parole semplici</a></li>
+          <li class="lvl-2"><a href="#che-cosa-cambia-per-chi-sviluppa">Che cosa cambia per chi sviluppa</a></li>
+          <li class="lvl-2"><a href="#domande-frequenti">Domande frequenti</a></li>
+          <li class="lvl-2"><a href="#approfondimenti">Approfondimenti</a></li>
+        </ul>
+      </nav>
+<blockquote>
+<p><strong>Stato: implementato.</strong> Da luglio 2026 DelVoltone si collega <strong>esclusivamente a database SQL</strong>.
+Il supporto a MongoDB è stato rimosso. La versione precedente della documentazione è conservata,
+come storico, in <a href="../database_sql-mongo/panoramica.html">Database (SQL + Mongo)</a>.</p>
+</blockquote>
+<h2 id="in-una-frase">In una frase</h2>
+<p>DelVoltone salva i propri dati su <strong>SQL Server</strong> oppure su <strong>PostgreSQL</strong>, tramite <strong>Entity Framework
+Core</strong>: la scelta si fa in configurazione, senza modificare una riga di codice applicativo.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Come</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SQL Server</strong></td>
+<td>EF Core (<code>Microsoft.EntityFrameworkCore.SqlServer</code>)</td>
+<td>Default se <code>Database:Provider</code> non è specificato</td>
+</tr>
+<tr>
+<td><strong>PostgreSQL</strong></td>
+<td>EF Core (<code>Npgsql.EntityFrameworkCore.PostgreSQL</code>)</td>
+<td>Si attiva con <code>Database:Provider=PostgreSQL</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>MongoDB non è più supportato.</strong> Non esiste un provider Mongo, né una via di configurazione per
+attivarlo: un valore diverso da <code>SqlServer</code> o <code>PostgreSQL</code> fa fallire l'avvio con un messaggio
+esplicito.</p>
+<h2 id="perche-due-provider-sql">Perché due provider SQL</h2>
+<ul>
+<li><strong>Flessibilità di installazione.</strong> Molte organizzazioni sono standardizzate su SQL Server — DBA,
+backup, procedure di ripristino, competenze. Altre, soprattutto in cloud e in hosting a basso
+costo, hanno PostgreSQL. Poter installare l'applicazione in entrambi i mondi elimina un ostacolo
+che non è tecnico ma organizzativo.</li>
+<li><strong>Libertà di hosting.</strong> SQL Server on-premise oggi, Postgres gestito su Render o Azure domani,
+senza riscrivere nulla.</li>
+<li><strong>Costo quasi nullo.</strong> A differenza del vecchio doppio supporto Mongo/SQL, qui i due provider
+condividono <strong>lo stesso identico modello EF Core</strong>: cambia solo il driver e il set di migration.
+Non ci sono due implementazioni da mantenere in parallelo.</li>
+</ul>
+<h2 id="come-si-sceglie">Come si sceglie</h2>
+<pre><code class="language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;Database&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;Provider&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;SqlServer&quot;</span> <span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;ConnectionStrings&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;SqlServer&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Server=.;Database=DelVoltone;Trusted_Connection=True;TrustServerCertificate=True&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;PostgreSQL&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Host=localhost;Database=delvoltone;Username=postgres;Password=postgres&quot;</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Valore di <code>Database:Provider</code></th>
+<th>Effetto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SqlServer</code></td>
+<td>SQL Server via EF Core</td>
+</tr>
+<tr>
+<td><code>PostgreSQL</code></td>
+<td>PostgreSQL via EF Core (Npgsql)</td>
+</tr>
+<tr>
+<td><em>chiave assente</em></td>
+<td>Default <code>SqlServer</code></td>
+</tr>
+<tr>
+<td><em>qualsiasi altro valore</em> (compreso <code>MongoDB</code>)</td>
+<td>Errore esplicito <strong>all'avvio</strong>, con i valori ammessi nel messaggio</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>In sviluppo i segreti vanno in <code>appsettings.local.json</code> (gitignored), che vince su <code>appsettings.json</code>.
+In produzione non si toccano i file: si usano le variabili d'ambiente, dove il doppio underscore
+separa le sezioni. Una variabile d'ambiente vince su tutto.</p>
+<pre><code class="language-bash">Database__Provider=PostgreSQL
+ConnectionStrings__PostgreSQL=<span class="hljs-string">&quot;Host=…;Database=delvoltone;Username=…;Password=…;SSL Mode=Require&quot;</span>
+</code></pre>
+<h2 id="che-cosa-non-cambia-fra-i-due-provider">Che cosa non cambia fra i due provider</h2>
+<p>Cambiando provider non cambia <strong>niente di visibile</strong>:</p>
+<ul>
+<li><strong>Le funzionalità</strong>: accesso, utenti e permessi, catalogo, ricerca, audit, export, monitoraggio.</li>
+<li><strong>Le API e il frontend</strong>: gli identificativi sono <strong>numeri interi</strong> su entrambi; il frontend non sa
+quale database ci sia sotto, e non deve saperlo.</li>
+<li><strong>Le regole sul seed</strong>: i dati iniziali vengono creati <strong>solo se il database è vuoto</strong> (basta che
+esista un solo ruolo perché il seeder esca subito). Mai una cancellazione, mai un reseed automatico.</li>
+<li><strong>L'audit</strong>: ogni scrittura produce lo stesso record, con gli snapshot prima/dopo in JSON.</li>
+</ul>
+<h2 id="come-funziona-in-parole-semplici">Come funziona, in parole semplici</h2>
+<pre><code>        Handler MediatR (la logica di business)
+                    │
+                    │  unica dipendenza: AppDbContext
+                    ▼
+         AppDbContext (abstract, provider-agnostico)
+         tutto il model config vive qui
+                    │
+          ┌─────────┴─────────┐
+          ▼                   ▼
+ SqlServerAppDbContext   PostgresAppDbContext
+   (derivata vuota)        (derivata vuota)
+          │                   │
+   Migrations/SqlServer  Migrations/Postgres
+          │                   │
+          ▼                   ▼
+      SQL Server          PostgreSQL
+</code></pre>
+<ol>
+<li><strong>Un solo modello dati.</strong> Le entità POCO in <code>Entities/</code> valgono per entrambi i provider.</li>
+<li><strong>Un solo <code>AppDbContext</code>.</strong> È <code>abstract</code> e contiene <strong>tutta</strong> la configurazione del modello
+(<code>OnModelCreating</code>): tabelle, lunghezze colonne, indici, relazioni.</li>
+<li><strong>Due derivate vuote.</strong> <code>SqlServerAppDbContext</code> e <code>PostgresAppDbContext</code> non aggiungono nulla:
+esistono <strong>solo</strong> per separare i due set di migration (è il pattern Microsoft &quot;migrations with
+multiple providers&quot;).</li>
+<li><strong>Uno switch all'avvio.</strong> <code>AddDatabase</code> legge <code>Database:Provider</code> e registra la derivata giusta
+dietro il tipo <code>AppDbContext</code>.</li>
+</ol>
+<p>Chi scrive un handler inietta <code>AppDbContext</code> e non sa quale dei due sta girando.</p>
+<h2 id="che-cosa-cambia-per-chi-sviluppa">Che cosa cambia per chi sviluppa</h2>
+<p><strong>Niente strato repository.</strong> Gli handler iniettano <code>AppDbContext</code> e usano <code>db.Set&lt;Entità&gt;()</code> con
+LINQ. Le letture proiettano direttamente sul response record — niente tracking, niente mapping
+intermedio:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">var</span> items = <span class="hljs-keyword">await</span> db.Set&lt;Format&gt;()
+    .AsNoTracking()
+    .Select(f =&gt; <span class="hljs-keyword">new</span> FormatResponse(f.Id, f.DescIt, f.DescEn, f.Order))
+    .ToListAsync(ct);
+</code></pre>
+<p><strong>Una nuova entità richiede due migration</strong>, una per provider:</p>
+<pre><code class="language-bash">dotnet dotnet-ef migrations add &lt;Nome&gt; --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
+dotnet dotnet-ef migrations add &lt;Nome&gt; --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+</code></pre>
+<p>Il percorso completo, passo per passo, è nella pagina
+<a href="../guide/nuova-feature.html">Aggiungere una feature</a>.</p>
+<p>La regola da non violare mai: <strong>ogni query LINQ deve essere traducibile da entrambi i provider</strong>.
+Le uniche query provider-specifiche ammesse vivono in <code>DatabaseStats/</code>, dietro un'interfaccia.</p>
+<p>⚠️ <strong>Trappola nota</strong>: <code>Contains</code> su stringa è <strong>case-insensitive su SQL Server</strong> (per la collation
+di default) e <strong>case-sensitive su PostgreSQL</strong>. Per questo le email si salvano in minuscolo e si
+confrontano con input già normalizzato in minuscolo.</p>
+<h2 id="domande-frequenti">Domande frequenti</h2>
+<p><strong>Posso usare i due database contemporaneamente?</strong>
+No. Un'istanza dell'applicazione usa un solo provider; lo switch è globale, non per entità.
+Istanze diverse possono usare provider diversi.</p>
+<p><strong>Posso ancora usare MongoDB?</strong>
+No. Il provider è stato rimosso dal codice. La documentazione storica è in
+<a href="../database_sql-mongo/panoramica.html">Database (SQL + Mongo)</a>, ma descrive codice che non esiste più.</p>
+<p><strong>Posso migrare i dati da SQL Server a PostgreSQL, o viceversa?</strong>
+Non con gli strumenti inclusi. Lo schema è equivalente sui due provider, quindi un export/import è
+fattibile, ma è un lavoro a sé.</p>
+<p><strong>Serve creare lo schema a mano?</strong>
+No. Le migration si applicano da sole all'avvio con <code>MigrateAsync()</code>, che crea anche il database se
+non esiste. Mai <code>EnsureCreated</code>, mai drop automatici.</p>
+<p><strong>Che fine hanno fatto gli id <code>ObjectId</code> di 24 caratteri?</strong>
+Sostituiti da <code>int</code> identity, assegnati dal database. Il perché è in <a href="decisioni.html">Decisioni</a>.</p>
+<h2 id="approfondimenti">Approfondimenti</h2>
+<ul>
+<li><strong><a href="architettura.html">Architettura</a></strong> — il modello EF, lo schema relazionale, i due set di migration</li>
+<li><strong><a href="implementazione.html">Implementazione</a></strong> — il codice: switch, <code>AppDbContext</code>, handler, seed</li>
+<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché la chiave primaria è <code>int</code>, perché è caduto Mongo</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

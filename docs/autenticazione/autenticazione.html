@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JWT e MSAL — DelVoltone</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">DelVoltone</span>
+      <span class="brand-sub">Documentazione tecnica</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database</p>
+          <ul>
+            <li><a href="../database_sql-only/panoramica.html">Panoramica</a></li>
+            <li><a href="../database_sql-only/architettura.html">Architettura</a></li>
+            <li><a href="../database_sql-only/implementazione.html">Implementazione</a></li>
+            <li><a href="../database_sql-only/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Database — versione storica (obsoleta)</p>
+          <ul>
+            <li><a href="../database_sql-mongo/panoramica.html">Panoramica (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/architettura.html">Architettura (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/implementazione.html">Implementazione (SQL + Mongo)</a></li>
+            <li><a href="../database_sql-mongo/decisioni.html">Decisioni (SQL + Mongo)</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html" aria-current="page">JWT e MSAL</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Autenticazione</p>
+      <article class="prose">
+<h1 id="autenticazione-jwt-e-msal">Autenticazione — JWT e MSAL</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#la-cosa-da-capire-per-prima">La cosa da capire per prima</a></li>
+          <li class="lvl-2"><a href="#quale-strategia-usare">Quale strategia usare</a></li>
+          <li class="lvl-3"><a href="#come-si-passa-dall-una-all-altra">Come si passa dall'una all'altra</a></li>
+          <li class="lvl-2"><a href="#il-flusso-completo">Il flusso completo</a></li>
+          <li class="lvl-3"><a href="#1-accesso-con-email-e-password">1. Accesso con email e password</a></li>
+          <li class="lvl-3"><a href="#2-accesso-con-account-microsoft">2. Accesso con account Microsoft</a></li>
+          <li class="lvl-3"><a href="#3-uso-del-token-e-rinnovo">3. Uso del token, e rinnovo</a></li>
+          <li class="lvl-3"><a href="#4-uscita">4. Uscita</a></li>
+          <li class="lvl-2"><a href="#come-si-risolvono-i-permessi">Come si risolvono i permessi</a></li>
+          <li class="lvl-2"><a href="#configurazione">Configurazione</a></li>
+          <li class="lvl-2"><a href="#sicurezza-che-cosa-e-in-piedi">Sicurezza — che cosa è in piedi</a></li>
+          <li class="lvl-3"><a href="#il-cookie-e-il-samesite">Il cookie e il <code>SameSite</code></a></li>
+          <li class="lvl-2"><a href="#sul-frontend">Sul frontend</a></li>
+          <li class="lvl-2"><a href="#diagnostica">Diagnostica</a></li>
+          <li class="lvl-2"><a href="#i-file">I file</a></li>
+        </ul>
+      </nav>
+<p>DelVoltone sa autenticare gli utenti in due modi: con <strong>email e password</strong> custoditi nel proprio
+database, oppure con un <strong>account Microsoft</strong> (Azure AD / Entra ID). Sono strategie diverse solo nel
+primo passo. Da lì in poi il sistema è identico.</p>
+<h2 id="la-cosa-da-capire-per-prima">La cosa da capire per prima</h2>
+<p><strong>Il backend emette sempre un JWT proprio.</strong> Sempre, con entrambe le strategie.</p>
+<pre><code>   Email + password                Account Microsoft
+          │                                │
+          │                     token Azure AD (firmato da Microsoft)
+          ▼                                ▼
+   POST /api/auth/login          POST /api/auth/msal-login
+          │                                │
+          │  verifica BCrypt      valida il token con le chiavi pubbliche di Azure,
+          │                       poi cerca l'utente locale con quella email
+          └────────────────┬───────────────┘
+                           ▼
+              Risolve i permessi dell'utente
+              Emette un JWT interno (HS256) + un refresh token
+                           │
+                           ▼
+              Da qui in avanti tutto è identico:
+              Authorization: Bearer &lt;JWT interno&gt;
+</code></pre>
+<p>Il token di Azure serve <strong>solo</strong> per il login iniziale, per stabilire <em>chi è</em> chi sta bussando. Non
+viene mai usato per chiamare le API di DelVoltone: per quello c'è il JWT interno.</p>
+<p>Conseguenza pratica: <strong>i permessi vengono sempre dal database locale</strong>, mai da Azure. Azure dice
+&quot;questa persona è Mario Rossi&quot;; che cosa Mario Rossi possa fare lo decide DelVoltone.</p>
+<h2 id="quale-strategia-usare">Quale strategia usare</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Email + password</th>
+<th>Account Microsoft (MSAL)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dove vivono le credenziali</td>
+<td>Nel database, come hash BCrypt</td>
+<td>In Azure AD</td>
+</tr>
+<tr>
+<td>Single Sign-On</td>
+<td>No</td>
+<td>Sì, con l'ecosistema Microsoft 365</td>
+</tr>
+<tr>
+<td>MFA, recupero password, policy</td>
+<td>Da implementare</td>
+<td>Li gestisce Microsoft</td>
+</tr>
+<tr>
+<td>Prerequisito per l'utente</td>
+<td>Esistere in DelVoltone</td>
+<td>Esistere in Azure AD <strong>e</strong> in DelVoltone, con la stessa email</td>
+</tr>
+<tr>
+<td>Setup</td>
+<td>Nessuno</td>
+<td>Registrazione dell'app su Azure (<a href="azure-app-registration.html">guida</a>)</td>
+</tr>
+<tr>
+<td>Adatta a</td>
+<td>Sviluppo, installazioni autonome, prototipi</td>
+<td>Aziende già su Microsoft 365</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>In esercizio: <strong>sviluppo con email e password, produzione con account Microsoft</strong>.</p>
+<h3 id="come-si-passa-dall-una-all-altra">Come si passa dall'una all'altra</h3>
+<p>Qui c'è un punto che sorprende, ed è bene saperlo perché fa risparmiare tempo:</p>
+<blockquote>
+<p><strong>Il backend non ha una strategia.</strong> Entrambi gli endpoint (<code>/login</code> e <code>/msal-login</code>) sono
+<strong>sempre</strong> attivi, e il backend emette e valida sempre e solo i propri JWT. Non esiste alcun
+interruttore lato server.</p>
+<p>Fino al 12/07/2026 in <code>appsettings.json</code> c'era una chiave <code>Auth:Strategy</code>: non era letta da nessuna
+parte del codice ed è stata <strong>rimossa</strong>, perché lasciava credere il contrario.</p>
+</blockquote>
+<p>A scegliere è il <strong>frontend</strong>, con <code>VITE_AUTH_STRATEGY</code>:</p>
+<pre><code class="language-env"><span class="hljs-comment"># apps/frontend/.env.local</span>
+<span class="hljs-attr">VITE_AUTH_STRATEGY</span>=jwt     <span class="hljs-comment"># form email/password</span>
+<span class="hljs-attr">VITE_AUTH_STRATEGY</span>=msal    <span class="hljs-comment"># pulsante &quot;Accedi con Microsoft&quot;</span>
+</code></pre>
+<p>Il confronto in <code>LoginPage.vue</code> è con la stringa <code>'msal'</code>: qualunque altro valore mostra il form
+classico. Per usare MSAL servono anche le variabili descritte nella
+<a href="azure-app-registration.html">guida ad Azure</a>; il backend, dal canto suo, ha bisogno di
+<code>Auth:Msal:TenantId</code> e <code>Auth:Msal:ClientId</code> per poter validare il token in arrivo.</p>
+<h2 id="il-flusso-completo">Il flusso completo</h2>
+<h3 id="1-accesso-con-email-e-password">1. Accesso con email e password</h3>
+<pre><code>POST /api/auth/login   { email, password }
+        │
+        ▼  LoginHandler
+   ┌───────────────────────────────────────────────┐
+   │ 1. Cerca l'utente per email                   │
+   │ 2. Se non è attivo → 401                      │
+   │ 3. Verifica la password con BCrypt            │
+   │ 4. Risolve i permessi (vedi sotto)            │
+   │ 5. Genera il JWT + il refresh token           │
+   └───────────────────────────────────────────────┘
+        │
+        ▼
+   200 OK  { accessToken, expiresAt, userId, email, displayName, language, permissions }
+   Set-Cookie: refreshToken=…  (HttpOnly)
+</code></pre>
+<p>L'errore su email inesistente e quello su password sbagliata sono <strong>lo stesso messaggio</strong>
+(&quot;Credenziali non valide&quot;): distinguerli permetterebbe di scoprire quali email sono registrate.</p>
+<h3 id="2-accesso-con-account-microsoft">2. Accesso con account Microsoft</h3>
+<pre><code>Frontend → Azure AD (login, MFA, consenso)  →  access token firmato da Microsoft
+        │
+        ▼
+POST /api/auth/msal-login   { azureToken }
+        │
+        ▼  MsalLoginHandler
+   ┌────────────────────────────────────────────────────────────┐
+   │ 1. Scarica le chiavi pubbliche del tenant (JWKS) e le      │
+   │    tiene in cache                                          │
+   │ 2. VALIDA il token: firma, issuer, audience, scadenza      │
+   │ 3. Estrae l'email (preferred_username, o email)            │
+   │ 4. Cerca l'utente LOCALE con quella email → se non c'è, 401│
+   │ 5. Se non è attivo → 401                                   │
+   │ 6. Risolve i permessi, genera il JWT interno + refresh     │
+   └────────────────────────────────────────────────────────────┘
+</code></pre>
+<blockquote>
+<p><strong>Il backend valida il token di Azure per intero.</strong> Non si fida di quanto ha già fatto il frontend:
+verifica la firma con le chiavi pubbliche di Microsoft, l'emittente, il destinatario e la scadenza.
+Se una versione precedente di questa documentazione diceva il contrario — che il backend si limita
+a leggere il token — era <strong>sbagliata</strong>: il codice fa la cosa giusta.</p>
+</blockquote>
+<pre><code class="language-csharp"><span class="hljs-comment">// MsalLoginHandler.cs — la validazione, per esteso</span>
+<span class="hljs-keyword">var</span> openIdConfig = <span class="hljs-keyword">await</span> configManager.GetConfigurationAsync(cancellationToken);
+
+<span class="hljs-keyword">var</span> validationParameters = <span class="hljs-keyword">new</span> TokenValidationParameters
+{
+    ValidIssuer = <span class="hljs-string">$&quot;https://login.microsoftonline.com/<span class="hljs-subst">{tenantId}</span>/v2.0&quot;</span>,
+    IssuerSigningKeys = openIdConfig.SigningKeys,     <span class="hljs-comment">// chiavi pubbliche di Azure (JWKS)</span>
+    ValidateIssuer = <span class="hljs-literal">true</span>,
+    ValidateAudience = <span class="hljs-literal">true</span>,
+    AudienceValidator = (audiences, _, _) =&gt;
+        audiences.Any(a =&gt; a == clientId || a == <span class="hljs-string">$&quot;api://<span class="hljs-subst">{clientId}</span>&quot;</span>),
+    ValidateLifetime = <span class="hljs-literal">true</span>,
+    ValidateIssuerSigningKey = <span class="hljs-literal">true</span>,
+    ClockSkew = TimeSpan.FromMinutes(<span class="hljs-number">2</span>)
+};
+
+handler.ValidateToken(request.AzureToken, validationParameters, <span class="hljs-keyword">out</span> <span class="hljs-keyword">var</span> validatedToken);
+</code></pre>
+<p>Due dettagli che spiegano perché è scritto così:</p>
+<ul>
+<li><strong><code>AudienceValidator</code> custom.</strong> A seconda di come è configurata l'app su Azure, il claim <code>aud</code> può
+contenere il ClientId nudo oppure <code>api://{clientId}</code>. Accettarli entrambi evita l'errore
+<code>IDX10214: Audience validation failed</code> quando lo scope non è ancora stato esposto.</li>
+<li><strong>Cache dei metadata per tenant.</strong> I <code>ConfigurationManager</code> stanno in un dizionario statico: sono
+loro a scaricare e rinfrescare le chiavi JWKS. Ricrearli a ogni login significherebbe riscaricare
+le chiavi a ogni login.</li>
+</ul>
+<h3 id="3-uso-del-token-e-rinnovo">3. Uso del token, e rinnovo</h3>
+<p>L'access token dura <strong>60 minuti</strong> (configurabile). Alla scadenza si usa il refresh token, che vive in
+un cookie e dura <strong>7 giorni</strong>.</p>
+<pre><code>POST /api/auth/refresh          (il cookie viaggia da solo)
+        │
+        ▼  RefreshTokenHandler
+   ┌──────────────────────────────────────────────┐
+   │ 1. Cerca il refresh token nel database       │
+   │ 2. Se scaduto → 401                          │
+   │ 3. Utente inesistente o disattivato → 401    │
+   │ 4. REVOCA il token appena usato  ← rotation  │
+   │ 5. Ririsolve i permessi (aggiornati!)        │
+   │ 6. Emette un nuovo JWT + un nuovo refresh    │
+   └──────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Rotation.</strong> Ogni refresh consuma il token e ne emette uno nuovo: chi rubasse un refresh token
+potrebbe usarlo una volta sola, e solo se arriva prima del legittimo proprietario.</p>
+<p><strong>I permessi vengono ririsolti a ogni refresh</strong>: una modifica ai ruoli di un utente diventa effettiva
+al più tardi dopo un'ora, senza bisogno che l'utente rifaccia il login.</p>
+<h3 id="4-uscita">4. Uscita</h3>
+<p><code>POST /api/auth/logout</code> revoca il refresh token e cancella il cookie. È <strong>idempotente</strong>: se il token
+non c'è più, non è un errore. L'access token già emesso resta tecnicamente valido fino alla scadenza —
+è la natura dei JWT — ma il frontend lo elimina e senza refresh token non se ne ottengono altri.</p>
+<h2 id="come-si-risolvono-i-permessi">Come si risolvono i permessi</h2>
+<p>È la stessa identica sequenza in tutti e tre gli handler (login, msal-login, refresh):</p>
+<pre><code>     Utente
+       ├── RoleIds            (ruoli assegnati direttamente)
+       └── GroupIds → Gruppi → RoleIds   (ruoli ereditati dai gruppi)
+                                  │
+                     unione + deduplica
+                                  │
+                               Ruoli → PermissionIds
+                                  │
+                            Permessi → Key   (&quot;valleys.read&quot;, &quot;users.write&quot;, …)
+                                  │
+                    un claim &quot;permissions&quot; per ciascuno, dentro il JWT
+</code></pre>
+<p>Il JWT che ne esce:</p>
+<pre><code class="language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;sub&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;42&quot;</span><span class="hljs-punctuation">,</span>                             <span class="hljs-comment">// id dell&#x27;utente (int)</span>
+  <span class="hljs-attr">&quot;email&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;mario@example.com&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;name&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Mario Rossi&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;jti&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;550e8400-e29b-41d4-a716-446655440000&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;permissions&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;users.read&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;valleys.write&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;iss&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;DelVoltone&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;aud&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;DelVoltoneClients&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;exp&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1695315600</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<p>Gli endpoint verificano il claim, non il ruolo:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">group</span>.MapDelete(<span class="hljs-string">&quot;/{id:int}&quot;</span>, …)
+    .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;valleys.delete&quot;</span>));
+</code></pre>
+<h2 id="configurazione">Configurazione</h2>
+<pre><code class="language-json"><span class="hljs-comment">// appsettings.local.json (gitignored) — in produzione: variabili d&#x27;ambiente</span>
+<span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;Auth&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;Jwt&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+      <span class="hljs-attr">&quot;Secret&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;…almeno 32 caratteri, casuale…&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;Issuer&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;DelVoltone&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;Audience&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;DelVoltoneClients&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;ExpiresInMinutes&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">60</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;RefreshExpiresInDays&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">7</span>
+    <span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;Msal&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+      <span class="hljs-attr">&quot;Instance&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;https://login.microsoftonline.com/&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;TenantId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;…&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;ClientId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;…&quot;</span>     <span class="hljs-comment">// l&#x27;app registration dell&#x27;API — non quella della SPA</span>
+    <span class="hljs-punctuation">}</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Parametro</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Jwt:Secret</code></td>
+<td><strong>Obbligatorio.</strong> Se manca, l'applicazione non si avvia. Minimo 32 caratteri</td>
+</tr>
+<tr>
+<td><code>Jwt:ExpiresInMinutes</code></td>
+<td>Default 60. Valori sensati: 15–60</td>
+</tr>
+<tr>
+<td><code>Jwt:RefreshExpiresInDays</code></td>
+<td>Default 7. Decide per quanto l'utente resta connesso senza riautenticarsi</td>
+</tr>
+<tr>
+<td><code>Msal:ClientId</code></td>
+<td>Il ClientId dell'<strong>API</strong> su Azure: è quello che il backend si aspetta come <code>aud</code> del token</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Generare un secret:</p>
+<pre><code class="language-bash">openssl rand -<span class="hljs-built_in">base64</span> 32
+</code></pre>
+<pre><code class="language-powershell">[<span class="hljs-type">Convert</span>]::ToBase64String((<span class="hljs-number">1</span>..<span class="hljs-number">32</span> | <span class="hljs-built_in">ForEach-Object</span> { [<span class="hljs-built_in">byte</span>](<span class="hljs-built_in">Get-Random</span> <span class="hljs-literal">-Max</span> <span class="hljs-number">256</span>) }))
+</code></pre>
+<h2 id="sicurezza-che-cosa-e-in-piedi">Sicurezza — che cosa è in piedi</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Protezione</th>
+<th>Come</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Password</td>
+<td>Hash <strong>BCrypt</strong> (lento, con salt): dall'hash non si risale alla password</td>
+</tr>
+<tr>
+<td>Firma del JWT</td>
+<td>HMAC-SHA256 con il secret; alla validazione <code>ClockSkew = 0</code>, nessuna tolleranza sulla scadenza</td>
+</tr>
+<tr>
+<td>Refresh token</td>
+<td>64 byte casuali crittografici, salvati nel database, <strong>ruotati</strong> a ogni uso, revocabili</td>
+</tr>
+<tr>
+<td>Cookie</td>
+<td><code>HttpOnly</code> (JavaScript non lo può leggere, neanche in caso di XSS), <code>Secure</code> fuori da sviluppo, <code>Path=/api/auth</code></td>
+</tr>
+<tr>
+<td>Brute force</td>
+<td>Rate limiting <strong>per IP</strong> su login, msal-login e refresh: 10 tentativi ogni 15 minuti</td>
+</tr>
+<tr>
+<td>Enumerazione utenti</td>
+<td>Messaggio di errore identico per email sconosciuta e password errata</td>
+</tr>
+<tr>
+<td>Account disattivati</td>
+<td><code>IsActive</code> verificato al login <strong>e a ogni refresh</strong></td>
+</tr>
+<tr>
+<td>Token Azure</td>
+<td>Firma (JWKS), issuer, audience e scadenza validati <strong>dal backend</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="il-cookie-e-il-samesite">Il cookie e il <code>SameSite</code></h3>
+<pre><code class="language-csharp">ctx.Response.Cookies.Append(<span class="hljs-string">&quot;refreshToken&quot;</span>, refreshToken, <span class="hljs-keyword">new</span> CookieOptions
+{
+    HttpOnly = <span class="hljs-literal">true</span>,
+    Secure = !isDev,
+    <span class="hljs-comment">// In produzione frontend e backend stanno su origin diverse (cross-site):</span>
+    <span class="hljs-comment">// con SameSite=Lax il browser NON invierebbe il cookie sulle chiamate XHR.</span>
+    SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.None,
+    Path = <span class="hljs-string">&quot;/api/auth&quot;</span>,
+    MaxAge = TimeSpan.FromDays(days)
+});
+</code></pre>
+<p>Vale la pena fermarsi un attimo. In produzione il cookie è <code>SameSite=None</code>, <strong>non</strong> <code>Lax</code>: il
+frontend (<code>del-voltone-frontend.onrender.com</code>) e il backend (<code>del-voltone-backend.onrender.com</code>) sono
+due origin diverse, quindi ogni chiamata è cross-site e con <code>Lax</code> il browser non allegherebbe mai il
+cookie. <code>None</code> <strong>richiede</strong> <code>Secure</code>, cioè HTTPS — che in produzione c'è.</p>
+<p>Il prezzo è che <code>SameSite</code> non offre più protezione CSRF; a proteggere restano il fatto che il cookie
+serve <strong>solo</strong> su <code>/api/auth</code> e che le API vere vogliono il Bearer token, che vive in <code>localStorage</code>
+e non viaggia da solo.</p>
+<h2 id="sul-frontend">Sul frontend</h2>
+<pre><code class="language-typescript"><span class="hljs-comment">// plugins/axios.ts</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> api = axios.<span class="hljs-title function_">create</span>({
+  <span class="hljs-attr">baseURL</span>: <span class="hljs-keyword">import</span>.<span class="hljs-property">meta</span>.<span class="hljs-property">env</span>.<span class="hljs-property">VITE_API_BASE_URL</span>,
+  <span class="hljs-attr">withCredentials</span>: <span class="hljs-literal">true</span>,        <span class="hljs-comment">// senza questo il cookie del refresh non parte</span>
+})
+
+api.<span class="hljs-property">interceptors</span>.<span class="hljs-property">request</span>.<span class="hljs-title function_">use</span>(<span class="hljs-function"><span class="hljs-params">config</span> =&gt;</span> {
+  <span class="hljs-keyword">const</span> authStore = <span class="hljs-title function_">useAuthStore</span>()
+  <span class="hljs-keyword">if</span> (authStore.<span class="hljs-property">token</span>) config.<span class="hljs-property">headers</span>.<span class="hljs-property">Authorization</span> = <span class="hljs-string">`Bearer <span class="hljs-subst">${authStore.token}</span>`</span>
+  config.<span class="hljs-property">headers</span>[<span class="hljs-string">&#x27;Accept-Language&#x27;</span>] = authStore.<span class="hljs-property">language</span> ?? <span class="hljs-string">&#x27;it&#x27;</span>
+  <span class="hljs-keyword">return</span> config
+})
+
+<span class="hljs-comment">// 401 → logout. NON un retry automatico con refresh.</span>
+<span class="hljs-keyword">let</span> isLoggingOut = <span class="hljs-literal">false</span>
+api.<span class="hljs-property">interceptors</span>.<span class="hljs-property">response</span>.<span class="hljs-title function_">use</span>(
+  <span class="hljs-function"><span class="hljs-params">res</span> =&gt;</span> res,
+  <span class="hljs-keyword">async</span> error =&gt; {
+    <span class="hljs-keyword">if</span> (error.<span class="hljs-property">response</span>?.<span class="hljs-property">status</span> === <span class="hljs-number">401</span> &amp;&amp; !isLoggingOut) {
+      isLoggingOut = <span class="hljs-literal">true</span>
+      <span class="hljs-keyword">try</span> { <span class="hljs-keyword">await</span> <span class="hljs-title function_">useAuthStore</span>().<span class="hljs-title function_">logout</span>() } <span class="hljs-keyword">finally</span> { isLoggingOut = <span class="hljs-literal">false</span> }
+    }
+    <span class="hljs-keyword">return</span> <span class="hljs-title class_">Promise</span>.<span class="hljs-title function_">reject</span>(error)
+  },
+)
+</code></pre>
+<blockquote>
+<p><strong>Attenzione a questo comportamento</strong>: su <code>401</code> il frontend <strong>disconnette l'utente</strong>, non tenta il
+refresh. <code>authStore.refresh()</code> esiste ed è disponibile per un rinnovo preventivo, ma non è agganciato
+all'interceptor. In pratica, a token scaduto l'utente viene rimandato al login.</p>
+</blockquote>
+<p>Lo store <code>auth.store.ts</code> conserva in <code>localStorage</code> token, scadenza, dati dell'utente e permessi; il
+navigation guard del router controlla <code>meta.requiresAuth</code> e <code>meta.permission</code> prima di ogni
+navigazione, e il composable <code>usePermission</code> espone <code>can('permesso')</code> per i template.</p>
+<h2 id="diagnostica">Diagnostica</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Sintomo</th>
+<th>Causa più probabile</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>401 subito dopo il login</strong></td>
+<td>Il JWT è scaduto (60 minuti) o il <code>Jwt:Secret</code> non è lo stesso con cui era stato firmato — tipico dopo un riavvio con secret diverso</td>
+</tr>
+<tr>
+<td><strong>401 su <code>/api/auth/refresh</code></strong></td>
+<td>Il cookie non è arrivato. Controlla <code>withCredentials: true</code> sul client, <code>Secure</code>/<code>SameSite</code> sul server e che la richiesta sia su HTTPS in produzione</td>
+</tr>
+<tr>
+<td><strong>&quot;Nessun utente locale con email …&quot;</strong></td>
+<td><em>Solo MSAL.</em> L'utente esiste su Azure ma non in DelVoltone. Va creato nel pannello, con la <strong>stessa</strong> email</td>
+</tr>
+<tr>
+<td><strong>&quot;Token Azure non valido: IDX10214&quot;</strong></td>
+<td>Il claim <code>aud</code> del token non corrisponde a <code>Auth:Msal:ClientId</code>. È il caso classico di SPA e API confuse: vedi la <a href="azure-app-registration.html">guida ad Azure</a></td>
+</tr>
+<tr>
+<td><strong>&quot;Token Azure non valido: IDX10223&quot;</strong> o scadenza</td>
+<td>Orologio del server disallineato (la tolleranza è 2 minuti) o token già scaduto</td>
+</tr>
+<tr>
+<td><strong>Il pulsante Microsoft non appare</strong></td>
+<td><code>VITE_AUTH_STRATEGY</code> non vale esattamente <code>msal</code></td>
+</tr>
+<tr>
+<td><strong>Il form email/password non appare</strong></td>
+<td><code>VITE_AUTH_STRATEGY=msal</code>: rimettilo a <code>jwt</code></td>
+</tr>
+<tr>
+<td><strong>401 &quot;Account disabilitato&quot;</strong></td>
+<td><code>IsActive = false</code> sull'utente</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Per guardare dentro un token: <a href="https://jwt.ms" target="_blank" rel="noopener">jwt.ms</a> (Azure) o <a href="https://jwt.io" target="_blank" rel="noopener">jwt.io</a> — mai con
+token di produzione.</p>
+<h2 id="i-file">I file</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Ruolo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Features/Auth/AuthEndpoints.cs</code></td>
+<td>Le quattro rotte, il rate limiting, il cookie</td>
+</tr>
+<tr>
+<td><code>Features/Auth/Login/LoginHandler.cs</code></td>
+<td>Email + password, BCrypt</td>
+</tr>
+<tr>
+<td><code>Features/Auth/MsalLogin/MsalLoginHandler.cs</code></td>
+<td>Validazione del token Azure, lookup dell'utente locale</td>
+</tr>
+<tr>
+<td><code>Features/Auth/RefreshToken/RefreshTokenHandler.cs</code></td>
+<td>Rotation e ririsoluzione dei permessi</td>
+</tr>
+<tr>
+<td><code>Features/Auth/Logout/LogoutHandler.cs</code></td>
+<td>Revoca</td>
+</tr>
+<tr>
+<td><code>Features/Auth/Shared/JwtTokenHelper.cs</code></td>
+<td>Generazione del JWT e del refresh token</td>
+</tr>
+<tr>
+<td><code>Features/_Shared/Extensions/AuthExtensions.cs</code></td>
+<td>Registrazione del JwtBearer e delle policy</td>
+</tr>
+<tr>
+<td><code>plugins/axios.ts</code> · <code>stores/auth.store.ts</code> · <code>services/msal.service.ts</code></td>
+<td>Il lato frontend</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del progetto <strong>DelVoltone</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

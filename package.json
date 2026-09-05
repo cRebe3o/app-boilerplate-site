@@ -1,0 +1,15 @@
+{
+  "name": "del-voltone-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Documentazione del progetto DelVoltone — sito statico generato dai Markdown in docs/",
+  "scripts": {
+    "build": "node build.mjs",
+    "clean": "node build.mjs --clean"
+  },
+  "dependencies": {
+    "highlight.js": "^11.10.0",
+    "markdown-it": "^14.1.0"
+  }
+}
