@@ -3,9 +3,13 @@
 Guida operativa per far funzionare l'accesso con account Microsoft. Serve una sola volta, per
 ambiente. Il funzionamento a valle è descritto in [JWT e MSAL](autenticazione.md).
 
-> **Prerequisito**: un account Azure con il ruolo *Amministratore globale* o *Amministratore
-> applicazioni*. Il portale è su [portal.azure.com](https://portal.azure.com); il servizio si chiama
+> **Prerequisito**: un account Azure con il ruolo *Global Administrator* o *Application
+> Administrator*. Il portale è su [portal.azure.com](https://portal.azure.com); il servizio si chiama
 > **Microsoft Entra ID** (l'ex Azure Active Directory: stessa cosa, nome nuovo).
+
+> **Le voci del portale sono in inglese.** Questa guida riporta i nomi dei menu e dei pulsanti come
+> compaiono nel portale in lingua inglese, con la traduzione italiana tra parentesi dove può servire.
+> Se il tuo portale è in italiano, l'etichetta tra parentesi è quella che vedi.
 
 ## Il modello: due app, non una
 
@@ -40,41 +44,86 @@ Il resto della guida descrive il caso completo, con due app.
 
 ## 1. Registrare l'app dell'API
 
-1. **Microsoft Entra ID** → **Registrazioni app** → **+ Nuova registrazione**.
-2. Nome: `<Progetto>-API` (per esempio `MioProgetto-API`).
-3. Tipi di account supportati: **Solo questa directory organizzativa** (single tenant) — è la scelta
+1. **Microsoft Entra ID** → **App registrations** (*Registrazioni app*) → **+ New registration**
+   (*+ Nuova registrazione*).
+2. **Name** (*Nome*): `<Progetto>-API` (per esempio `MioProgetto-API`).
+3. **Supported account types** (*Tipi di account supportati*): **Accounts in this organizational
+   directory only** (*Solo account nella directory organizzativa*), cioè single tenant — è la scelta
    giusta se tutti gli utenti appartengono alla stessa organizzazione.
-4. Nessun URI di reindirizzamento: l'API non ne ha bisogno.
-5. **Registra**.
+4. **Redirect URI** (*URI di reindirizzamento*): nessuno, l'API non ne ha bisogno.
+5. **Register** (*Registra*).
 
-Dalla pagina **Panoramica** annota **ID applicazione (client)** e **ID directory (tenant)**.
+Dalla pagina **Overview** (*Panoramica*) annota **Application (client) ID** (*ID applicazione
+(client)*) e **Directory (tenant) ID** (*ID directory (tenant)*).
 
 ### Esporre l'API e lo scope
 
-1. **Esponi un'API** → accanto a *URI ID applicazione* clicca **Aggiungi** e accetta la proposta di
-   Azure (`api://{clientId}`) → **Salva**.
-2. **+ Aggiungi un ambito**:
+1. **Expose an API** (*Esponi un'API*) → accanto ad *Application ID URI* (*URI ID applicazione*)
+   clicca **Add** (*Aggiungi*) e accetta la proposta di Azure (`api://{clientId}`) → **Save**
+   (*Salva*).
+2. **+ Add a scope** (*+ Aggiungi un ambito*):
 
    | Campo | Valore |
    |---|---|
-   | Nome ambito | `access_as_user` |
-   | Chi può consentire | Amministratori e utenti |
-   | Nome visualizzato | Accedi all'applicazione come utente |
-   | Descrizione | Consente all'app di accedere all'applicazione per conto dell'utente connesso |
-   | Stato | Abilitato |
+   | **Scope name** (*Nome ambito*) | `access_as_user` |
+   | **Who can consent?** (*Chi può consentire*) | **Admins and users** (*Amministratori e utenti*) |
+   | **Admin consent display name** (*Nome visualizzato del consenso amministratore*) | Accedi all'applicazione come utente |
+   | **Admin consent description** (*Descrizione del consenso amministratore*) | Consente all'app di accedere all'applicazione per conto dell'utente connesso |
+   | **State** (*Stato*) | **Enabled** (*Abilitato*) |
 
 Lo scope completo diventa `api://{API_CLIENT_ID}/access_as_user`: è quello che la SPA chiederà.
 
+### Forzare i token in versione 2.0
+
+**Da fare, altrimenti il login fallisce con `IDX10205: Issuer validation failed`.**
+
+Il backend valida l'issuer del token contro l'endpoint **v2.0**:
+
+```csharp
+// MsalLoginHandler.cs
+ValidIssuer = $"https://login.microsoftonline.com/{tenantId}/v2.0",
+```
+
+Ma un'app registration appena creata ha `requestedAccessTokenVersion` a `null`, e con quel
+valore Azure emette **access token in formato v1.0**, il cui issuer è
+`https://sts.windows.net/{tenantId}/` — diverso, quindi la validazione scatta e il backend
+risponde `401 "Token Azure non valido: IDX10205"`.
+
+Sull'app **`<Progetto>-API`** → **Manifest**, trova l'oggetto `api` e porta
+`requestedAccessTokenVersion` a `2`:
+
+```jsonc
+"api": {
+    "requestedAccessTokenVersion": 2,      // era null
+    "acceptMappedClaims": null,
+    "knownClientApplications": [],
+    "oauth2PermissionScopes": [ /* … lo scope access_as_user già definito … */ ],
+    "preAuthorizedApplications": []
+}
+```
+
+> A seconda della versione dell'editor del manifest la proprietà può comparire al livello
+> radice come `accessTokenAcceptedVersion` invece che dentro `api`: è la stessa impostazione,
+> mettila comunque a `2`.
+
+**Save** (*Salva*). Poi, sul client, fai **logout e svuota `localStorage`** prima di
+riprovare: MSAL tiene in cache l'access token e senza pulizia riuserebbe quello v1.0.
+
+Verifica su [jwt.ms](https://jwt.ms): nel token devono comparire `"ver": "2.0"` e
+`"iss": "https://login.microsoftonline.com/{tenant}/v2.0"`.
+
 ## 2. Registrare l'app della SPA
 
-1. **+ Nuova registrazione**, nome `<Progetto>-SPA`, single tenant.
-2. **Autenticazione** → **+ Aggiungi una piattaforma** → **Applicazione a pagina singola (SPA)**.
+1. **+ New registration** (*+ Nuova registrazione*), **Name** (*Nome*) `<Progetto>-SPA`, single tenant.
+2. **Authentication** (*Autenticazione*) → **+ Add a platform** (*+ Aggiungi una piattaforma*) →
+   **Single-page application** (*Applicazione a pagina singola (SPA)*).
 
-   > Deve essere **SPA**, non *Web*. La piattaforma Web usa il flusso implicito e produce l'errore
-   > `AADSTS700054`. La SPA usa Authorization Code con PKCE, che è più sicuro e non richiede alcun
-   > client secret.
+   > Deve essere **Single-page application**, non *Web*. La piattaforma Web usa il flusso implicito e
+   > produce l'errore `AADSTS700054`. La SPA usa Authorization Code con PKCE, che è più sicuro e non
+   > richiede alcun client secret.
 
-3. URI di reindirizzamento: **deve coincidere esattamente** con `window.location.origin + '/login'`.
+3. **Redirect URIs** (*URI di reindirizzamento*): **deve coincidere esattamente** con
+   `window.location.origin + '/login'`.
 
    ```
    http://localhost:5173/login             sviluppo (con frontend_port = 5173)
@@ -84,19 +133,22 @@ Lo scope completo diventa `api://{API_CLIENT_ID}/access_as_user`: è quello che 
    Attenzione a protocollo, porta, path e trailing slash: ogni differenza produce
    `redirect_uri_mismatch` (o `AADSTS50011`, che è la stessa cosa detta in altro modo).
 
-4. Nella stessa pagina, sotto *Concessione implicita e flussi ibridi*: lascia **entrambe le caselle
-   deselezionate**.
+4. Nella stessa pagina, sotto **Implicit grant and hybrid flows** (*Concessione implicita e flussi
+   ibridi*): lascia **entrambe le caselle deselezionate**.
 
 ### Dare alla SPA il permesso di chiamare l'API
 
-1. Nell'app **SPA** → **Autorizzazioni API** → **+ Aggiungi un'autorizzazione**.
-2. Scheda **Le mie API** → seleziona l'app `<Progetto>-API`.
-3. **Autorizzazioni delegate** → spunta `access_as_user` → **Aggiungi autorizzazioni**.
-4. Clicca **Concedi consenso amministratore** e conferma.
+1. Nell'app **SPA** → **API permissions** (*Autorizzazioni API*) → **+ Add a permission**
+   (*+ Aggiungi un'autorizzazione*).
+2. Scheda **My APIs** (*Le mie API*) → seleziona l'app `<Progetto>-API`.
+3. **Delegated permissions** (*Autorizzazioni delegate*) → spunta `access_as_user` → **Add
+   permissions** (*Aggiungi autorizzazioni*).
+4. Clicca **Grant admin consent for &lt;tenant&gt;** (*Concedi consenso amministratore per
+   &lt;tenant&gt;*) e conferma.
 
 Senza il consenso amministratore ogni utente dovrà accettare i permessi al primo accesso; con il
-consenso, la cosa è trasparente. Se lo stato resta *Non concesso*, l'accesso fallisce con
-`AADSTS65001`.
+consenso, la cosa è trasparente. Se lo stato resta *Not granted* (*Non concesso*), l'accesso
+fallisce con `AADSTS65001`.
 
 ## 3. Configurare il progetto
 
@@ -132,9 +184,9 @@ VITE_MSAL_API_CLIENT_ID=<ClientId dell'app API>   # vuoto se SPA e API sono la s
 
 | Azure | Backend | Frontend |
 |---|---|---|
-| ID directory (tenant) | `Auth:Msal:TenantId` | `VITE_MSAL_TENANT_ID` |
-| ClientId dell'app **API** | `Auth:Msal:ClientId` | `VITE_MSAL_API_CLIENT_ID` |
-| ClientId dell'app **SPA** | — | `VITE_MSAL_CLIENT_ID` |
+| **Directory (tenant) ID** (*ID directory (tenant)*) | `Auth:Msal:TenantId` | `VITE_MSAL_TENANT_ID` |
+| **Application (client) ID** dell'app **API** | `Auth:Msal:ClientId` | `VITE_MSAL_API_CLIENT_ID` |
+| **Application (client) ID** dell'app **SPA** | — | `VITE_MSAL_CLIENT_ID` |
 
 L'authority non si configura: il frontend la costruisce da sé come
 `https://login.microsoftonline.com/{VITE_MSAL_TENANT_ID}`.
@@ -177,8 +229,9 @@ deve essere il ClientId dell'**API** (o `api://{clientId}`). È la diagnosi più
 ### Checklist
 
 - [ ] App **API** registrata, con `api://{clientId}` e lo scope `access_as_user`
-- [ ] App **SPA** registrata, piattaforma **SPA**, redirect URI identico a quello reale
-- [ ] La SPA ha il permesso delegato `access_as_user` sull'API, **con consenso amministratore**
+- [ ] App **API**: `requestedAccessTokenVersion` = `2` nel Manifest (token v2.0)
+- [ ] App **SPA** registrata, piattaforma **Single-page application**, redirect URI identico a quello reale
+- [ ] La SPA ha il permesso delegato `access_as_user` sull'API, **con Grant admin consent** (*consenso amministratore*)
 - [ ] Backend: `Auth:Msal:TenantId` e `Auth:Msal:ClientId` (= app API)
 - [ ] Frontend: `VITE_AUTH_STRATEGY=msal`, `VITE_MSAL_CLIENT_ID` (= app SPA), `VITE_MSAL_TENANT_ID`,
       `VITE_MSAL_API_CLIENT_ID` (= app API)
@@ -203,25 +256,27 @@ No, e non va creato. La SPA è un *public client*: non può custodire segreti, e
 Authorization Code con PKCE, che non ne richiede. Nemmeno l'API ne ha bisogno, perché non chiama
 Azure: si limita a validare i token con le chiavi pubbliche.
 
-**Serve la sezione "Certificati e segreti"?**
+**Serve la sezione "Certificates & secrets" (*Certificati e segreti*)?**
 No, per lo stesso motivo.
 
 **Posso limitare chi accede?**
-Sì, in due punti. Su Azure: *Applicazioni aziendali* → *Assegnazione utenti obbligatoria* → assegna
-solo le persone o i gruppi desiderati. Nell'applicazione: chi non ha un utente locale non entra
-comunque.
+Sì, in due punti. Su Azure: **Enterprise applications** (*Applicazioni aziendali*) → **Properties**
+(*Proprietà*) → **Assignment required?** (*Assegnazione utenti obbligatoria*) → **Yes**, poi in
+**Users and groups** (*Utenti e gruppi*) assegna solo le persone o i gruppi desiderati.
+Nell'applicazione: chi non ha un utente locale non entra comunque.
 
 **Posso usare account Microsoft personali (outlook.com)?**
-Solo se nella registrazione hai scelto un tipo di account che li include. Per l'uso aziendale,
-*single tenant* è la scelta corretta.
+Solo se in **Supported account types** (*Tipi di account supportati*) hai scelto un tipo di account
+che li include. Per l'uso aziendale, *single tenant* è la scelta corretta.
 
 ## Errori comuni
 
 | Errore | Causa | Rimedio |
 |---|---|---|
 | `redirect_uri_mismatch` · `AADSTS50011` | L'URI nel browser non è identico a quello registrato | Confronta protocollo, porta, path, trailing slash |
-| `AADSTS700054` | Piattaforma **Web** invece di **SPA** | Rimuovi la piattaforma Web, aggiungi la SPA |
-| `AADSTS65001` | Manca il consenso amministratore | *Autorizzazioni API* → **Concedi consenso amministratore** |
+| `AADSTS700054` | Piattaforma **Web** invece di **Single-page application** | Rimuovi la piattaforma Web, aggiungi la SPA |
+| `AADSTS65001` | Manca il consenso amministratore | **API permissions** (*Autorizzazioni API*) → **Grant admin consent** (*Concedi consenso amministratore*) |
+| `IDX10205: Issuer validation failed` (issuer `sts.windows.net/…`) | L'app **API** emette token v1.0: `requestedAccessTokenVersion` è `null` | Manifest dell'app API → `requestedAccessTokenVersion: 2`, poi logout + svuota `localStorage` |
 | `IDX10214: Audience validation failed` | Il token è destinato alla SPA, non all'API | Imposta `VITE_MSAL_API_CLIENT_ID` e verifica che lo scope richiesto sia `api://{API}/access_as_user` |
 | *Nessun utente locale con username …* | L'utente non esiste nell'applicazione | Crealo con `Username` = la email aziendale |
 | Accede, ma non vede nulla | L'utente locale non ha ruoli | Assegnagli ruoli, direttamente o via gruppo |

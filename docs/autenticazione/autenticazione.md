@@ -158,6 +158,76 @@ POST /api/auth/msal-login   { azureToken }
    └────────────────────────────────────────────────────────────┘
 ```
 
+#### Il round-trip del redirect, lato frontend
+
+Quel primo "Frontend → Azure AD" nel diagramma nasconde un giro completo del browser fuori
+dall'applicazione e ritorno. MSAL Browser lo fa in modalità **redirect** (non popup): la SPA
+viene *scaricata*, si apre `login.microsoftonline.com`, e al ritorno la SPA **si ricarica da
+zero** su `/login`. Il codice che tiene insieme i due tronconi è distribuito su quattro file.
+
+```
+[click "Accedi con Microsoft"]  LoginPage.vue → loginWithMsal()
+        │
+        ▼  msalService.loginRedirect()
+   await msalReady                       ← initialize() + handleRedirectPromise() già risolti
+   msalInstance.loginRedirect(loginRequest)   scopes: ["api://<apiClientId>/access_as_user"]
+        │
+        ▼  il browser LASCIA la SPA
+   login.microsoftonline.com    (login, MFA, consenso)
+        │
+        ▼  redirect a redirectUri = window.location.origin + "/login"
+   /login#code=…                la SPA si RICARICA da zero
+        │
+        ▼  plugins/msal.ts, a modulo caricato:
+   msalReady = initialize().then(() => handleRedirectPromise())
+        │                     handleRedirectPromise() vede il #code=…, lo scambia con Azure
+        │                     per un access token e lo mette nella cache (localStorage)
+        ▼  LoginPage.vue  onMounted(), strategia === "msal":
+   const token = await msalService.handleRedirectResult()
+        │                     → result?.accessToken  (null se non stiamo tornando da un redirect)
+        ▼
+   authStore.loginWithMsal(token)  →  POST /api/auth/msal-login { azureToken: token }
+```
+
+Il pezzo di configurazione che rende possibile il ritorno è il `redirectUri`:
+
+```typescript
+// plugins/msal.ts
+export const msalInstance = new PublicClientApplication({
+  auth: {
+    clientId: import.meta.env.VITE_MSAL_CLIENT_ID,
+    authority: `https://login.microsoftonline.com/${import.meta.env.VITE_MSAL_TENANT_ID}`,
+    redirectUri: window.location.origin + '/login',   // Azure rimanda QUI dopo il login
+  },
+  cache: { cacheLocation: 'localStorage' },
+})
+
+// initialize() e handleRedirectPromise() vengono eseguiti una volta sola, all'import del
+// modulo: ogni consumatore aspetta `msalReady` invece di richiamarli.
+export const msalReady = msalInstance.initialize().then(() => msalInstance.handleRedirectPromise())
+```
+
+Tre punti che non si intuiscono dal diagramma:
+
+- **`handleRedirectPromise()` va chiamato sempre, non solo "se torno da un redirect".** È lui a
+  decidere: se nell'URL c'è un `#code=…` completa lo scambio e restituisce il risultato, altrimenti
+  restituisce `null`. Nel template è incapsulato in `msalReady` in modo che parta a ogni caricamento
+  della pagina, prima di qualunque altra logica MSAL.
+- **Lo scope decide l'`aud` del token.** `loginRequest.scopes` chiede
+  `api://<apiClientId>/access_as_user`, e `apiClientId` è `VITE_MSAL_API_CLIENT_ID` (con fallback su
+  `VITE_MSAL_CLIENT_ID` quando SPA e API condividono la stessa app registration). È questo valore che
+  il backend si aspetta di ritrovare in `aud` — se non combacia, è l'`IDX10214` della sezione
+  precedente.
+- **`handleRedirectResult()` è a colpo singolo.** Un flag `redirectConsumed` fa sì che restituisca il
+  token una volta sola: serve a non riutilizzare il risultato di un vecchio redirect dopo un logout.
+  Nota anche che in `LoginPage.vue` la variabile si chiama `idToken` ma contiene l'**access token** —
+  è ciò che `handleRedirectResult()` ritorna e ciò che il backend valida come "token Azure".
+
+Da `authStore.loginWithMsal(token)` in poi il flusso rientra nel tracciato comune: `_setSession()`
+salva il **JWT interno** in `localStorage`, `router.push('/home')`, e ogni richiesta successiva porta
+`Authorization: Bearer <JWT interno>`. Il token Azure ha esaurito il suo compito e non viene più
+toccato; il rinnovo passa dal cookie di refresh, non da un nuovo giro su Microsoft.
+
 > **Il backend valida il token di Azure per intero.** Non si fida di quanto ha già fatto il frontend:
 > verifica la firma con le chiavi pubbliche di Microsoft, l'emittente, il destinatario e la scadenza.
 
@@ -414,7 +484,7 @@ credenziali, perché il browser considera comunque `localhost` intranet.
 | Firma del JWT | HMAC-SHA256 con il secret; alla validazione `ClockSkew = 0`, nessuna tolleranza sulla scadenza |
 | Refresh token | 64 byte casuali crittografici, salvati nel database, **ruotati** a ogni uso, revocabili |
 | Cookie | `HttpOnly` (JavaScript non lo può leggere, neanche in caso di XSS), `Secure` fuori da sviluppo, `Path=/api/auth` |
-| Brute force | Rate limiting **per IP** su login, msal-login, windows-login e refresh: 10 tentativi ogni 15 minuti |
+| Brute force | Rate limiting **per IP** su login, msal-login, windows-login e refresh: 10 tentativi ogni 15 minuti in produzione (100 in `Development`, per non intralciare il prova-riprova sul login) |
 | Enumerazione utenti | Messaggio di errore identico per username sconosciuto e password errata |
 | Account disattivati | `IsActive` verificato al login **e a ogni refresh** |
 | Token Azure | Firma (JWKS), issuer, audience e scadenza validati **dal backend** |
@@ -493,7 +563,10 @@ username locale, email per MSAL, `DOMINIO\utente` per Windows); **Email** è fac
 | **401 subito dopo il login** | Il JWT è scaduto (60 minuti) o il `Jwt:Secret` non è lo stesso con cui era stato firmato — tipico dopo un riavvio con secret diverso |
 | **401 su `/api/auth/refresh`** | Il cookie non è arrivato. Controlla `withCredentials: true` sul client, `Secure`/`SameSite` sul server e che la richiesta sia su HTTPS in produzione |
 | **"Nessun utente locale con username …"** | *MSAL o Windows.* L'identità è valida ma non c'è un utente locale con quello `Username`. Va creato nel pannello, con lo `Username` esatto (per MSAL: la email aziendale; per Windows: `DOMINIO\utente`) |
-| **"Token Azure non valido: IDX10214"** | Il claim `aud` del token non corrisponde a `Auth:Msal:ClientId`. È il caso classico di SPA e API confuse: vedi la [guida ad Azure](azure-app-registration.md) |
+| **"Token Azure non valido: IDX10214"** | Il claim `aud` del token non corrisponde a `Auth:Msal:ClientId`. È il caso classico di SPA e API confuse: vedi la [guida ad Azure](azure-app-registration.md). Lato SPA l'`aud` lo fissa lo scope in `loginRequest` (`VITE_MSAL_API_CLIENT_ID`) |
+| **Torno da Microsoft ma resto sul login, nessun errore** | `handleRedirectPromise()` non è stato eseguito al ricaricamento della pagina (in `msal.ts` è dentro `msalReady`), oppure il `redirectUri` dell'app su Azure non è **esattamente** `origin + /login` |
+| **`AADSTS50011: redirect URI mismatch`** | Il `redirectUri` calcolato (`window.location.origin + '/login'`) non è tra quelli registrati sull'app SPA in Entra ID — vanno aggiunti sia l'URL locale sia quello di produzione |
+| **"Token Azure non valido: IDX10205"** (issuer `sts.windows.net/…`) | L'app registration dell'API emette token **v1.0**: nel suo Manifest `requestedAccessTokenVersion` è `null` invece di `2`. Vedi la [guida ad Azure](azure-app-registration.md#forzare-i-token-in-versione-20) |
 | **"Token Azure non valido: IDX10223"** o scadenza | Orologio del server disallineato (la tolleranza è 2 minuti) o token già scaduto |
 | **SSO Windows: 401 e nessun popup** | Il browser non invia le credenziali. Chrome/Edge: l'host non è in zona intranet. Firefox: manca `network.negotiate-auth.trusted-uris`. In alternativa usa l'header `X-Dev-Windows-User` in Development |
 | **SSO Windows: `NU1903` a `dotnet build`** | Pacchetto Negotiate su una versione < 10.0.10: aggiorna |
@@ -517,4 +590,6 @@ token di produzione.
 | `Features/Auth/Shared/JwtTokenHelper.cs` | Generazione del JWT e del refresh token |
 | `Features/_Shared/Helpers/Username.cs` | Normalizzazione dell'identità di login (trim + minuscolo) |
 | `Features/_Shared/Extensions/AuthExtensions.cs` | Registrazione di JwtBearer + Negotiate e delle policy |
-| `plugins/axios.ts` · `stores/auth.store.ts` · `services/msal.service.ts` | Il lato frontend |
+| `plugins/msal.ts` | Istanza `PublicClientApplication`, `redirectUri`, `msalReady` (initialize + handleRedirectPromise) |
+| `services/msal.service.ts` | `loginRedirect()` e `handleRedirectResult()` — lo scope che fissa l'`aud`, il flag a colpo singolo |
+| `plugins/axios.ts` · `stores/auth.store.ts` · `pages/auth/LoginPage.vue` | Bearer token, sessione in `localStorage`, scelta della schermata via `VITE_AUTH_STRATEGY` |

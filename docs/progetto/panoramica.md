@@ -141,7 +141,8 @@ solo quando mancano:
   arriva in `X-Forwarded-For`: senza questo, ogni richiesta sembrerebbe provenire dal load balancer
   e il rate limiting per IP diventerebbe di fatto globale.
 - **Rate limiting partizionato per IP**, non globale: 10 richieste ogni 15 minuti sugli endpoint di
-  autenticazione (anti brute-force), 20 al minuto sull'endpoint pubblico di raccolta errori.
+  autenticazione in produzione (100 in `Development`), 20 al minuto sull'endpoint pubblico di
+  raccolta errori.
 - **Localizzazione della richiesta** in base ad `Accept-Language` (`it` predefinito, `en` supportato):
   i messaggi di errore dell'API seguono la lingua dell'utente.
 - **Inizializzazione del database all'avvio**: `MigrateAsync()` applica le migration mancanti del
