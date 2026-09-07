@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -62,14 +71,16 @@
         <ul>
           <li class="lvl-2"><a href="#le-decisioni-in-breve">Le decisioni in breve</a></li>
           <li class="lvl-2"><a href="#perche-due-provider-sql">Perché due provider SQL</a></li>
-          <li class="lvl-2"><a href="#perche-niente-strato-repository">Perché niente strato repository</a></li>
+          <li class="lvl-2"><a href="#perche-clean-architecture">Perché Clean Architecture</a></li>
+          <li class="lvl-2"><a href="#perche-i-repository-solo-sulle-scritture">Perché i repository solo sulle scritture</a></li>
           <li class="lvl-2"><a href="#perche-la-chiave-primaria-e-int-identity">Perché la chiave primaria è <code>int</code> identity</a></li>
           <li class="lvl-3"><a href="#i-vantaggi-che-si-incassano">I vantaggi che si incassano</a></li>
           <li class="lvl-3"><a href="#i-costi-che-si-sono-accettati">I costi che si sono accettati</a></li>
           <li class="lvl-3"><a href="#perche-non-bigint">Perché non <code>bigint</code></a></li>
           <li class="lvl-3"><a href="#quando-andrebbe-rivista">Quando andrebbe rivista</a></li>
           <li class="lvl-2"><a href="#perche-il-template-non-contiene-migration">Perché il template non contiene migration</a></li>
-          <li class="lvl-2"><a href="#perche-vertical-slice">Perché vertical slice</a></li>
+          <li class="lvl-2"><a href="#perche-le-slice-per-caso-d-uso">Perché le slice per caso d'uso</a></li>
+          <li class="lvl-2"><a href="#perche-un-concurrency-token-applicativo">Perché un concurrency token applicativo</a></li>
           <li class="lvl-2"><a href="#approfondimenti">Approfondimenti</a></li>
         </ul>
       </nav>
@@ -94,9 +105,14 @@ nasce, e cambiarla dopo significa cambiarla in tutti.</p>
 <td>Il provider lo decide il cliente del progetto, non chi scrive il template. Il costo di supportarli entrambi è quasi nullo: stesso modello EF, cambia il driver</td>
 </tr>
 <tr>
-<td><strong>Niente strato repository</strong>: gli handler usano <code>AppDbContext</code></td>
-<td>Interfacce <code>I*Repository</code> con implementazioni per provider</td>
-<td>Con due provider entrambi su EF Core, le interfacce non astrarrebbero nulla: sarebbero indirezione pura. <code>AppDbContext</code> <strong>è già</strong> il seam</td>
+<td><strong>Clean Architecture</strong> in quattro progetti</td>
+<td>Un solo progetto a vertical slice</td>
+<td>Il dominio ha invarianti veri da proteggere: separarlo rende le regole non aggirabili e testabili senza infrastruttura. Sotto, per esteso</td>
+</tr>
+<tr>
+<td><strong>Repository sulle scritture, <code>IQueryable</code> sulle letture</strong></td>
+<td>Repository per tutto, oppure <code>AppDbContext</code> per tutto</td>
+<td>I repository proteggono gli invarianti degli aggregati; una lettura non ha invarianti da proteggere. Sotto, per esteso</td>
 </tr>
 <tr>
 <td><strong>PK <code>int</code> identity</strong></td>
@@ -109,9 +125,9 @@ nasce, e cambiarla dopo significa cambiarla in tutti.</p>
 <td>Pattern MS &quot;migrations with multiple providers&quot;: EF lega un set di migration a un tipo. Le derivate danno l'identità, il modello resta uno</td>
 </tr>
 <tr>
-<td><strong>Vertical slice</strong> invece di livelli tecnici</td>
-<td>Controller / Service / Repository</td>
-<td>Una feature si legge e si cancella in una cartella sola. Su un template conta doppio: l'aggiunta di codice è l'operazione più frequente</td>
+<td><strong>Slice per caso d'uso dentro <code>Application</code></strong></td>
+<td>Livelli tecnici (Controller / Service / Repository)</td>
+<td>Una feature si legge e si cancella in una cartella sola. La Clean Architecture riguarda i confini fra layer, non impone di organizzare i casi d'uso per tipo tecnico</td>
 </tr>
 <tr>
 <td><strong>Snapshot audit come <code>string</code> JSON</strong></td>
@@ -119,9 +135,9 @@ nasce, e cambiarla dopo significa cambiarla in tutti.</p>
 <td>Una colonna testo è portabile fra i due provider senza codice condizionale e resta interrogabile con <code>JSON_VALUE</code>/<code>OPENJSON</code> (SQL Server) e con gli operatori JSON (Postgres)</td>
 </tr>
 <tr>
-<td><strong>Nessun concurrency token</strong></td>
-<td><code>rowversion</code> / <code>xmin</code></td>
-<td>Last-wins. Scelta consapevole, da rivalutare in un progetto con scritture concorrenti sulla stessa riga</td>
+<td><strong>Concurrency token <code>Guid</code> applicativo</strong></td>
+<td><code>rowversion</code> (SQL Server) / <code>xmin</code> (Postgres)</td>
+<td>I token nativi hanno tipi e semantiche diverse sui due provider: un <code>Guid</code> rigenerato da un interceptor si comporta identico su entrambi</td>
 </tr>
 <tr>
 <td><strong>Enum come stringa</strong></td>
@@ -156,30 +172,80 @@ compilatore, ma dalla <strong>disciplina nello scrivere query LINQ traducibili d
 concreto è <code>Contains</code> su stringa, case-insensitive su SQL Server e case-sensitive su PostgreSQL.
 È il motivo per cui l'username di login si salva in minuscolo, ed è il controllo da fare su ogni
 nuova query di ricerca.</p>
-<h2 id="perche-niente-strato-repository">Perché niente strato repository</h2>
-<p>Un'interfaccia <code>IUserRepository</code> con una sola implementazione non astrae niente: aggiunge un file,
-un livello di indirezione e un punto in cui il codice può divergere dal modello, senza dare in
-cambio la libertà di sostituire l'implementazione.</p>
-<p>Il seam c'è già, ed è <code>AppDbContext</code>: è <code>abstract</code>, è provider-agnostico, e la DI decide quale
-derivata iniettare. Gli handler dipendono da lui e non sanno quale database c'è sotto — esattamente
-la garanzia che darebbero le interfacce, senza il codice da mantenere.</p>
-<p>Che cosa si guadagna concretamente:</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Un handler di lettura, per intero.</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GetGroupsHandler</span>(<span class="hljs-params">AppDbContext db</span>) : IRequestHandler&lt;GetGroupsQuery, List&lt;GroupResponse&gt;&gt;</span>
-{
-    <span class="hljs-keyword">public</span> Task&lt;List&lt;GroupResponse&gt;&gt; Handle(GetGroupsQuery request, CancellationToken ct) =&gt;
-        db.Set&lt;Group&gt;()
-            .Select(g =&gt; <span class="hljs-keyword">new</span> GroupResponse(g.Id, g.Name, g.Description))
-            .ToListAsync(ct);
-}
-</code></pre>
-<p>Con uno strato repository la stessa lettura richiederebbe un metodo nell'interfaccia, la sua
-implementazione, e comunque questo handler — che a quel punto si limiterebbe a inoltrare la
-chiamata.</p>
-<p><strong>Quando andrebbe rivista.</strong> Se il progetto dovesse accedere a una sorgente dati che non è EF Core
-— un servizio esterno, una coda, un database non relazionale — quella sorgente merita la propria
-astrazione. Il punto non è &quot;mai interfacce&quot;: è non introdurre un'interfaccia dove esiste una sola
-implementazione possibile.</p>
+<h2 id="perche-clean-architecture">Perché Clean Architecture</h2>
+<p>Il template è nato <strong>a vertical slice</strong>, con gli handler che iniettavano <code>AppDbContext</code>
+direttamente. Era una scelta difendibile, e per un CRUD lo è ancora: meno file, meno salti, un solo
+progetto.</p>
+<p>È cambiata quando il dominio ha iniziato ad avere <strong>regole vere</strong>. Un'applicazione che si limita a
+scrivere righe non ha invarianti da proteggere; una che deve garantire che <em>un'attrezzatura non
+venga noleggiata due volte negli stessi giorni</em>, o che <em>il totale di un contratto corrisponda sempre
+alle sue righe</em>, sì. E un invariante vale solo se <strong>non è aggirabile da nessuna strada</strong>.</p>
+<p>Con la logica negli handler, la garanzia dura finché tutti passano da quell'handler. Basta un
+import massivo, una seconda API, un job notturno — e la regola c'è ancora, ma qualcuno le è passato
+accanto. Non produce un errore: produce numeri leggermente sbagliati, mesi dopo.</p>
+<p>Separando i layer, la regola sta <strong>nel tipo</strong>: <code>RentalContract.TotalAmount</code> è calcolato, non
+impostabile; le righe si aggiungono solo con <code>AddLine</code>, che verifica lo stato. Non c'è modo di
+costruire un contratto incoerente, da nessuna strada.</p>
+<p>Che cosa si guadagna, in concreto:</p>
+<ul>
+<li><strong>Testabilità senza infrastruttura.</strong> <code>&lt;Progetto&gt;.Domain.Tests</code> non ha database né mock: gli
+oggetti si costruiscono e si interrogano.</li>
+<li><strong>Le regole hanno un posto solo</strong>, e chi legge il codice sa dove cercarle.</li>
+<li><strong>I dettagli restano sostituibili.</strong> I due provider SQL convivono perché nessun layer interno sa
+quale sia attivo.</li>
+</ul>
+<p>Che cosa costa, e va detto:</p>
+<ul>
+<li><strong>Più file.</strong> Una lettura banale richiede comando, handler, response ed endpoint; una scrittura
+aggiunge il metodo sul repository e la sua implementazione.</li>
+<li><strong>Più salti per capire un flusso</strong>, perché un'interfaccia va seguita fino all'implementazione.</li>
+<li><strong>Disciplina</strong>: la tentazione di iniettare <code>AppDbContext</code> &quot;solo stavolta&quot; arriva presto. È il
+motivo per cui i test di architettura esistono e fanno fallire la build.</li>
+</ul>
+<p><strong>Quando non conviene.</strong> Se il progetto è un CRUD anagrafico senza invarianti, questa struttura è
+sovrastruttura. È anche il motivo per cui, nel template, le anagrafiche restano sottili: il dominio
+si irrobustisce dove ci sono regole, non per uniformità.</p>
+<p>Il dettaglio operativo è nella sezione <a href="../architettura/clean-architecture.html">Architettura</a>.</p>
+<h2 id="perche-i-repository-solo-sulle-scritture">Perché i repository solo sulle scritture</h2>
+<p>La scelta meno ovvia del backend: i <strong>comandi</strong> passano da <code>I{Aggregato}Repository</code>, le <strong>query</strong> da
+<code>IReadDbContext</code>, che espone <code>IQueryable</code>. Due strade diverse per lo stesso database.</p>
+<p>La ragione è che i repository servono a <strong>proteggere gli invarianti</strong>, e una lettura non ha
+invarianti da proteggere. Una query proietta verso un DTO: non ricostruisce il modello di dominio,
+quindi non c'è nulla da aggirare.</p>
+<p>Farle passare comunque da un repository costerebbe, senza dare nulla in cambio. Una griglia con
+ricerca, cinque filtri e ordinamento su otto colonne diventerebbe o una firma con dodici parametri,
+o un metodo per ogni combinazione — oppure si materializzerebbero gli aggregati interi per
+proiettare in memoria, caricando colonne inutili come <code>PasswordHash</code>.</p>
+<p>Il prezzo di questa asimmetria è dichiarato: <code>&lt;Progetto&gt;.Application</code> referenzia <strong>l'assembly base
+di EF Core</strong> (per <code>IQueryable</code>), pur non referenziando nessun provider. È scritto nel <code>.csproj</code> come
+scelta consapevole, ed è verificato da un test di architettura:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Riferimento in <code>Application</code></th>
+<th>Ammesso</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Microsoft.EntityFrameworkCore</code> (assembly base)</td>
+<td>Sì — serve per <code>IQueryable</code></td>
+</tr>
+<tr>
+<td><code>Microsoft.EntityFrameworkCore.SqlServer</code>, <code>Npgsql.*</code></td>
+<td>No — legherebbero a un database preciso</td>
+</tr>
+<tr>
+<td><code>Microsoft.AspNetCore.*</code></td>
+<td>No — l'utente della richiesta arriva da <code>ICurrentUser</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Quando andrebbe rivista.</strong> Se le query diventassero abbastanza complesse da meritare un modello di
+lettura separato — viste materializzate, un database di reporting — allora la strada sarebbe un vero
+read model, non un repository in mezzo.</p>
 <h2 id="perche-la-chiave-primaria-e-int-identity">Perché la chiave primaria è <code>int</code> identity</h2>
 <h3 id="i-vantaggi-che-si-incassano">I vantaggi che si incassano</h3>
 <ul>
@@ -194,10 +260,10 @@ classico dei <code>Guid</code> come chiave clusterizzata.</li>
 <h3 id="i-costi-che-si-sono-accettati">I costi che si sono accettati</h3>
 <p>Sono reali e vanno conosciuti:</p>
 <ul>
-<li><strong>L'id lo genera il database</strong>, quindi lo si conosce solo <em>dopo</em> l'<code>INSERT</code>. Conseguenza pratica
-visibile ovunque: gli handler di creazione fanno <strong>due</strong> <code>SaveChangesAsync</code>, perché l'audit log ha
-bisogno dell'id. Nel seed, i legami si esprimono via navigation property invece che con id
-costanti.</li>
+<li><strong>L'id lo genera il database</strong>, quindi lo si conosce solo <em>dopo</em> l'<code>INSERT</code>. Si vede in due punti:
+gli eventi sollevati da un factory nascono con id <code>0</code> e vanno completati dopo il commit (è il
+ruolo di <code>IDeferredIdentityEvent</code>), e nel seed i legami si esprimono via navigation property
+invece che con id costanti.</li>
 <li><strong>Enumerabilità</strong>: <code>/users/1</code>, <code>/users/2</code>… sono indovinabili. Espone allo scraping sequenziale e al
 rischio IDOR <strong>se un controllo di autorizzazione fosse debole</strong> — per questo ogni endpoint è
 protetto da una policy sui permessi, che è la difesa vera. Espone anche informazioni di business
@@ -260,22 +326,49 @@ il primo commit di una storia che appartiene al progetto.</p>
 <p><strong>Il prezzo</strong>: è un passaggio in più da ricordare dopo la generazione, e se lo si dimentica
 l'applicazione parte con un database senza schema. Per questo compare nei task post-generazione,
 nel README del progetto e in <a href="../progetto/generazione.html">Generare e aggiornare</a>.</p>
-<h2 id="perche-vertical-slice">Perché vertical slice</h2>
-<p>Il criterio non è estetico: è il costo dell'operazione più frequente.</p>
-<p>In un'architettura a livelli, aggiungere un'operazione significa toccare quattro file in quattro
-cartelle diverse — e cancellarla significa ricordarsi di tutti e quattro. In vertical slice
-l'operazione <strong>è</strong> una cartella: si crea, si legge e si elimina in un posto solo.</p>
-<p>Per un template il vantaggio è doppio, perché rende meccanico ciò che deve accadere in ogni
-progetto: aggiungere feature. È anche il motivo per cui le <a href="../progetto/skill.html">skill</a> possono
-scaffoldare una slice in modo affidabile — c'è una forma sola, ripetuta.</p>
+<h2 id="perche-le-slice-per-caso-d-uso">Perché le slice per caso d'uso</h2>
+<p>La Clean Architecture prescrive i confini <strong>fra</strong> i layer, non come organizzare il codice dentro
+ciascuno. Dentro <code>Application</code> i casi d'uso restano organizzati <strong>per funzionalità</strong>, non per tipo
+tecnico: <code>CreateGroup/</code> contiene comando, handler, validator e response.</p>
+<p>Il criterio non è estetico, è il costo dell'operazione più frequente. Con le cartelle per tipo
+(<code>Commands/</code>, <code>Handlers/</code>, <code>Validators/</code>), aggiungere un'operazione significa toccare quattro
+cartelle diverse — e cancellarla significa ricordarsi di tutte e quattro. Così, l'operazione <strong>è</strong>
+una cartella: si crea, si legge e si elimina in un posto solo.</p>
+<p>Per un template il vantaggio è doppio, perché rende meccanico ciò che accade in ogni progetto:
+aggiungere feature. È anche il motivo per cui le <a href="../progetto/skill.html">skill</a> possono scaffoldare
+una slice in modo affidabile — c'è una forma sola, ripetuta.</p>
 <p><strong>Il rovescio</strong>: c'è più ripetizione fra slice simili di quanta ne avrebbe un service condiviso, e
-la tentazione di estrarre &quot;il metodo comune&quot; arriva presto. La regola del template è resistere
-finché la ripetizione non è <strong>identica e stabile</strong>: la duplicazione fra due slice è quasi sempre
-apparente, e il service condiviso estratto troppo presto diventa il punto in cui le feature si
-accoppiano di nuovo.</p>
+la tentazione di estrarre &quot;il metodo comune&quot; arriva presto. La regola è resistere finché la
+ripetizione non è <strong>identica e stabile</strong> — con un'eccezione importante: se la ripetizione riguarda
+una <strong>regola di business</strong>, non va estratta in un helper ma spostata nel dominio, dove diventa un
+metodo dell'aggregato o un domain service. Vedi
+<a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a>.</p>
+<h2 id="perche-un-concurrency-token-applicativo">Perché un concurrency token applicativo</h2>
+<p>Le entità che possono essere modificate da due operatori insieme implementano <code>IVersioned</code>, che
+porta un <code>Guid</code> rigenerato a ogni scrittura da <code>ConcurrencyTokenInterceptor</code>.</p>
+<p>Il problema che risolve:</p>
+<blockquote>
+<p>Due operatori aprono lo stesso contratto; il primo lo conferma, il secondo — che vede ancora la
+schermata di prima — lo conferma a sua volta. Senza controllo, la seconda scrittura sovrascrive
+la prima e nessuno se ne accorge: la modifica di qualcuno sparisce in silenzio, che è il peggiore
+dei modi di perdere dati.</p>
+</blockquote>
+<p>Con il token, EF include il valore corrente nella <code>WHERE</code> dell'<code>UPDATE</code>: se qualcuno ha salvato nel
+frattempo la riga non viene trovata, <code>SaveChanges</code> lancia <code>DbUpdateConcurrencyException</code> e il
+middleware la traduce in un <strong>409</strong> con l'invito a ricaricare.</p>
+<p><strong>Perché un <code>Guid</code> e non <code>rowversion</code>.</strong> I token nativi esistono su entrambi i provider ma con tipi
+e semantiche diverse (<code>rowversion</code> su SQL Server, <code>xmin</code> su PostgreSQL): mapparli richiederebbe
+configurazione condizionale. Un <code>Guid</code> applicativo si comporta in modo identico sui due, al prezzo
+di doverlo rigenerare noi — che è esattamente il compito dell'interceptor.</p>
+<p><strong>Perché in un interceptor e non negli aggregati</strong>: così nessuno può dimenticarsene. Un metodo
+nuovo, un import massivo, una correzione da un hosted service sono tutti coperti senza scrivere una
+riga in più.</p>
+<p>Non tutte le entità ce l'hanno: si aggiunge dove la modifica concorrente è plausibile e costosa, non
+per principio.</p>
 <h2 id="approfondimenti">Approfondimenti</h2>
 <ul>
-<li><strong><a href="architettura.html">Architettura</a></strong> — la struttura che queste decisioni hanno prodotto</li>
+<li><strong><a href="../architettura/clean-architecture.html">Clean Architecture</a></strong> — i layer che queste decisioni hanno prodotto</li>
+<li><strong><a href="architettura.html">Architettura</a></strong> — il modello dati e lo schema relazionale</li>
 <li><strong><a href="implementazione.html">Implementazione</a></strong> — il codice, con i punti in cui le decisioni si vedono</li>
 </ul>
 

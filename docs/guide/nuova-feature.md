@@ -30,144 +30,274 @@ case-sensitive su PostgreSQL.
 
 | # | File | Che cos'è |
 |---|---|---|
-| 1 | `_Shared/Entities/Category.cs` | L'entità EF Core |
-| 2 | `_Shared/Persistence/AppDbContext.cs` | La mappatura: tabella, colonne, indici |
-| 3 | `Migrations/SqlServer/` + `Migrations/Postgres/` | **Due** migration |
-| 4 | `Features/Categories/GetCategories/` | La query |
-| 5 | `Features/Categories/CreateCategory/` | Il comando, con validazione e audit |
-| 6 | `Features/Categories/UpdateCategory/`, `DeleteCategory/` | Modifica e cancellazione |
-| 7 | `Features/Categories/CategoryEndpoints.cs` + `_Shared/Extensions/EndpointExtensions.cs` | Le rotte |
-| 8 | `_Shared/Seed/DataSeeder.cs` | I permessi |
-| 9 | `types/api.types.ts` → `services/` → `stores/` → `pages/` | Il frontend |
-| 10 | `router/index.ts`, `locales/it.ts`, `locales/en.ts` | Rotte, testi |
+| 1 | `<Progetto>.Domain/Catalog/Category.cs` | L'entità di dominio |
+| 2 | `<Progetto>.Infrastructure/Persistence/Configurations/CategoryConfiguration.cs` | La mappatura: tabella, colonne, indici |
+| 3 | `Persistence/Migrations/SqlServer/` + `.../Postgres/` | **Due** migration |
+| 4 | `<Progetto>.Application/Abstractions/Persistence/ICategoryRepository.cs` + implementazione | L'accesso in scrittura |
+| 5 | `<Progetto>.Application/Categories/GetCategories/` | La query |
+| 6 | `<Progetto>.Application/Categories/CreateCategory/` | Il comando, con validazione |
+| 7 | `<Progetto>.Application/Categories/UpdateCategory/`, `DeleteCategory/` | Modifica e cancellazione |
+| 8 | `<Progetto>.Api/Endpoints/CategoryEndpoints.cs` + `Extensions/EndpointExtensions.cs` | Le rotte |
+| 9 | `Infrastructure/Persistence/Seed/DataSeeder.cs` | I permessi |
+| 10-12 | `types/api.types.ts` → `services/` → `stores/` → `pages/` → `router/`, `locales/` | Il frontend |
+
+L'ordine non è casuale: si va **dal centro verso l'esterno**, come le dipendenze. Prima il dominio,
+che non dipende da niente; per ultimo il guscio HTTP, che dipende da tutto.
 
 ---
 
 # Backend
 
-## 1. L'entità
+## 1. L'entità di dominio
+
+`Category` è una lookup piatta: non ha invarianti complessi, quindi resta semplice. Ma **la forma è
+quella di ogni aggregato**, perché è ciò che rende impossibile costruirla in uno stato sbagliato.
 
 ```csharp
-// Features/_Shared/Entities/Category.cs
-public class Category : ITimestamped
+// <Progetto>.Domain/Catalog/Category.cs
+public class Category : AggregateRoot, ITimestamped
 {
-    public int Id { get; set; }
-    public string DescIt { get; set; } = string.Empty;
-    public string DescEn { get; set; } = string.Empty;
-    public int Order { get; set; }
+    public const int MaxDescriptionLength = 256;
+
+    public string DescIt { get; private set; } = string.Empty;
+    public string DescEn { get; private set; } = string.Empty;
+    public int Order { get; private set; }
+
+    // Li scrive TimestampInterceptor: il tempo non è un dato di dominio.
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>Costruttore per EF Core. Non usarlo nel codice applicativo.</summary>
+    private Category() { }
+
+    /// <summary>Unica porta di costruzione: se hai l'oggetto, i valori sono validi.</summary>
+    public static Category Create(string descIt, string descEn, int order) =>
+        new()
+        {
+            DescIt = EnsureDescription(descIt, nameof(descIt)),
+            DescEn = EnsureDescription(descEn, nameof(descEn)),
+            Order = order,
+        };
+
+    public void Update(string descIt, string descEn, int order)
+    {
+        DescIt = EnsureDescription(descIt, nameof(descIt));
+        DescEn = EnsureDescription(descEn, nameof(descEn));
+        Order = order;
+    }
+
+    private static string EnsureDescription(string value, string field)
+    {
+        var trimmed = (value ?? string.Empty).Trim();
+
+        if (trimmed.Length == 0)
+            throw new InvariantViolationException($"La descrizione ({field}) è obbligatoria.");
+        if (trimmed.Length > MaxDescriptionLength)
+            throw new InvariantViolationException(
+                $"Descrizione troppo lunga (max {MaxDescriptionLength} caratteri).");
+
+        return trimmed;
+    }
 }
 ```
 
-Le regole, tutte e quattro non negoziabili:
+Le regole, tutte non negoziabili:
 
-- **Nessun suffisso**: `Category`, non `CategoryDocument` né `CategoryEntity`.
-- **`Id` di tipo `int`**, mai `string` né `Guid`. È identity: lo assegna il database. Il perché è in
-  [Decisioni](../infrastructure/decisioni.md).
-- **`ITimestamped`** se l'entità ha `CreatedAt`/`UpdatedAt`: è l'interfaccia che fa scattare
-  l'assegnazione automatica dei timestamp in `SaveChanges`. Gli handler non li valorizzano mai a mano.
-- **Nessun attributo di persistenza.** Niente data annotation: tutta la configurazione sta in
-  `OnModelCreating`, in un punto solo.
+- **Estende `AggregateRoot`** (o `Entity` se non è una radice): `Id` arriva da lì, `int` identity,
+  con setter `protected`.
+- **Setter privati** e **factory method** come unica porta di costruzione. I test di architettura
+  fanno fallire la build se trovano un setter pubblico.
+- **Costruttore privato senza parametri** per EF, che materializza senza passare dal factory.
+- **`ITimestamped`** se ha `CreatedAt`/`UpdatedAt`: sono le uniche proprietà con setter pubblico
+  ammesse, perché le scrive `TimestampInterceptor`.
+- **Nessun attributo di persistenza**, nessun `using` di EF Core: il dominio non sa che esiste un
+  database.
+
+> **Quanta logica mettere qui?** Per una lookup, questa. Se l'entità avesse regole vere — stati con
+> transizioni, valori con formati, regole che attraversano altre entità — il posto giusto per
+> ciascuna è descritto in [Dove mettere la logica](../architettura/dove-mettere-la-logica.md).
 
 ## 2. La tabella
 
+La mappatura non sta più in un `OnModelCreating` centrale: ogni entità ha la propria
+configuration, raccolta automaticamente.
+
 ```csharp
-// Features/_Shared/Persistence/AppDbContext.cs — dentro OnModelCreating
-mb.Entity<Category>(e =>
+// <Progetto>.Infrastructure/Persistence/Configurations/CategoryConfiguration.cs
+public class CategoryConfiguration : IEntityTypeConfiguration<Category>
 {
-    e.ToTable("Categories");
-    e.Property(x => x.DescIt).HasMaxLength(256);   // mai lasciare nvarchar(max)/text
-    e.Property(x => x.DescEn).HasMaxLength(256);
-});
+    public void Configure(EntityTypeBuilder<Category> e)
+    {
+        e.ToTable("Categories");
+
+        e.Property(x => x.DescIt).HasMaxLength(Category.MaxDescriptionLength).IsRequired();
+        e.Property(x => x.DescEn).HasMaxLength(Category.MaxDescriptionLength).IsRequired();
+
+        e.HasIndex(x => x.Order);
+    }
+}
 ```
 
-`HasKey` non serve: EF riconosce `Id` per convenzione e lo rende identity su entrambi i provider.
-Non serve nemmeno un `DbSet`: le entità si raggiungono con `db.Set<Category>()`.
+Non c'è nessun file da toccare per registrarla: `ApplyConfigurationsFromAssembly` la trova da sé.
+`HasKey` non serve — EF riconosce `Id` per convenzione e lo rende identity su entrambi i provider.
 
 **Ogni colonna stringa va dimensionata.** Senza `HasMaxLength` EF genera `nvarchar(max)` (SQL Server)
 o `text` (Postgres): pessimo per indici e storage, e su SQL Server un indice unique non è nemmeno
 ammesso su `nvarchar(max)`.
 
+Le lunghezze si prendono dalle costanti del dominio (`Category.MaxDescriptionLength`), così il
+vincolo del database e quello dell'aggregato non possono divergere.
+
 Se l'entità avesse una **FK** verso un'altra, andrebbe dichiarata con `Restrict`, mai `Cascade`:
 
 ```csharp
-e.HasOne(x => x.Parent).WithMany().HasForeignKey(x => x.ParentId)
+e.HasOne<Parent>().WithMany().HasForeignKey(x => x.ParentId)
     .OnDelete(DeleteBehavior.Restrict);
 ```
 
 `Cascade` qui sarebbe pericoloso: cancellare una categoria cancellerebbe tutto ciò che la usa.
 
-Se avesse una relazione **molti-a-molti**, servirebbe una join table con skip navigation
-unidirezionale — vedi [Architettura](../infrastructure/architettura.md).
+> **I value object** si mappano con `OwnsOne` (per i tipi composti come `RentalPeriod` o `Money`) o
+> con una conversione (per quelli che avvolgono un solo valore, come `Username` o `AssetCode`).
+> Le configuration della sezione Noleggi sono l'esempio da guardare.
 
 ## 3. Le due migration
 
 ```bash
 cd apps/backend/<Progetto>.Api
 
-dotnet dotnet-ef migrations add AddCategories --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add AddCategories --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+dotnet dotnet-ef migrations add AddCategories \
+  --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj \
+  --startup-project <Progetto>.Api.csproj \
+  --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+
+dotnet dotnet-ef migrations add AddCategories \
+  --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj \
+  --startup-project <Progetto>.Api.csproj \
+  --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 ```
 
-Il `--context` seleziona quale delle due derivate usare, e quindi in quale cartella finisce la
-migration. Si applicano da sole all'avvio (`MigrateAsync`).
+Le migration vivono in `<Progetto>.Infrastructure`, ma il comando ha bisogno di `<Progetto>.Api`
+come startup project: è lì la configurazione. Il `--context` seleziona quale delle due derivate
+usare, e quindi in quale cartella finisce la migration. Si applicano da sole all'avvio
+(`MigrateAsync`).
 
 > **Mai modificare una migration già committata**: una correzione è una migration nuova.
 
-## 4. La query
+## 4. Il repository
+
+I **comandi** non vedono EF Core: passano da un repository, dichiarato in `Application` e
+implementato in `Infrastructure`. Le **query** non ne hanno bisogno — usano `IReadDbContext`.
+
+```csharp
+// <Progetto>.Application/Abstractions/Persistence/ICategoryRepository.cs
+public interface ICategoryRepository
+{
+    Task<Category?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<bool> ExistsByDescriptionAsync(string descIt, int? excludingId = null, CancellationToken ct = default);
+
+    void Add(Category category);
+    void Remove(Category category);
+}
+```
+
+```csharp
+// <Progetto>.Infrastructure/Persistence/Repositories/CategoryRepository.cs
+public sealed class CategoryRepository(AppDbContext db, AuditSnapshotTracker tracker) : ICategoryRepository
+{
+    public async Task<Category?> GetByIdAsync(int id, CancellationToken ct = default)
+    {
+        var category = await db.Set<Category>().FirstOrDefaultAsync(x => x.Id == id, ct);
+        tracker.Capture(category);   // snapshot "Before" per l'audit
+        return category;
+    }
+
+    public Task<bool> ExistsByDescriptionAsync(string descIt, int? excludingId = null, CancellationToken ct = default) =>
+        db.Set<Category>().AnyAsync(x => x.DescIt == descIt && x.Id != excludingId, ct);
+
+    public void Add(Category category) => db.Add(category);
+    public void Remove(Category category) => db.Remove(category);
+}
+```
+
+Poi la registrazione, in `Infrastructure/DependencyInjection.cs`:
+
+```csharp
+services.AddScoped<ICategoryRepository, CategoryRepository>();
+```
+
+Due punti che contano:
+
+- **`Add`/`Remove` non salvano**: registrano l'intenzione. Il commit è di `IUnitOfWork`.
+- **`tracker.Capture(...)`** in ogni metodo che carica un'entità *per modificarla*: è ciò che
+  permette all'audit di avere lo snapshot *prima*. Dimenticarlo non rompe niente in modo visibile —
+  l'audit avrà solo un `Before` vuoto.
+
+## 5. La query
 
 Una slice è fatta di quattro file al massimo — richiesta, handler, validatore, risposta — nella
 stessa cartella. Per una lettura ne bastano tre.
 
 ```csharp
-// Features/Categories/GetCategories/CategoryResponse.cs
+// <Progetto>.Application/Categories/Common/CategoryResponse.cs
 public record CategoryResponse(
     int Id, string DescIt, string DescEn, int Order,
     DateTime CreatedAt, DateTime UpdatedAt);
 
-// Features/Categories/GetCategories/GetCategoriesQuery.cs
+// <Progetto>.Application/Categories/GetCategories/GetCategoriesQuery.cs
 public record GetCategoriesQuery : IRequest<List<CategoryResponse>>;
 
-// Features/Categories/GetCategories/GetCategoriesHandler.cs
-public class GetCategoriesHandler(AppDbContext db) : IRequestHandler<GetCategoriesQuery, List<CategoryResponse>>
+// <Progetto>.Application/Categories/GetCategories/GetCategoriesHandler.cs
+public class GetCategoriesHandler(IReadDbContext db, IQueryExecutor executor)
+    : IRequestHandler<GetCategoriesQuery, List<CategoryResponse>>
 {
-    public Task<List<CategoryResponse>> Handle(GetCategoriesQuery request, CancellationToken cancellationToken) =>
-        db.Set<Category>()
-            .OrderBy(x => x.Order)
-            .Select(x => new CategoryResponse(x.Id, x.DescIt, x.DescEn, x.Order, x.CreatedAt, x.UpdatedAt))
-            .ToListAsync(cancellationToken);
+    public Task<List<CategoryResponse>> Handle(GetCategoriesQuery request, CancellationToken ct) =>
+        executor.ToListAsync(
+            db.Categories
+                .OrderBy(x => x.Order)
+                .Select(x => new CategoryResponse(
+                    x.Id, x.DescIt, x.DescEn, x.Order, x.CreatedAt, x.UpdatedAt)),
+            ct);
 }
+```
+
+Perché la nuova entità compaia su `db.Categories`, va aggiunta a `IReadDbContext` e alla sua
+implementazione in `AppDbContext`:
+
+```csharp
+// Application/Abstractions/Persistence/IReadDbContext.cs
+IQueryable<Category> Categories { get; }
+
+// Infrastructure/Persistence/AppDbContext.cs
+IQueryable<Category> IReadDbContext.Categories => Set<Category>().AsNoTracking();
 ```
 
 Tre cose da notare:
 
 - Le response sono **`record` immutabili**, e l'`Id` esce come **`int`**.
 - La `Select` proietta **direttamente** sul response: EF genera una `SELECT` con le sole colonne
-  necessarie e non popola il change tracker. Niente entità intermedie, niente mapping a mano.
-- L'handler dipende **solo** da `AppDbContext` e non sa quale database ci sia sotto.
-
-> In lettura, `Select` verso un record rende `AsNoTracking()` superfluo: una proiezione non traccia
-> nulla di per sé. `AsNoTracking()` serve quando si materializzano **entità**.
+  necessarie. Niente entità intermedie, niente mapping a mano.
+- L'esecuzione passa da **`IQueryExecutor`**, non da `ToListAsync` diretto: è ciò che rende
+  l'handler eseguibile in un test unitario con un `IQueryable` in memoria.
 
 L'handler non va registrato da nessuna parte: MediatR lo scopre da sé nell'assembly.
 
-## 5. Il comando: validazione e audit
+## 6. Il comando
 
 ```csharp
-// Features/Categories/CreateCategory/CreateCategoryCommand.cs
+// <Progetto>.Application/Categories/CreateCategory/CreateCategoryCommand.cs
 public record CreateCategoryCommand(string DescIt, string DescEn, int Order) : IRequest<CreateCategoryResponse>;
 
-// Features/Categories/CreateCategory/CreateCategoryResponse.cs
+// .../CreateCategoryResponse.cs
 public record CreateCategoryResponse(int Id);
 
-// Features/Categories/CreateCategory/CreateCategoryValidator.cs
+// .../CreateCategoryValidator.cs
 public class CreateCategoryValidator : AbstractValidator<CreateCategoryCommand>
 {
     public CreateCategoryValidator()
     {
-        RuleFor(x => x.DescIt).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.DescEn).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.DescIt).NotEmpty().MaximumLength(Category.MaxDescriptionLength);
+        RuleFor(x => x.DescEn).NotEmpty().MaximumLength(Category.MaxDescriptionLength);
     }
 }
 ```
@@ -176,26 +306,26 @@ Il validatore **non va invocato**: il `ValidationBehavior` della pipeline Mediat
 se fallisce, la richiesta non arriva mai all'handler — il middleware restituisce `400` con
 ProblemDetails.
 
+Il validatore controlla la **forma** dell'input; il dominio garantisce la **regola**. La
+sovrapposizione è voluta: il validatore dà un messaggio gentile su tutti i campi in una volta, il
+factory `Category.Create` impedisce che la regola sia aggirabile da un'altra strada.
+
 ```csharp
-// Features/Categories/CreateCategory/CreateCategoryHandler.cs
+// .../CreateCategoryHandler.cs
 public class CreateCategoryHandler(
-    AppDbContext db,
-    IHttpContextAccessor httpContextAccessor) : IRequestHandler<CreateCategoryCommand, CreateCategoryResponse>
+    ICategoryRepository categories,
+    IUnitOfWork unitOfWork) : IRequestHandler<CreateCategoryCommand, CreateCategoryResponse>
 {
-    public async Task<CreateCategoryResponse> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)
+    public async Task<CreateCategoryResponse> Handle(CreateCategoryCommand request, CancellationToken ct)
     {
-        var category = new Category
-        {
-            DescIt = request.DescIt,
-            DescEn = request.DescEn,
-            Order = request.Order,
-        };
+        // L'unicità richiede il database: è una verifica dell'handler, non del dominio.
+        if (await categories.ExistsByDescriptionAsync(request.DescIt, ct: ct))
+            throw new ConflictException($"Esiste già una categoria '{request.DescIt}'.");
 
-        db.Add(category);
-        await db.SaveChangesAsync(cancellationToken);   // assegna l'id identity
+        var category = Category.Create(request.DescIt, request.DescEn, request.Order);
 
-        db.Add(AuditTrail.New(httpContextAccessor, "Category", category.Id, "Created"));
-        await db.SaveChangesAsync(cancellationToken);
+        categories.Add(category);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return new CreateCategoryResponse(category.Id);
     }
@@ -204,95 +334,82 @@ public class CreateCategoryHandler(
 
 Tre punti da non perdere:
 
-- **`CreatedAt`/`UpdatedAt` non compaiono**: li imposta `ApplyTimestamps` dentro `SaveChangesAsync`.
-- **I due `SaveChangesAsync` non sono una svista.** L'audit log ha bisogno dell'id, che il database
-  assegna solo al primo salvataggio. È la conseguenza diretta degli id identity.
-- **L'attore si legge dai claim del JWT**, mai dal corpo della richiesta: lo fa `AuditTrail.New`, che
-  compila da sé `ActorId` (claim `sub`, 0 se assente), `ActorEmail`, `Timestamp` e `IpAddress`.
+- **Un solo `SaveChangesAsync`**, e nessuna menzione dell'audit: lo scrive `AuditLogInterceptor`.
+- **`CreatedAt`/`UpdatedAt` non compaiono**: li imposta `TimestampInterceptor`.
+- **L'handler non costruisce l'entità con un object initializer**: chiama il factory, che valida.
 
-**Ogni scrittura registra un audit log.** Gli snapshot seguono uno schema uniforme in tutto il codice:
+L'update ha la stessa forma, e la modifica passa da un metodo dell'aggregato:
+
+```csharp
+// UpdateCategoryHandler
+var category = await categories.GetByIdAsync(request.Id, ct)
+    ?? throw new NotFoundException($"Categoria con id {request.Id} non trovata.");
+
+category.Update(request.Body.DescIt, request.Body.DescEn, request.Body.Order);
+
+await unitOfWork.SaveChangesAsync(ct);
+```
+
+Non c'è nessuna assegnazione a proprietà: i setter sono privati, e l'unico modo di modificare
+l'entità è il metodo che ne garantisce gli invarianti.
+
+> **L'audit è automatico.** `AuditLogInterceptor` scrive una riga per ogni radice di aggregato
+> creata, modificata o cancellata, con gli snapshot prima/dopo. Lo snapshot *prima* viene da
+> `AuditSnapshotTracker`, alimentato dal repository al caricamento. Un handler non nomina mai
+> `AuditLog`.
 
 | Azione | `Before` | `After` |
 |---|---|---|
-| `Created` | — | — (lo stato creato è quello corrente dell'entità) |
-| `Updated` | snapshot prima della modifica | snapshot dopo il `SaveChanges` |
+| `Created` | — | lo stato dell'entità creata |
+| `Updated` | snapshot catturato al caricamento | snapshot dopo il salvataggio |
 | `Deleted` | snapshot prima della cancellazione | — |
 
-```csharp
-// UpdateCategoryHandler — la forma dello snapshot
-var category = await db.Set<Category>().FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken)
-    ?? throw new NotFoundException("Category", request.Id);
-
-var before = category.ToAuditJson();      // PRIMA di toccare l'oggetto
-category.DescIt = request.Body.DescIt;
-category.DescEn = request.Body.DescEn;
-category.Order = request.Body.Order;
-
-await db.SaveChangesAsync(cancellationToken);   // UpdatedAt lo imposta ApplyTimestamps
-
-db.Add(AuditTrail.New(httpContextAccessor, "Category", category.Id, "Updated",
-    before: before, after: category.ToAuditJson()));
-await db.SaveChangesAsync(cancellationToken);
-```
-
-Lo snapshot `Before` va catturato **prima** di modificare l'oggetto — è un errore facile e silenzioso,
-perché l'entità è tracciata e mutarla cambierebbe anche lo snapshot.
-
-> Gli snapshot sono **JSON camelCase in una colonna testo**, prodotti da `ToAuditJson()`. È un metodo
-> esplicito per entità, non una serializzazione generica: per gli utenti, `passwordHash` non può
-> finirci **per costruzione**.
-
-⚠️ **Il caso M2M.** Se l'update tocca **solo** le collezioni molti-a-molti, l'entità non viene marcata
-`Modified` e `UpdatedAt` non si aggiorna da solo: va toccato esplicitamente (vedi `UpdateUserHandler`).
-Per una lookup piatta come `Category` il problema non si pone.
-
-## 6. La cancellazione: prima si controlla
+## 7. La cancellazione: prima si controlla
 
 ```csharp
-// Features/Categories/DeleteCategory/DeleteCategoryHandler.cs
 public class DeleteCategoryHandler(
-    AppDbContext db,
-    IHttpContextAccessor httpContextAccessor) : IRequestHandler<DeleteCategoryCommand>
+    ICategoryRepository categories,
+    IReadDbContext db,
+    IQueryExecutor executor,
+    IUnitOfWork unitOfWork) : IRequestHandler<DeleteCategoryCommand>
 {
-    public async Task Handle(DeleteCategoryCommand request, CancellationToken cancellationToken)
+    public async Task Handle(DeleteCategoryCommand request, CancellationToken ct)
     {
-        var category = await db.Set<Category>().FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken)
-            ?? throw new NotFoundException("Category", request.Id);
+        var category = await categories.GetByIdAsync(request.Id, ct)
+            ?? throw new NotFoundException($"Categoria con id {request.Id} non trovata.");
 
         // Conteggio prima della DELETE per dare un 409 con messaggio chiaro: la FK Restrict
         // farebbe comunque fallire la cancellazione, ma con un errore generico.
-        var count = await db.Set<Article>().CountAsync(x => x.CategoryId == request.Id, cancellationToken);
+        var count = await executor.CountAsync(db.Articles.Where(x => x.CategoryId == request.Id), ct);
         if (count > 0)
             throw new ConflictException(
                 $"Impossibile eliminare questa categoria: è ancora utilizzata in {count} elemento/i. " +
                 "Rimuovila da tutti gli elementi prima di eliminarla.");
 
-        var before = category.ToAuditJson();
-        db.Remove(category);
-        await db.SaveChangesAsync(cancellationToken);
-
-        db.Add(AuditTrail.New(httpContextAccessor, "Category", category.Id, "Deleted", before: before));
-        await db.SaveChangesAsync(cancellationToken);
+        categories.Remove(category);
+        await unitOfWork.SaveChangesAsync(ct);
     }
 }
 ```
 
-Il pattern si ritrova identico in tutte le lookup: **due difese sovrapposte, deliberatamente**.
-L'handler produce un `409 Conflict` con un messaggio comprensibile; la FK `Restrict` è la stessa
-regola applicata anche a chi scrivesse sul database da fuori. (Il conteggio serve solo se qualche
-altra entità referenzia questa.)
+**Due difese sovrapposte, deliberatamente**: l'handler produce un `409 Conflict` con un messaggio
+comprensibile, la FK `Restrict` è la stessa regola applicata anche a chi scrivesse sul database da
+fuori.
 
-Non serve validare la forma dell'id: il constraint di rotta `{id:int}` fa sì che un id malformato non
-arrivi nemmeno all'handler (404 dal routing).
+Se la regola di cancellabilità dipendesse dallo **stato dell'entità** e non da altre tabelle,
+apparterrebbe al dominio — come `RentalContract.EnsureDeletable()`, che rifiuta di cancellare un
+contratto già confermato. L'handler si limiterebbe a chiamarla.
 
-Se l'operazione dovesse toccare più entità insieme, un singolo `SaveChangesAsync` è già atomico; per
-blocchi più ampi si usa `db.Database.BeginTransactionAsync` — ricordando che con
-`EnableRetryOnFailure` attivo va eseguito dentro la strategia di esecuzione.
+Non serve validare la forma dell'id: il constraint di rotta `{id:int}` fa sì che un id malformato
+non arrivi nemmeno all'handler (404 dal routing).
 
-## 7. Le rotte
+Se l'operazione dovesse toccare più aggregati insieme, un singolo `SaveChangesAsync` è già atomico:
+è esattamente ciò per cui `IUnitOfWork` è separato dai repository.
+
+## 8. Le rotte
 
 ```csharp
-// Features/Categories/CategoryEndpoints.cs
+// <Progetto>.Api/Endpoints/CategoryEndpoints.cs
 public static class CategoryEndpoints
 {
     public static IEndpointRouteBuilder MapCategoryEndpoints(this IEndpointRouteBuilder app)
@@ -360,13 +477,13 @@ L'endpoint **instrada e basta**: nessuna logica, nessun accesso al `DbContext`. 
 Poi va agganciato:
 
 ```csharp
-// Features/_Shared/Extensions/EndpointExtensions.cs
+// <Progetto>.Api/Extensions/EndpointExtensions.cs
 app.MapCategoryEndpoints();
 ```
 
-## 8. I permessi
+## 9. I permessi
 
-Vanno aggiunti al seed (`_Shared/Seed/DataSeeder.cs`) come `categories.read`, `categories.write`,
+Vanno aggiunti al seed (`Infrastructure/Persistence/Seed/DataSeeder.cs`) come `categories.read`, `categories.write`,
 `categories.delete`, e assegnati ai ruoli che devono averli.
 
 ```csharp
@@ -388,7 +505,7 @@ Il ruolo `Viewer` prende automaticamente tutti i permessi con azione `read`, qui
 
 La catena è sempre la stessa, e non si salta un anello: **tipi → service → store → pagina**.
 
-## 9. Tipi, service, store
+## 10. Tipi, service, store
 
 ```typescript
 // types/api.types.ts
@@ -471,7 +588,7 @@ export const useCategoriesStore = defineStore('categories', () => {
 Lo store **rilancia** l'eccezione dopo averla registrata: senza, la pagina chiuderebbe il dialog come
 se l'operazione fosse riuscita.
 
-## 10. Le pagine
+## 11. Le pagine
 
 Due: la lista (`CategoriesPage.vue`) e il dettaglio, usato sia per la creazione sia per la modifica
 (`CategoryDetailPage.vue`).
@@ -511,7 +628,7 @@ Le convenzioni che si vedono qui:
   `409 Conflict` del delete handler arriva all'utente come una frase di senso compiuto.
 - Un componente oltre le ~150 righe va spezzato.
 
-## 11. Rotte e testi
+## 12. Rotte e testi
 
 ```typescript
 // router/index.ts
@@ -568,11 +685,24 @@ errors: {
 
 ## Prima di dire che è finita
 
-- [ ] L'entità ha `int Id`, implementa `ITimestamped` se ha i timestamp, non ha attributi di persistenza
-- [ ] La mappatura in `OnModelCreating` c'è, le colonne stringa sono **dimensionate**, le FK sono `Restrict`
+- [ ] L'entità estende `Entity`/`AggregateRoot`, ha **setter privati**, un **factory method** e un
+      costruttore privato per EF; niente attributi di persistenza né `using` di EF Core
+- [ ] La `IEntityTypeConfiguration` c'è, le colonne stringa sono **dimensionate**, le FK sono `Restrict`
 - [ ] **Entrambe** le migration sono generate (SqlServer + Postgres) e committate
+- [ ] I **comandi** iniettano repository + `IUnitOfWork`; le **query** `IReadDbContext` + `IQueryExecutor`.
+      Nessun handler nomina `AppDbContext`
+- [ ] Il repository è registrato in `DependencyInjection.cs`, e i metodi che caricano per modificare
+      chiamano `tracker.Capture(...)`
+- [ ] Le regole di business stanno nell'aggregato o in un domain service, non in `if` sparsi negli handler
 - [ ] Le query LINQ sono traducibili da entrambi i provider — attenzione a `Contains` su stringa
 - [ ] Le rotte con id usano il constraint `{id:int}`, e gli endpoint sono agganciati in `EndpointExtensions`
-- [ ] Ogni scrittura produce un audit log, con lo snapshot `Before` catturato **prima** della modifica
+- [ ] Nessun handler scrive un audit log a mano: lo fa l'interceptor
 - [ ] I permessi sono nel seed e assegnati ai ruoli giusti
 - [ ] I testi esistono in italiano **e** in inglese
+- [ ] `dotnet test` passa — i test di architettura sono la rete che intercetta le violazioni dei layer
+
+## Da qui
+
+- **[Dove mettere la logica](../architettura/dove-mettere-la-logica.md)** — quando una regola va nell'aggregato, in un domain service o nell'handler
+- **[Il dominio](../architettura/il-dominio.md)** — aggregati, value object, eventi, specification
+- **[Comandi e query](../architettura/comandi-e-query.md)** — repository, unit of work, `IReadDbContext`

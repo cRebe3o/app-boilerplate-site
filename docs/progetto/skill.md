@@ -25,9 +25,10 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 
 | Skill | Quando si attiva |
 |---|---|
-| **`vertical-slice-backend`** | Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend |
-| **`db-entity`** | Una nuova entità EF Core: classe POCO, mappatura in `AppDbContext`, indici, relazioni e la **doppia migration** SQL Server + Postgres |
-| **`audit-log`** | Ogni operazione di scrittura: come si registra l'audit con `AuditTrail` e gli snapshot `ToAuditJson()` |
+| **`vertical-slice-backend`** | Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + `IUnitOfWork` e le query `IReadDbContext` |
+| **`domain-modeling`** | Modellare una regola di business: che cosa è un aggregato, dove vive una regola, quando serve un value object, un domain service, un evento o una specification. Vedi [Dove mettere la logica](../architettura/dove-mettere-la-logica.md) |
+| **`db-entity`** | Una nuova entità: l'aggregato in `Domain/`, la sua `IEntityTypeConfiguration`, il repository e la **doppia migration** SQL Server + Postgres |
+| **`audit-log`** | Come funziona l'audit automatico via `AuditLogInterceptor` e che cosa deve fare un repository perché lo snapshot *prima* sia corretto. Un handler non scrive mai l'audit a mano |
 | **`permissions`** | Un permesso nuovo end-to-end: policy sull'endpoint, guardia di rotta, `v-if` nella UI e voce nel seed |
 | **`pagination`** | Una lista che deve paginare lato server: `PagedResult` sul backend, `v-data-table-server` sul frontend |
 | **`search-filter`** | Ricerca testuale o filtri su una lista, con il `Where` dinamico lato EF e il debounce lato Vue |
@@ -58,7 +59,7 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 
 ## I comandi
 
-Oltre alle skill, sei comandi per le operazioni ricorrenti:
+Oltre alle skill, cinque comandi per le operazioni ricorrenti:
 
 | Comando | Che cosa fa |
 |---|---|
@@ -67,19 +68,18 @@ Oltre alle skill, sei comandi per le operazioni ricorrenti:
 | `/remove-field <Entità>` | L'operazione inversa, con la stessa propagazione |
 | `/review` | Rilegge il codice scritto verificandolo contro le convenzioni del progetto |
 | `/fix` | Interviene su un problema descritto a parole |
-| `/migrate-endpoints` | *Legacy, una tantum*: sposta gli endpoint dalle `_Shared/Extensions/` alle cartelle delle slice. Serve solo su progetti generati prima di quella convenzione |
 
 ## Le combinazioni che ricorrono
 
 Le skill sono pensate per comporsi, e le richieste reali ne toccano quasi sempre più d'una:
 
 ```
-Una nuova entità di dominio, dal database alla pagina
-   db-entity  →  vertical-slice-backend  →  audit-log  →  permissions
-                                                              │
-                                          vue-feature  ←──────┘
-                                                │
-                                     vuetify-dialog-form  ·  detail-page
+Una nuova entità di dominio, dal modello alla pagina
+   domain-modeling  →  db-entity  →  vertical-slice-backend  →  audit-log  →  permissions
+                                                                                   │
+                                                             vue-feature  ←─────────┘
+                                                                   │
+                                                  vuetify-dialog-form  ·  detail-page
 ```
 
 Una lista che deve crescere: `pagination` e `search-filter` insieme, perché il filtro va applicato

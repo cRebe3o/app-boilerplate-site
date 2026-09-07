@@ -36,7 +36,7 @@ generazione (la variabile `project_slug`):
 ```
 <progetto>/
 ├── apps/
-│   ├── backend/<Progetto>.Api/     # ASP.NET Core 10 — Minimal API, vertical slice
+│   ├── backend/                    # .NET 10 — quattro progetti, Clean Architecture
 │   └── frontend/                   # Vue 3 + Vite + TypeScript + Vuetify
 ├── .claude/                        # skill e comandi per lo sviluppo assistito
 ├── docker-compose.yml              # opzionale: il database in locale
@@ -55,54 +55,80 @@ Questa documentazione spiega *com'è fatto e perché*. Le convenzioni operative 
 codice — naming, struttura di una slice, regole del frontend — vivono **accanto al codice**, nei
 file `CLAUDE.md` di `apps/backend/` e `apps/frontend/`.
 
-## Backend — vertical slice
+## Backend — Clean Architecture
 
-Il backend non è diviso per livelli tecnici (controller / service / repository), ma **per
-funzionalità**: ogni operazione vive in una cartella che contiene tutto ciò che le serve.
+Il backend è diviso in **quattro progetti**, uno per layer, con le dipendenze che puntano tutte
+verso l'interno:
 
 ```
-Features/
-├── Groups/                        # una feature
-│   ├── CreateGroup/               # una slice: comando + handler + validator + response
+apps/backend/
+├── <Progetto>.Domain/          # entità, aggregati, value object, domain service, eventi
+├── <Progetto>.Application/     # casi d'uso: command/query + handler + validator + response
+├── <Progetto>.Infrastructure/  # EF Core, repository, JWT, interceptor, servizi esterni
+├── <Progetto>.Api/             # Minimal API: routing, permessi, OpenAPI. Composition root
+└── tests/
+    ├── <Progetto>.Domain.Tests/         # il dominio, senza database né mock
+    ├── <Progetto>.Application.Tests/    # gli handler, con fake delle astrazioni
+    └── <Progetto>.Architecture.Tests/   # le regole dei layer, verificate dalla build
+```
+
+```
+Api  →  Infrastructure  →  Application  →  Domain
+```
+
+Il dominio non ha **nessuna** dipendenza esterna: non conosce EF Core, ASP.NET né MediatR.
+L'Application layer dichiara le astrazioni di cui ha bisogno (`IRentalContractRepository`,
+`ICurrentUser`, `IDateTimeProvider`) e Infrastructure le implementa — mai il contrario.
+
+Dentro `Application`, i casi d'uso restano organizzati **per funzionalità**: ogni operazione ha la
+sua cartella con tutto ciò che le serve.
+
+```
+<Progetto>.Application/
+├── Abstractions/            # le interfacce che Infrastructure implementa
+│   ├── Persistence/         # I*Repository, IReadDbContext, IUnitOfWork, IQueryExecutor
+│   ├── Identity/            # ICurrentUser, ITokenService, IPasswordHasher…
+│   └── Services/            # IDateTimeProvider, IDomainEventDispatcher…
+├── Groups/                  # una feature
+│   ├── CreateGroup/         # una slice: comando + handler + validator + response
 │   │   ├── CreateGroupCommand.cs
 │   │   ├── CreateGroupHandler.cs
 │   │   ├── CreateGroupValidator.cs
 │   │   └── CreateGroupResponse.cs
 │   ├── GetGroups/  GetGroupById/  UpdateGroup/  DeleteGroup/
-│   └── GroupEndpoints.cs          # solo routing, nessuna logica
-└── _Shared/                       # ciò che è davvero comune a tutte le feature
-    ├── Entities/                  # le POCO EF Core (int Id identity)
-    ├── Persistence/               # AppDbContext + derivate per provider, migration
-    ├── DatabaseStats/             # dimensioni DB e readiness, per provider
-    ├── Seed/                      # DataSeeder (solo su DB vuoto)
-    ├── Behaviors/                 # pipeline MediatR
-    ├── Middleware/                # gestione errori
-    ├── Helpers/                   # audit trail, normalizzazione dell'username
-    └── Extensions/                # registrazione servizi ed endpoint
+│   └── Common/              # response e proiezioni condivise fra slice
+├── Behaviors/               # pipeline MediatR (logging, validazione)
+└── Common/                  # paginazione, messaggi
 ```
 
-Le feature di dominio del progetto si aggiungono **allo stesso modo**, accanto a quelle già
-presenti. Il percorso completo è in [Aggiungere una feature](../guide/nuova-feature.md).
+Gli endpoint vivono in `<Progetto>.Api/Endpoints/` e contengono **solo routing**.
 
-Il percorso di una richiesta è sempre lo stesso:
+Il percorso di una richiesta:
 
 ```
 HTTP  →  Endpoint (routing)  →  IMediator.Send(comando)
                                      │
                                      ├── LoggingBehavior      (durata, esito)
                                      ├── ValidationBehavior   (FluentValidation → 400)
-                                     └── Handler              (la logica, qui e solo qui)
+                                     └── Handler              (orchestrazione)
                                               │
-                                              └── AppDbContext  →  SQL Server | PostgreSQL
+                                              ├── repository / IReadDbContext  (astrazioni)
+                                              ├── aggregato di dominio         (la decisione)
+                                              └── IUnitOfWork.SaveChangesAsync()
+                                                       │
+                                                       └── commit → eventi di dominio
 ```
 
 Regole che tengono in piedi l'impianto:
 
-- La logica sta **negli handler**. Gli endpoint instradano e basta; `Program.cs` non contiene logica.
-- Gli handler dipendono **solo da `AppDbContext`**, che è astratto e provider-agnostico: è questo che
-  rende possibile il doppio provider. Niente strato repository.
-- Ogni scrittura (Create / Update / Delete) registra un **audit log** con attore, entità, azione, IP
-  e — per modifiche e cancellazioni — gli snapshot JSON dell'entità.
+- **Gli handler orchestrano, il dominio decide.** L'handler carica ciò che serve, chiede
+  all'aggregato o al domain service di decidere, salva.
+- **Gli handler non vedono mai `AppDbContext`.** I comandi usano `I{Aggregato}Repository` +
+  `IUnitOfWork`; le query usano `IReadDbContext` + `IQueryExecutor`.
+- **Il dominio protegge i propri invarianti**: setter privati, collezioni in sola lettura, factory
+  method come unica porta di costruzione.
+- Ogni scrittura registra un **audit log** con attore, entità, azione, IP e snapshot prima/dopo.
+  Lo fa un interceptor sul `DbContext`: un handler non lo scrive mai a mano.
 - Le eccezioni non si gestiscono negli handler: `ExceptionHandlingMiddleware` le traduce in
   risposte **ProblemDetails** (RFC 7807).
 
@@ -113,7 +139,13 @@ Regole che tengono in piedi l'impianto:
 | `ForbiddenException` | 403 |
 | `NotFoundException` | 404 |
 | `ConflictException` | 409 |
+| `InvariantViolationException` | 422 |
 | qualsiasi altra | 500 |
+
+Queste regole non sono affidate alla memoria: `<Progetto>.Architecture.Tests` ispeziona gli assembly
+compilati e **fa fallire la build** se un layer dipende da chi non dovrebbe, o se un'entità espone
+setter pubblici. Il dettaglio completo è nella sezione
+[Architettura](../architettura/clean-architecture.md).
 
 ### Le API incluse
 
@@ -127,7 +159,7 @@ Dieci gruppi di endpoint, tutti sotto `/api`:
 | Sistema | `/api/audit-logs` · `/api/error-logs` · `/api/system-config` · `/api/monitoring` |
 
 Sono le rotte dell'impianto: quelle del dominio si aggiungono accanto, registrandole in
-`_Shared/Extensions/EndpointExtensions.cs`.
+`<Progetto>.Api/Extensions/EndpointExtensions.cs`.
 
 In esecuzione l'API espone la propria specifica OpenAPI, navigabile con Scalar (`/scalar`) o con
 Swagger UI (`/swagger`).
@@ -221,6 +253,7 @@ Nascondere il pulsante è cortesia verso l'utente; a **negare** l'operazione è 
 
 - [Generare e aggiornare](generazione.md) — le variabili del template, `copier copy` e `copier update`
 - [Le skill Claude](skill.md) — gli scaffolding inclusi per aggiungere codice nel modo previsto
+- [Clean Architecture](../architettura/clean-architecture.md) — i layer, la regola delle dipendenze, dove mettere la logica
 - [Infrastruttura](../infrastructure/panoramica.md) — perché due provider SQL e come sono tenuti insieme
 - [Autenticazione](../autenticazione/autenticazione.md) — JWT, Azure AD, Windows, permessi
 - [Aggiungere una feature](../guide/nuova-feature.md) — il percorso completo, end to end

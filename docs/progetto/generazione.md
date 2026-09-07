@@ -86,8 +86,11 @@ Il template lo dice da sé, in coda ai task, ma vale la pena averlo qui:
 3. **Generare la prima migration** — una per provider:
 
 ```bash
-dotnet dotnet-ef migrations add InitialCreate --project apps/backend/<Progetto>.Api --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add InitialCreate --project apps/backend/<Progetto>.Api --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+cd apps/backend/<Progetto>.Api
+
+dotnet dotnet-ef migrations add InitialCreate   --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj   --startup-project <Progetto>.Api.csproj   --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+
+dotnet dotnet-ef migrations add InitialCreate   --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj   --startup-project <Progetto>.Api.csproj   --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 ```
 
 > **Il template non contiene migration**, e non è una dimenticanza: le cartelle

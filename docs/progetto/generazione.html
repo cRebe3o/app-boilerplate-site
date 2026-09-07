@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -183,8 +192,11 @@ password dell'amministratore iniziale.</li>
 <li>Copiare <code>apps/frontend/.env.local.example</code> in <code>apps/frontend/.env.local</code> e valorizzarlo.</li>
 <li><strong>Generare la prima migration</strong> — una per provider:</li>
 </ol>
-<pre><code class="language-bash">dotnet dotnet-ef migrations add InitialCreate --project apps/backend/&lt;Progetto&gt;.Api --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add InitialCreate --project apps/backend/&lt;Progetto&gt;.Api --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/&lt;Progetto&gt;.Api
+
+dotnet dotnet-ef migrations add InitialCreate   --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj   --startup-project &lt;Progetto&gt;.Api.csproj   --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+
+dotnet dotnet-ef migrations add InitialCreate   --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj   --startup-project &lt;Progetto&gt;.Api.csproj   --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 </code></pre>
 <blockquote>
 <p><strong>Il template non contiene migration</strong>, e non è una dimenticanza: le cartelle

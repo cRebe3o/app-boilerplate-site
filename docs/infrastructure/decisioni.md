@@ -11,12 +11,13 @@ nasce, e cambiarla dopo significa cambiarla in tutti.
 | Decisione presa | Alternativa scartata | Perché |
 |---|---|---|
 | **Due provider SQL** (SQL Server + PostgreSQL) | Un solo database | Il provider lo decide il cliente del progetto, non chi scrive il template. Il costo di supportarli entrambi è quasi nullo: stesso modello EF, cambia il driver |
-| **Niente strato repository**: gli handler usano `AppDbContext` | Interfacce `I*Repository` con implementazioni per provider | Con due provider entrambi su EF Core, le interfacce non astrarrebbero nulla: sarebbero indirezione pura. `AppDbContext` **è già** il seam |
+| **Clean Architecture** in quattro progetti | Un solo progetto a vertical slice | Il dominio ha invarianti veri da proteggere: separarlo rende le regole non aggirabili e testabili senza infrastruttura. Sotto, per esteso |
+| **Repository sulle scritture, `IQueryable` sulle letture** | Repository per tutto, oppure `AppDbContext` per tutto | I repository proteggono gli invarianti degli aggregati; una lettura non ha invarianti da proteggere. Sotto, per esteso |
 | **PK `int` identity** | `Guid`, `bigint`, chiavi naturali | Default convenzionale, compatto ed efficiente su entrambi i provider. Sotto, per esteso |
 | **Un `AppDbContext` astratto + due derivate vuote** | Due DbContext indipendenti, o uno solo con migration condivise | Pattern MS "migrations with multiple providers": EF lega un set di migration a un tipo. Le derivate danno l'identità, il modello resta uno |
-| **Vertical slice** invece di livelli tecnici | Controller / Service / Repository | Una feature si legge e si cancella in una cartella sola. Su un template conta doppio: l'aggiunta di codice è l'operazione più frequente |
+| **Slice per caso d'uso dentro `Application`** | Livelli tecnici (Controller / Service / Repository) | Una feature si legge e si cancella in una cartella sola. La Clean Architecture riguarda i confini fra layer, non impone di organizzare i casi d'uso per tipo tecnico |
 | **Snapshot audit come `string` JSON** | Colonna JSON nativa (`json`/`jsonb`) | Una colonna testo è portabile fra i due provider senza codice condizionale e resta interrogabile con `JSON_VALUE`/`OPENJSON` (SQL Server) e con gli operatori JSON (Postgres) |
-| **Nessun concurrency token** | `rowversion` / `xmin` | Last-wins. Scelta consapevole, da rivalutare in un progetto con scritture concorrenti sulla stessa riga |
+| **Concurrency token `Guid` applicativo** | `rowversion` (SQL Server) / `xmin` (Postgres) | I token nativi hanno tipi e semantiche diverse sui due provider: un `Guid` rigenerato da un interceptor si comporta identico su entrambi |
 | **Enum come stringa** | Enum come int | Valore leggibile nel DB e stabile se cambia l'ordine dei membri |
 | **Nessuna migration nel template** | Un `InitialCreate` già pronto | Una migration committata nel template vincolerebbe ogni progetto generato. La prima è il primo file di storia del progetto |
 
@@ -44,37 +45,74 @@ concreto è `Contains` su stringa, case-insensitive su SQL Server e case-sensiti
 È il motivo per cui l'username di login si salva in minuscolo, ed è il controllo da fare su ogni
 nuova query di ricerca.
 
-## Perché niente strato repository
+## Perché Clean Architecture
 
-Un'interfaccia `IUserRepository` con una sola implementazione non astrae niente: aggiunge un file,
-un livello di indirezione e un punto in cui il codice può divergere dal modello, senza dare in
-cambio la libertà di sostituire l'implementazione.
+Il template è nato **a vertical slice**, con gli handler che iniettavano `AppDbContext`
+direttamente. Era una scelta difendibile, e per un CRUD lo è ancora: meno file, meno salti, un solo
+progetto.
 
-Il seam c'è già, ed è `AppDbContext`: è `abstract`, è provider-agnostico, e la DI decide quale
-derivata iniettare. Gli handler dipendono da lui e non sanno quale database c'è sotto — esattamente
-la garanzia che darebbero le interfacce, senza il codice da mantenere.
+È cambiata quando il dominio ha iniziato ad avere **regole vere**. Un'applicazione che si limita a
+scrivere righe non ha invarianti da proteggere; una che deve garantire che *un'attrezzatura non
+venga noleggiata due volte negli stessi giorni*, o che *il totale di un contratto corrisponda sempre
+alle sue righe*, sì. E un invariante vale solo se **non è aggirabile da nessuna strada**.
 
-Che cosa si guadagna concretamente:
+Con la logica negli handler, la garanzia dura finché tutti passano da quell'handler. Basta un
+import massivo, una seconda API, un job notturno — e la regola c'è ancora, ma qualcuno le è passato
+accanto. Non produce un errore: produce numeri leggermente sbagliati, mesi dopo.
 
-```csharp
-// Un handler di lettura, per intero.
-public class GetGroupsHandler(AppDbContext db) : IRequestHandler<GetGroupsQuery, List<GroupResponse>>
-{
-    public Task<List<GroupResponse>> Handle(GetGroupsQuery request, CancellationToken ct) =>
-        db.Set<Group>()
-            .Select(g => new GroupResponse(g.Id, g.Name, g.Description))
-            .ToListAsync(ct);
-}
-```
+Separando i layer, la regola sta **nel tipo**: `RentalContract.TotalAmount` è calcolato, non
+impostabile; le righe si aggiungono solo con `AddLine`, che verifica lo stato. Non c'è modo di
+costruire un contratto incoerente, da nessuna strada.
 
-Con uno strato repository la stessa lettura richiederebbe un metodo nell'interfaccia, la sua
-implementazione, e comunque questo handler — che a quel punto si limiterebbe a inoltrare la
-chiamata.
+Che cosa si guadagna, in concreto:
 
-**Quando andrebbe rivista.** Se il progetto dovesse accedere a una sorgente dati che non è EF Core
-— un servizio esterno, una coda, un database non relazionale — quella sorgente merita la propria
-astrazione. Il punto non è "mai interfacce": è non introdurre un'interfaccia dove esiste una sola
-implementazione possibile.
+- **Testabilità senza infrastruttura.** `<Progetto>.Domain.Tests` non ha database né mock: gli
+  oggetti si costruiscono e si interrogano.
+- **Le regole hanno un posto solo**, e chi legge il codice sa dove cercarle.
+- **I dettagli restano sostituibili.** I due provider SQL convivono perché nessun layer interno sa
+  quale sia attivo.
+
+Che cosa costa, e va detto:
+
+- **Più file.** Una lettura banale richiede comando, handler, response ed endpoint; una scrittura
+  aggiunge il metodo sul repository e la sua implementazione.
+- **Più salti per capire un flusso**, perché un'interfaccia va seguita fino all'implementazione.
+- **Disciplina**: la tentazione di iniettare `AppDbContext` "solo stavolta" arriva presto. È il
+  motivo per cui i test di architettura esistono e fanno fallire la build.
+
+**Quando non conviene.** Se il progetto è un CRUD anagrafico senza invarianti, questa struttura è
+sovrastruttura. È anche il motivo per cui, nel template, le anagrafiche restano sottili: il dominio
+si irrobustisce dove ci sono regole, non per uniformità.
+
+Il dettaglio operativo è nella sezione [Architettura](../architettura/clean-architecture.md).
+
+## Perché i repository solo sulle scritture
+
+La scelta meno ovvia del backend: i **comandi** passano da `I{Aggregato}Repository`, le **query** da
+`IReadDbContext`, che espone `IQueryable`. Due strade diverse per lo stesso database.
+
+La ragione è che i repository servono a **proteggere gli invarianti**, e una lettura non ha
+invarianti da proteggere. Una query proietta verso un DTO: non ricostruisce il modello di dominio,
+quindi non c'è nulla da aggirare.
+
+Farle passare comunque da un repository costerebbe, senza dare nulla in cambio. Una griglia con
+ricerca, cinque filtri e ordinamento su otto colonne diventerebbe o una firma con dodici parametri,
+o un metodo per ogni combinazione — oppure si materializzerebbero gli aggregati interi per
+proiettare in memoria, caricando colonne inutili come `PasswordHash`.
+
+Il prezzo di questa asimmetria è dichiarato: `<Progetto>.Application` referenzia **l'assembly base
+di EF Core** (per `IQueryable`), pur non referenziando nessun provider. È scritto nel `.csproj` come
+scelta consapevole, ed è verificato da un test di architettura:
+
+| Riferimento in `Application` | Ammesso |
+|---|---|
+| `Microsoft.EntityFrameworkCore` (assembly base) | Sì — serve per `IQueryable` |
+| `Microsoft.EntityFrameworkCore.SqlServer`, `Npgsql.*` | No — legherebbero a un database preciso |
+| `Microsoft.AspNetCore.*` | No — l'utente della richiesta arriva da `ICurrentUser` |
+
+**Quando andrebbe rivista.** Se le query diventassero abbastanza complesse da meritare un modello di
+lettura separato — viste materializzate, un database di reporting — allora la strada sarebbe un vero
+read model, non un repository in mezzo.
 
 ## Perché la chiave primaria è `int` identity
 
@@ -92,10 +130,10 @@ implementazione possibile.
 
 Sono reali e vanno conosciuti:
 
-- **L'id lo genera il database**, quindi lo si conosce solo *dopo* l'`INSERT`. Conseguenza pratica
-  visibile ovunque: gli handler di creazione fanno **due** `SaveChangesAsync`, perché l'audit log ha
-  bisogno dell'id. Nel seed, i legami si esprimono via navigation property invece che con id
-  costanti.
+- **L'id lo genera il database**, quindi lo si conosce solo *dopo* l'`INSERT`. Si vede in due punti:
+  gli eventi sollevati da un factory nascono con id `0` e vanno completati dopo il commit (è il
+  ruolo di `IDeferredIdentityEvent`), e nel seed i legami si esprimono via navigation property
+  invece che con id costanti.
 - **Enumerabilità**: `/users/1`, `/users/2`… sono indovinabili. Espone allo scraping sequenziale e al
   rischio IDOR **se un controllo di autorizzazione fosse debole** — per questo ogni endpoint è
   protetto da una policy sui permessi, che è la difesa vera. Espone anche informazioni di business
@@ -146,25 +184,58 @@ il primo commit di una storia che appartiene al progetto.
 l'applicazione parte con un database senza schema. Per questo compare nei task post-generazione,
 nel README del progetto e in [Generare e aggiornare](../progetto/generazione.md).
 
-## Perché vertical slice
+## Perché le slice per caso d'uso
 
-Il criterio non è estetico: è il costo dell'operazione più frequente.
+La Clean Architecture prescrive i confini **fra** i layer, non come organizzare il codice dentro
+ciascuno. Dentro `Application` i casi d'uso restano organizzati **per funzionalità**, non per tipo
+tecnico: `CreateGroup/` contiene comando, handler, validator e response.
 
-In un'architettura a livelli, aggiungere un'operazione significa toccare quattro file in quattro
-cartelle diverse — e cancellarla significa ricordarsi di tutti e quattro. In vertical slice
-l'operazione **è** una cartella: si crea, si legge e si elimina in un posto solo.
+Il criterio non è estetico, è il costo dell'operazione più frequente. Con le cartelle per tipo
+(`Commands/`, `Handlers/`, `Validators/`), aggiungere un'operazione significa toccare quattro
+cartelle diverse — e cancellarla significa ricordarsi di tutte e quattro. Così, l'operazione **è**
+una cartella: si crea, si legge e si elimina in un posto solo.
 
-Per un template il vantaggio è doppio, perché rende meccanico ciò che deve accadere in ogni
-progetto: aggiungere feature. È anche il motivo per cui le [skill](../progetto/skill.md) possono
-scaffoldare una slice in modo affidabile — c'è una forma sola, ripetuta.
+Per un template il vantaggio è doppio, perché rende meccanico ciò che accade in ogni progetto:
+aggiungere feature. È anche il motivo per cui le [skill](../progetto/skill.md) possono scaffoldare
+una slice in modo affidabile — c'è una forma sola, ripetuta.
 
 **Il rovescio**: c'è più ripetizione fra slice simili di quanta ne avrebbe un service condiviso, e
-la tentazione di estrarre "il metodo comune" arriva presto. La regola del template è resistere
-finché la ripetizione non è **identica e stabile**: la duplicazione fra due slice è quasi sempre
-apparente, e il service condiviso estratto troppo presto diventa il punto in cui le feature si
-accoppiano di nuovo.
+la tentazione di estrarre "il metodo comune" arriva presto. La regola è resistere finché la
+ripetizione non è **identica e stabile** — con un'eccezione importante: se la ripetizione riguarda
+una **regola di business**, non va estratta in un helper ma spostata nel dominio, dove diventa un
+metodo dell'aggregato o un domain service. Vedi
+[Dove mettere la logica](../architettura/dove-mettere-la-logica.md).
+
+## Perché un concurrency token applicativo
+
+Le entità che possono essere modificate da due operatori insieme implementano `IVersioned`, che
+porta un `Guid` rigenerato a ogni scrittura da `ConcurrencyTokenInterceptor`.
+
+Il problema che risolve:
+
+> Due operatori aprono lo stesso contratto; il primo lo conferma, il secondo — che vede ancora la
+> schermata di prima — lo conferma a sua volta. Senza controllo, la seconda scrittura sovrascrive
+> la prima e nessuno se ne accorge: la modifica di qualcuno sparisce in silenzio, che è il peggiore
+> dei modi di perdere dati.
+
+Con il token, EF include il valore corrente nella `WHERE` dell'`UPDATE`: se qualcuno ha salvato nel
+frattempo la riga non viene trovata, `SaveChanges` lancia `DbUpdateConcurrencyException` e il
+middleware la traduce in un **409** con l'invito a ricaricare.
+
+**Perché un `Guid` e non `rowversion`.** I token nativi esistono su entrambi i provider ma con tipi
+e semantiche diverse (`rowversion` su SQL Server, `xmin` su PostgreSQL): mapparli richiederebbe
+configurazione condizionale. Un `Guid` applicativo si comporta in modo identico sui due, al prezzo
+di doverlo rigenerare noi — che è esattamente il compito dell'interceptor.
+
+**Perché in un interceptor e non negli aggregati**: così nessuno può dimenticarsene. Un metodo
+nuovo, un import massivo, una correzione da un hosted service sono tutti coperti senza scrivere una
+riga in più.
+
+Non tutte le entità ce l'hanno: si aggiunge dove la modifica concorrente è plausibile e costosa, non
+per principio.
 
 ## Approfondimenti
 
-- **[Architettura](architettura.md)** — la struttura che queste decisioni hanno prodotto
+- **[Clean Architecture](../architettura/clean-architecture.md)** — i layer che queste decisioni hanno prodotto
+- **[Architettura](architettura.md)** — il modello dati e lo schema relazionale
 - **[Implementazione](implementazione.md)** — il codice, con i punti in cui le decisioni si vedono

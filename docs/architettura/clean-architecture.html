@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clean Architecture — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html" aria-current="page">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Architettura</p>
+      <article class="prose">
+<h1 id="clean-architecture">Clean Architecture</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#la-regola-delle-dipendenze">La regola delle dipendenze</a></li>
+          <li class="lvl-2"><a href="#i-quattro-layer">I quattro layer</a></li>
+          <li class="lvl-3"><a href="#appdemodomain-le-regole"><code>AppDemo.Domain</code> — le regole</a></li>
+          <li class="lvl-3"><a href="#appdemoapplication-i-casi-d-uso"><code>AppDemo.Application</code> — i casi d'uso</a></li>
+          <li class="lvl-3"><a href="#appdemoinfrastructure-i-dettagli"><code>AppDemo.Infrastructure</code> — i dettagli</a></li>
+          <li class="lvl-3"><a href="#appdemoapi-il-guscio-http"><code>AppDemo.Api</code> — il guscio HTTP</a></li>
+          <li class="lvl-2"><a href="#il-percorso-di-una-richiesta">Il percorso di una richiesta</a></li>
+          <li class="lvl-2"><a href="#le-regole-sono-verificate-dalla-build">Le regole sono verificate dalla build</a></li>
+          <li class="lvl-2"><a href="#che-cosa-si-guadagna-concretamente">Che cosa si guadagna, concretamente</a></li>
+          <li class="lvl-2"><a href="#che-cosa-costa">Che cosa costa</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Il backend è organizzato in <strong>quattro progetti</strong>, ognuno un layer, con le dipendenze che puntano
+tutte verso l'interno:</p>
+<pre><code>AppDemo.Api  →  AppDemo.Infrastructure  →  AppDemo.Application  →  AppDemo.Domain
+   guscio            dettagli tecnici          casi d'uso              regole
+</code></pre>
+<p>La freccia si legge &quot;dipende da&quot;. Il verso non è una preferenza estetica: è la proprietà da cui
+discende tutto il resto, e l'unica che va difesa con attenzione.</p>
+<h2 id="la-regola-delle-dipendenze">La regola delle dipendenze</h2>
+<p><strong>Il codice più interno non sa niente di quello più esterno.</strong> Il dominio non sa che esiste un
+database; l'Application layer non sa che esiste HTTP; nessuno dei due sa se sotto ci sia SQL Server
+o PostgreSQL.</p>
+<p>Il motivo pratico è che le cose cambiano a velocità diverse. Le regole di business — &quot;un contratto
+confermato non si modifica&quot;, &quot;un cliente bloccato non noleggia&quot; — sopravvivono a un cambio di
+database, a un passaggio da REST a gRPC, a una riscrittura del frontend. Il codice che le contiene
+non deve essere trascinato da nessuna di quelle sostituzioni.</p>
+<p>Il rovescio è che il layer esterno <em>deve</em> poter far accadere qualcosa in quello interno: un handler
+ha bisogno di leggere dal database, che è un dettaglio infrastrutturale. La soluzione è
+l'<strong>inversione delle dipendenze</strong>: chi ha bisogno del servizio ne dichiara l'interfaccia, chi sa
+fornirlo la implementa.</p>
+<pre><code>AppDemo.Application/Abstractions/Persistence/IRentalContractRepository.cs   ← dichiara
+AppDemo.Infrastructure/Persistence/Repositories/RentalContractRepository.cs ← implementa
+</code></pre>
+<p>L'interfaccia vive con chi la <strong>usa</strong>, non con chi la soddisfa. È il motivo per cui <code>Abstractions/</code>
+sta in <code>AppDemo.Application</code> e non in <code>AppDemo.Infrastructure</code>: così la freccia continua a puntare
+verso l'interno, e Application resta compilabile senza Infrastructure.</p>
+<h2 id="i-quattro-layer">I quattro layer</h2>
+<h3 id="appdemodomain-le-regole"><code>AppDemo.Domain</code> — le regole</h3>
+<p>Il centro. Contiene entità, aggregati, value object, domain service, eventi e specification.</p>
+<p>Il <code>.csproj</code> è la dichiarazione d'intenti più netta del progetto:</p>
+<pre><code class="language-xml"><span class="hljs-comment">&lt;!-- NESSUNA PackageReference, per scelta.
+     Il dominio è il centro della cipolla: non conosce EF Core, ASP.NET, MediatR
+     né alcun altro framework. Se qui serve un pacchetto, quasi sempre significa
+     che il codice che lo richiede appartiene a un altro layer. --&gt;</span>
+</code></pre>
+<p>Zero dipendenze. Nemmeno EF Core, nemmeno MediatR. È una regola scomoda — costringe a pensare dove
+mettere le cose — ed è esattamente il suo valore: il dominio si testa istanziando oggetti, senza
+database, senza mock, senza contesto HTTP.</p>
+<h3 id="appdemoapplication-i-casi-d-uso"><code>AppDemo.Application</code> — i casi d'uso</h3>
+<p>Un caso d'uso per cartella: comando o query, handler, validator, response. È il layer che
+<strong>orchestra</strong>: carica ciò che serve, chiede al dominio di decidere, salva.</p>
+<p>Dipende da <code>Domain</code>, da MediatR, da FluentValidation e — unica concessione — dall'assembly base di
+EF Core:</p>
+<pre><code class="language-xml"><span class="hljs-comment">&lt;!-- EF Core (solo l&#x27;assembly base, NON i provider): serve per IQueryable e per i metodi
+     async di materializzazione usati dalle QUERY di lettura tramite IReadDbContext.
+     È la concessione consapevole dell&#x27;opzione A: i COMANDI restano su repository puri. --&gt;</span>
+</code></pre>
+<p>Il perché di questa asimmetria fra comandi e query è in <a href="comandi-e-query.html">Comandi e query</a>.</p>
+<h3 id="appdemoinfrastructure-i-dettagli"><code>AppDemo.Infrastructure</code> — i dettagli</h3>
+<p>Tutto ciò che è sostituibile: EF Core e i due provider, i repository, il JWT, l'hashing delle
+password, gli interceptor, il dispatcher degli eventi, la lettura dell'utente corrente dai claim.</p>
+<p>Ogni classe qui dentro implementa un'interfaccia dichiarata in <code>Application</code>. È il layer che si
+riscriverebbe passando a un altro ORM, e nessuno degli altri se ne accorgerebbe.</p>
+<h3 id="appdemoapi-il-guscio-http"><code>AppDemo.Api</code> — il guscio HTTP</h3>
+<p>Minimal API: rotte, permessi richiesti, documentazione OpenAPI. <strong>Nessuna logica.</strong> Un endpoint
+riceve, delega a MediatR, restituisce.</p>
+<p>È anche il <strong>composition root</strong>: l'unico punto che conosce sia le astrazioni sia le implementazioni,
+e che le mette insieme nella DI.</p>
+<pre><code class="language-xml"><span class="hljs-comment">&lt;!-- L&#x27;API è il composition root: referenzia Infrastructure per registrarne le
+     implementazioni, e Application per i tipi di command/query degli endpoint.
+     NON referenzia direttamente EF Core: la persistenza è un dettaglio che vive
+     dietro Infrastructure. --&gt;</span>
+</code></pre>
+<h2 id="il-percorso-di-una-richiesta">Il percorso di una richiesta</h2>
+<pre><code>HTTP
+ │
+ ├─ middleware (forwarded headers, CORS, errori, rate limit, i18n, auth)
+ │
+ ▼
+Endpoint  ── AppDemo.Api ─────────────  solo routing + permesso richiesto
+ │
+ │  IMediator.Send(comando)
+ ▼
+LoggingBehavior      ── durata ed esito
+ValidationBehavior   ── FluentValidation → 400, l'handler non viene raggiunto
+ │
+ ▼
+Handler   ── AppDemo.Application ─────  orchestrazione
+ │
+ ├─ repository / IReadDbContext ─────── astrazioni, implementate in Infrastructure
+ │
+ ▼
+Aggregato ── AppDemo.Domain ──────────  la decisione di business
+ │
+ ▼
+IUnitOfWork.SaveChangesAsync()
+ │
+ ├─ interceptor: timestamp, audit log, token di concorrenza
+ ├─ COMMIT
+ └─ pubblicazione degli eventi di dominio ── dopo il commit, mai prima
+</code></pre>
+<p>Le tre regole che discendono da questo schema:</p>
+<ul>
+<li><strong>Gli endpoint non contengono logica.</strong> Instradano e dichiarano il permesso.</li>
+<li><strong>I validator non si invocano.</strong> Il <code>ValidationBehavior</code> li trova da sé.</li>
+<li><strong>Le eccezioni non si catturano negli handler.</strong> Si lancia <code>NotFoundException</code>,
+<code>ConflictException</code>, <code>InvariantViolationException</code>; il middleware le traduce in
+ProblemDetails (RFC 7807).</li>
+</ul>
+<h2 id="le-regole-sono-verificate-dalla-build">Le regole sono verificate dalla build</h2>
+<p><code>AppDemo.Architecture.Tests</code> ispeziona i riferimenti <strong>reali degli assembly compilati</strong> — non i
+<code>.csproj</code> — così intercetta anche una dipendenza entrata per via transitiva.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Che cosa impedisce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Il_dominio_non_dipende_da_nessun_altro_layer</code></td>
+<td>Un <code>using AppDemo.Application</code> nel dominio</td>
+</tr>
+<tr>
+<td><code>Il_dominio_non_dipende_da_alcun_framework</code></td>
+<td>EF Core, <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> o MediatR dentro <code>Domain</code></td>
+</tr>
+<tr>
+<td><code>L_application_layer_non_dipende_da_infrastructure_ne_dall_api</code></td>
+<td>L'inversione delle dipendenze al contrario</td>
+</tr>
+<tr>
+<td><code>L_application_layer_non_dipende_da_ASP_NET</code></td>
+<td><code>HttpContext</code> letto dentro un handler</td>
+</tr>
+<tr>
+<td><code>L_application_layer_non_dipende_da_un_provider_di_database_specifico</code></td>
+<td>Un <code>using Npgsql</code> in una query</td>
+</tr>
+<tr>
+<td><code>Infrastructure_non_dipende_dall_api</code></td>
+<td>Un riferimento all'indietro dal guscio</td>
+</tr>
+<tr>
+<td><code>Le_entita_non_espongono_setter_pubblici</code></td>
+<td>Uno stato modificabile scavalcando gli invarianti</td>
+</tr>
+<tr>
+<td><code>Le_entita_non_espongono_collezioni_mutabili</code></td>
+<td>Un <code>Add</code> diretto su una collezione dell'aggregato</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il commento in testa a <code>LayerDependencyTests</code> spiega perché esistono:</p>
+<blockquote>
+<p>Sono i test più importanti del progetto e insieme i più noiosi: la separazione dei layer non si
+rompe con una decisione, si rompe con un <code>using</code> aggiunto di fretta un martedì pomeriggio.
+Un riferimento sbagliato fa fallire la build, non una code review.</p>
+</blockquote>
+<h2 id="che-cosa-si-guadagna-concretamente">Che cosa si guadagna, concretamente</h2>
+<p><strong>Testabilità senza infrastruttura.</strong> Il dominio si testa con <code>new</code>: <code>AppDemo.Domain.Tests</code> non ha
+database né mock. Gli handler si testano con fake delle astrazioni, senza <code>HttpContext</code>.</p>
+<p><strong>Sostituibilità dei dettagli.</strong> I due provider SQL convivono perché nessun layer interno sa quale
+sia attivo. Lo stesso varrebbe per un cambio di ORM.</p>
+<p><strong>Le regole hanno un posto solo.</strong> &quot;Un pezzo non si noleggia due volte nello stesso giorno&quot; sta in
+<code>RentalAvailabilityService</code>, e vale per la conferma, per l'aggiunta di una riga e per l'import
+massivo che qualcuno scriverà l'anno prossimo. Nessuna di quelle strade può aggirarla per
+dimenticanza.</p>
+<h2 id="che-cosa-costa">Che cosa costa</h2>
+<p>Va detto, perché è la parte che si scopre lavorandoci:</p>
+<ul>
+<li><strong>Più file.</strong> Una lettura banale richiede comando, handler, response ed endpoint. Una scrittura
+aggiunge il metodo sul repository e la sua implementazione.</li>
+<li><strong>Più salti per capire un flusso.</strong> Un <code>IRentalContractRepository</code> va seguito fino
+all'implementazione per sapere che SQL produce.</li>
+<li><strong>La disciplina non è gratis.</strong> La tentazione di iniettare <code>AppDbContext</code> in un handler &quot;solo
+stavolta&quot; arriva presto. È il motivo per cui esistono i test di architettura.</li>
+</ul>
+<p>Il baratto conviene quando il dominio ha regole vere. Per un CRUD anagrafico senza invarianti è
+sovrastruttura — e infatti le anagrafiche del template restano sottili, con la logica quasi tutta
+negli handler.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="dove-mettere-la-logica.html">Dove mettere la logica</a></strong> — handler, domain service, application service: la domanda che decide</li>
+<li><strong><a href="il-dominio.html">Il dominio</a></strong> — aggregati, value object, eventi, specification, macchine a stati</li>
+<li><strong><a href="comandi-e-query.html">Comandi e query</a></strong> — repository per le scritture, <code>IReadDbContext</code> per le letture</li>
+<li><strong><a href="../guide/nuova-feature.html">Aggiungere una feature</a></strong> — il percorso completo, end to end</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

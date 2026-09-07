@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comandi e query — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html" aria-current="page">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Architettura</p>
+      <article class="prose">
+<h1 id="comandi-e-query">Comandi e query</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#perche-due-strade-diverse">Perché due strade diverse</a></li>
+          <li class="lvl-2"><a href="#i-comandi">I comandi</a></li>
+          <li class="lvl-3"><a href="#la-forma">La forma</a></li>
+          <li class="lvl-3"><a href="#i-repository">I repository</a></li>
+          <li class="lvl-3"><a href="#iunitofwork-il-confine-transazionale"><code>IUnitOfWork</code> — il confine transazionale</a></li>
+          <li class="lvl-2"><a href="#gli-eventi-di-dominio-e-la-transazione">Gli eventi di dominio e la transazione</a></li>
+          <li class="lvl-2"><a href="#le-query">Le query</a></li>
+          <li class="lvl-3"><a href="#la-forma-2">La forma</a></li>
+          <li class="lvl-3"><a href="#ireaddbcontext-iqueryable-non-dbset"><code>IReadDbContext</code> — <code>IQueryable</code>, non <code>DbSet</code></a></li>
+          <li class="lvl-3"><a href="#iqueryexecutor-perche-non-si-chiama-tolistasync-direttamente"><code>IQueryExecutor</code> — perché non si chiama <code>ToListAsync</code> direttamente</a></li>
+          <li class="lvl-3"><a href="#il-confine-di-aggregato-non-vale-nelle-letture">Il confine di aggregato non vale nelle letture</a></li>
+          <li class="lvl-2"><a href="#dove-finiscono-audit-timestamp-e-concorrenza">Dove finiscono audit, timestamp e concorrenza</a></li>
+          <li class="lvl-2"><a href="#riepilogo-che-cosa-iniettare">Riepilogo: che cosa iniettare</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Le scritture e le letture non hanno gli stessi problemi, e nel progetto <strong>non passano dalla stessa
+strada</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Comandi</strong> (Create / Update / Delete)</th>
+<th><strong>Query</strong> (lettura)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cosa iniettare</td>
+<td><code>I{Aggregato}Repository</code> + <code>IUnitOfWork</code></td>
+<td><code>IReadDbContext</code> + <code>IQueryExecutor</code></td>
+</tr>
+<tr>
+<td>Che cosa manipolano</td>
+<td>aggregati di dominio, con i loro invarianti</td>
+<td>proiezioni verso DTO</td>
+</tr>
+<tr>
+<td>Tracking EF</td>
+<td>sì: le modifiche vengono osservate</td>
+<td>no: <code>AsNoTracking</code></td>
+</tr>
+<tr>
+<td>Vedono EF Core?</td>
+<td>mai</td>
+<td><code>IQueryable</code>, sì</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>È una separazione <strong>CQRS &quot;leggera&quot;</strong>: due strade nello stesso database e nello stesso modello, non
+due archivi separati.</p>
+<h2 id="perche-due-strade-diverse">Perché due strade diverse</h2>
+<p>L'asimmetria è deliberata, ed è documentata in <code>IReadDbContext</code>:</p>
+<blockquote>
+<p>Le query di lettura sono proiezioni verso DTO e non contengono logica di dominio da proteggere.
+Farle passare da un repository significherebbe o materializzare gli aggregati interi e proiettare
+in memoria (caricando colonne inutili come <code>PasswordHash</code>), oppure duplicare in Infrastructure una
+firma per ogni combinazione di filtro e sort. I COMANDI, dove gli invarianti contano davvero,
+usano i repository e non vedono EF.</p>
+</blockquote>
+<p>In due frasi: <strong>i repository proteggono gli invarianti, e una lettura non ha invarianti da
+proteggere.</strong> Una griglia con ricerca, cinque filtri e ordinamento su otto colonne, dietro un
+repository, diventa o una firma con dodici parametri o un metodo per combinazione.</p>
+<p>Il prezzo è che <code>AppDemo.Application</code> referenzia l'assembly base di EF Core. È scritto nel <code>.csproj</code>
+come scelta consapevole, e i test di architettura verificano il limite: l'assembly base sì, <strong>i
+provider no</strong>.</p>
+<h2 id="i-comandi">I comandi</h2>
+<h3 id="la-forma">La forma</h3>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateRentalContractHandler</span>(<span class="hljs-params">
+    IRentalContractRepository contracts,
+    ICustomerRepository customers,
+    IDateTimeProvider clock,
+    IUnitOfWork unitOfWork</span>) : IRequestHandler&lt;CreateRentalContractCommand, CreateRentalContractResponse&gt;</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;CreateRentalContractResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">
+        CreateRentalContractCommand request, CancellationToken cancellationToken</span>)</span>
+    {
+        <span class="hljs-keyword">var</span> customer = <span class="hljs-keyword">await</span> customers.GetByIdAsync(request.CustomerId, cancellationToken)
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Cliente con id <span class="hljs-subst">{request.CustomerId}</span> non trovato.&quot;</span>);
+
+        <span class="hljs-comment">// Regola dell&#x27;aggregato Customer: qui si chiama soltanto.</span>
+        customer.EnsureCanRent();
+
+        <span class="hljs-keyword">var</span> period = RentalPeriod.From(request.From, request.To);
+
+        <span class="hljs-comment">// Il &quot;presente&quot; arriva da IDateTimeProvider, mai da DateTime.UtcNow: è ciò che</span>
+        <span class="hljs-comment">// rende l&#x27;handler testabile con una data fissata.</span>
+        period.EnsureNotInThePast(clock.UtcNow);
+
+        <span class="hljs-keyword">var</span> reference = <span class="hljs-keyword">await</span> GenerateReferenceAsync(period.Start.Year, cancellationToken);
+
+        <span class="hljs-keyword">var</span> contract = RentalContract.Open(reference, customer.Id, period, request.Notes);
+
+        contracts.Add(contract);
+        <span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(cancellationToken);
+
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CreateRentalContractResponse(contract.Id, contract.Reference);
+    }
+}
+</code></pre>
+<p>Quattro cose da notare:</p>
+<ul>
+<li><strong>Nessun <code>AppDbContext</code>.</strong> L'handler non sa che esiste EF Core.</li>
+<li><strong><code>customer.EnsureCanRent()</code></strong>: la regola è del dominio, l'handler la <em>chiama</em>.</li>
+<li><strong><code>clock.UtcNow</code></strong> al posto di <code>DateTime.UtcNow</code>: un test può fissare &quot;adesso&quot;.</li>
+<li><strong><code>Add</code> e <code>SaveChangesAsync</code> sono separati</strong>: il repository accumula, l'unit of work committa.</li>
+</ul>
+<h3 id="i-repository">I repository</h3>
+<p>Un'interfaccia per aggregato, in <code>Application/Abstractions/Persistence/</code>; l'implementazione in
+<code>Infrastructure/Persistence/Repositories/</code>.</p>
+<p>Espongono <strong>operazioni di dominio</strong>, non CRUD generico:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-title">IRentalContractRepository</span>
+{
+    Task&lt;RentalContract?&gt; GetByIdAsync(<span class="hljs-built_in">int</span> id, CancellationToken ct = <span class="hljs-literal">default</span>);
+    Task&lt;RentalContract?&gt; GetByReferenceAsync(<span class="hljs-built_in">string</span> reference, CancellationToken ct = <span class="hljs-literal">default</span>);
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Contratti che impegnano una certa attrezzatura e si sovrappongono al periodo.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    Task&lt;IReadOnlyList&lt;RentalContract&gt;&gt; GetOverlappingAsync(
+        IEnumerable&lt;<span class="hljs-built_in">int</span>&gt; equipmentIds, RentalPeriod period,
+        <span class="hljs-built_in">int</span>? excludingContractId = <span class="hljs-literal">null</span>, CancellationToken ct = <span class="hljs-literal">default</span>);
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Contratti attivi di un cliente, con le righe. Input di CustomerCreditService.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    Task&lt;IReadOnlyList&lt;RentalContract&gt;&gt; GetActiveByCustomerAsync(<span class="hljs-built_in">int</span> customerId, CancellationToken ct = <span class="hljs-literal">default</span>);
+
+    <span class="hljs-function">Task&lt;<span class="hljs-built_in">bool</span>&gt; <span class="hljs-title">ExistsByReferenceAsync</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> reference, CancellationToken ct = <span class="hljs-literal">default</span></span>)</span>;
+
+    <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">Add</span>(<span class="hljs-params">RentalContract contract</span>)</span>;
+    <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">Remove</span>(<span class="hljs-params">RentalContract contract</span>)</span>;
+}
+</code></pre>
+<p><code>GetOverlappingAsync</code> e <code>GetActiveByCustomerAsync</code> esistono perché <strong>i domain service hanno bisogno
+di guardare altri contratti, e sono i repository — non il dominio — ad andarli a prendere</strong>.</p>
+<p>Il filtro avviene in SQL, e il commento dell'implementazione spiega perché non è un dettaglio:</p>
+<blockquote>
+<p>Caricare tutti i contratti e scartarli in memoria funzionerebbe finché la tabella è piccola, e
+smetterebbe di funzionare esattamente quando il sistema inizia a essere usato davvero.</p>
+</blockquote>
+<p>Un repository carica sempre <strong>l'aggregato completo</strong> (<code>GetByIdAsync</code> include le righe): è l'unità
+che si carica e si salva insieme.</p>
+<p><code>Add</code> e <code>Remove</code> non sono <code>async</code> e non salvano: registrano l'intenzione. Le <strong>modifiche</strong> a un
+aggregato già caricato non richiedono nessuna chiamata — è tracciato, basta <code>SaveChangesAsync</code>.</p>
+<h3 id="iunitofwork-il-confine-transazionale"><code>IUnitOfWork</code> — il confine transazionale</h3>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-title">IUnitOfWork</span>
+{
+    <span class="hljs-function">Task&lt;<span class="hljs-built_in">int</span>&gt; <span class="hljs-title">SaveChangesAsync</span>(<span class="hljs-params">CancellationToken cancellationToken = <span class="hljs-literal">default</span></span>)</span>;
+}
+</code></pre>
+<p>Separarlo dai repository è ciò che permette a un handler di <strong>modificare più aggregati e salvarli
+insieme</strong>, senza che ogni repository committi per conto proprio.</p>
+<h2 id="gli-eventi-di-dominio-e-la-transazione">Gli eventi di dominio e la transazione</h2>
+<p><code>UnitOfWork</code> è anche il punto in cui gli eventi vengono pubblicati, e la sequenza non è arbitraria:</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">sealed</span> <span class="hljs-keyword">class</span> <span class="hljs-title">UnitOfWork</span>(<span class="hljs-params">AppDbContext db, IDomainEventDispatcher dispatcher</span>) : IUnitOfWork</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;<span class="hljs-built_in">int</span>&gt; <span class="hljs-title">SaveChangesAsync</span>(<span class="hljs-params">CancellationToken cancellationToken = <span class="hljs-literal">default</span></span>)</span>
+    {
+        <span class="hljs-keyword">var</span> affected = <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
+
+        <span class="hljs-comment">// Solo ora gli id identity esistono e gli eventi puntano a entità reali.</span>
+        <span class="hljs-keyword">var</span> domainEvents = CollectAndClearDomainEvents();
+
+        <span class="hljs-keyword">if</span> (domainEvents.Count &gt; <span class="hljs-number">0</span>)
+            <span class="hljs-keyword">await</span> dispatcher.DispatchAsync(domainEvents, cancellationToken);
+
+        <span class="hljs-keyword">return</span> affected;
+    }
+}
+</code></pre>
+<p><strong>Perché raccoglierli dopo il salvataggio.</strong> Un aggregato appena creato solleva il suo evento nel
+factory, quando l'id identity vale ancora <code>0</code>. Raccogliere prima del commit significherebbe
+pubblicare eventi che puntano a un'entità inesistente. Dopo il <code>SaveChanges</code> gli id ci sono e le
+entità sono ancora tracciate: è l'unica finestra in cui entrambe le cose sono vere.</p>
+<p><strong>Perché pubblicarli dopo il commit.</strong> Un evento dice che un fatto <em>è avvenuto</em>. Pubblicarlo prima
+significherebbe annunciare qualcosa che potrebbe non succedere mai — se il salvataggio fallisse, gli
+handler avrebbero già reagito a un fatto inesistente, magari mandando una mail.</p>
+<p><strong>Gli errori negli handler non annullano l'operazione.</strong> La modifica è già persistente: se un
+handler fallisce, l'errore va registrato ma non propagato, altrimenti il chiamante vedrebbe un
+errore per un'operazione riuscita. Il limite va conosciuto, ed è dichiarato nel codice:</p>
+<blockquote>
+<p>Se l'aggiornamento di stato delle attrezzature fallisce, il contratto resta confermato con i pezzi
+ancora &quot;disponibili&quot;. In un sistema di produzione la risposta è una <strong>outbox</strong> — gli eventi si
+salvano nella stessa transazione e un worker li ripubblica finché non riescono. Qui il log è
+sufficiente, ma il limite va conosciuto.</p>
+</blockquote>
+<h2 id="le-query">Le query</h2>
+<h3 id="la-forma-2">La forma</h3>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GetRentalContractsHandler</span>(<span class="hljs-params">
+    IReadDbContext db,
+    IQueryExecutor executor,
+    IDateTimeProvider clock</span>)
+    : IRequestHandler&lt;GetRentalContractsQuery, PagedResponse&lt;RentalContractSummaryResponse&gt;&gt;</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;PagedResponse&lt;RentalContractSummaryResponse&gt;&gt; Handle(
+        GetRentalContractsQuery request, CancellationToken cancellationToken)
+    {
+        <span class="hljs-keyword">var</span> query = db.RentalContracts;
+
+        <span class="hljs-keyword">if</span> (!<span class="hljs-built_in">string</span>.IsNullOrWhiteSpace(request.Search))
+            query = query.Where(c =&gt; c.Reference.Contains(request.Search.Trim().ToUpper()));
+
+        <span class="hljs-keyword">if</span> (request.CustomerId.HasValue)
+            query = query.Where(RentalContractSpecs.ForCustomer(request.CustomerId.Value));
+
+        <span class="hljs-comment">// La specification incapsula &quot;confermato E con fine già passata&quot;.</span>
+        <span class="hljs-keyword">if</span> (request.OnlyOverdue == <span class="hljs-literal">true</span>)
+            query = query.Where(RentalContractSpecs.Overdue(clock.UtcNow));
+
+        <span class="hljs-keyword">var</span> (page, pageSize) = Pagination.Normalize(request.Page, request.PageSize);
+
+        <span class="hljs-keyword">var</span> totalCount = <span class="hljs-keyword">await</span> executor.CountAsync(query, cancellationToken);
+
+        <span class="hljs-comment">// Join verso l&#x27;anagrafica per il nome cliente: nelle query di lettura è legittima,</span>
+        <span class="hljs-comment">// il confine di aggregato riguarda le SCRITTURE.</span>
+        <span class="hljs-keyword">var</span> projected =
+            <span class="hljs-function"><span class="hljs-keyword">from</span> c <span class="hljs-keyword">in</span> <span class="hljs-title">ApplySort</span>(<span class="hljs-params">query, request.SortBy, request.SortDesc</span>)
+                .<span class="hljs-title">Skip</span>(<span class="hljs-params">(page - <span class="hljs-number">1</span></span>) * pageSize).<span class="hljs-title">Take</span>(<span class="hljs-params">pageSize</span>)
+            <span class="hljs-keyword">join</span> cust <span class="hljs-keyword">in</span> db.Customers <span class="hljs-keyword">on</span> c.CustomerId <span class="hljs-keyword">equals</span> cust.Id
+            <span class="hljs-keyword">select</span> <span class="hljs-keyword">new</span> <span class="hljs-title">RentalContractSummaryResponse</span>(<span class="hljs-params">c.Id, c.Reference, cust.Name, <span class="hljs-comment">/* … */</span></span>)</span>;
+
+        <span class="hljs-keyword">var</span> items = <span class="hljs-keyword">await</span> executor.ToListAsync(projected, cancellationToken);
+
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> PagedResponse&lt;RentalContractSummaryResponse&gt;(items, totalCount, page, pageSize);
+    }
+}
+</code></pre>
+<h3 id="ireaddbcontext-iqueryable-non-dbset"><code>IReadDbContext</code> — <code>IQueryable</code>, non <code>DbSet</code></h3>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-title">IReadDbContext</span>
+{
+    IQueryable&lt;User&gt; Users { <span class="hljs-keyword">get</span>; }
+    IQueryable&lt;RentalContract&gt; RentalContracts { <span class="hljs-keyword">get</span>; }
+    IQueryable&lt;Customer&gt; Customers { <span class="hljs-keyword">get</span>; }
+    <span class="hljs-comment">// …</span>
+}
+</code></pre>
+<p>Espone <code>IQueryable</code>, non <code>DbSet</code>: si compongono filtri, ordinamenti e proiezioni che EF traduce in
+un'unica query SQL, <strong>senza poter scrivere nulla</strong> — nessun <code>Add</code>, nessun <code>SaveChanges</code>. Le query
+sono già <code>AsNoTracking</code>.</p>
+<h3 id="iqueryexecutor-perche-non-si-chiama-tolistasync-direttamente"><code>IQueryExecutor</code> — perché non si chiama <code>ToListAsync</code> direttamente</h3>
+<p><code>ToListAsync</code> e <code>CountAsync</code> sono extension method di EF Core legati al provider: invocarli su un
+<code>IQueryable</code> prodotto da un fake in memoria <strong>fallisce a runtime</strong>. Passando dall'astrazione, gli
+handler di query restano eseguibili nei test unitari con un'implementazione sincrona, e in
+produzione usano il provider vero.</p>
+<h3 id="il-confine-di-aggregato-non-vale-nelle-letture">Il confine di aggregato non vale nelle letture</h3>
+<p>Nella query sopra c'è una <code>join</code> esplicita verso <code>Customers</code>, perché <code>RentalContract</code> non ha una
+navigation verso <code>Customer</code> — sono aggregati distinti. Nelle letture è legittima: <strong>le query
+proiettano verso DTO e non ricostruiscono il modello di dominio</strong>, quindi non c'è nessun invariante
+che possa essere aggirato.</p>
+<h2 id="dove-finiscono-audit-timestamp-e-concorrenza">Dove finiscono audit, timestamp e concorrenza</h2>
+<p>Non negli handler, e nemmeno nell'unit of work: sono <strong>interceptor sul <code>DbContext</code></strong>, così valgono
+anche per i salvataggi che non passano da un handler (seed, hosted service).</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Interceptor</th>
+<th>Che cosa fa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TimestampInterceptor</code></td>
+<td><code>CreatedAt</code> / <code>UpdatedAt</code> su ogni entità <code>ITimestamped</code></td>
+</tr>
+<tr>
+<td><code>AuditLogInterceptor</code></td>
+<td>Registra la scrittura con attore, entità, azione, IP e snapshot prima/dopo</td>
+</tr>
+<tr>
+<td><code>ConcurrencyTokenInterceptor</code></td>
+<td>Rigenera il token di concorrenza a ogni scrittura</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>È il motivo per cui <code>DomainModelTests</code> ammette setter pubblici <strong>solo</strong> per <code>CreatedAt</code>/<code>UpdatedAt</code>
+e <code>ConcurrencyToken</code>: sono dati che il dominio non possiede e che l'infrastruttura deve poter
+scrivere.</p>
+<blockquote>
+<p>Un handler non scrive mai un audit log a mano.</p>
+</blockquote>
+<h2 id="riepilogo-che-cosa-iniettare">Riepilogo: che cosa iniettare</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Sto scrivendo…</th>
+<th>Inietto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Un comando che modifica un aggregato</td>
+<td><code>I{Aggregato}Repository</code>, <code>IUnitOfWork</code></td>
+</tr>
+<tr>
+<td>Un comando che tocca due aggregati</td>
+<td>i due repository, <code>IUnitOfWork</code> (una sola transazione)</td>
+</tr>
+<tr>
+<td>Una query di lista o dettaglio</td>
+<td><code>IReadDbContext</code>, <code>IQueryExecutor</code></td>
+</tr>
+<tr>
+<td>Qualcosa che ha bisogno dell'ora</td>
+<td><code>IDateTimeProvider</code></td>
+</tr>
+<tr>
+<td>Qualcosa che ha bisogno di sapere chi agisce</td>
+<td><code>ICurrentUser</code></td>
+</tr>
+<tr>
+<td>Un handler di evento di dominio</td>
+<td>i repository che servono + <code>IUnitOfWork</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Se ti serve <code>AppDbContext</code> in un handler, c'è qualcosa fuori posto: i test di architettura lo
+segnalano prima della code review.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="dove-mettere-la-logica.html">Dove mettere la logica</a></strong> — handler, domain service, adapter</li>
+<li><strong><a href="il-dominio.html">Il dominio</a></strong> — aggregati, value object, eventi, specification</li>
+<li><strong><a href="../guide/nuova-feature.html">Aggiungere una feature</a></strong> — il percorso completo, end to end</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

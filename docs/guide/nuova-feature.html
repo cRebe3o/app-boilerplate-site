@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -62,18 +71,20 @@
         <ul>
           <li class="lvl-2"><a href="#la-regola-che-governa-tutto">La regola che governa tutto</a></li>
           <li class="lvl-2"><a href="#la-mappa">La mappa</a></li>
-          <li class="lvl-2"><a href="#1-l-entita">1. L'entità</a></li>
+          <li class="lvl-2"><a href="#1-l-entita-di-dominio">1. L'entità di dominio</a></li>
           <li class="lvl-2"><a href="#2-la-tabella">2. La tabella</a></li>
           <li class="lvl-2"><a href="#3-le-due-migration">3. Le due migration</a></li>
-          <li class="lvl-2"><a href="#4-la-query">4. La query</a></li>
-          <li class="lvl-2"><a href="#5-il-comando-validazione-e-audit">5. Il comando: validazione e audit</a></li>
-          <li class="lvl-2"><a href="#6-la-cancellazione-prima-si-controlla">6. La cancellazione: prima si controlla</a></li>
-          <li class="lvl-2"><a href="#7-le-rotte">7. Le rotte</a></li>
-          <li class="lvl-2"><a href="#8-i-permessi">8. I permessi</a></li>
-          <li class="lvl-2"><a href="#9-tipi-service-store">9. Tipi, service, store</a></li>
-          <li class="lvl-2"><a href="#10-le-pagine">10. Le pagine</a></li>
-          <li class="lvl-2"><a href="#11-rotte-e-testi">11. Rotte e testi</a></li>
+          <li class="lvl-2"><a href="#4-il-repository">4. Il repository</a></li>
+          <li class="lvl-2"><a href="#5-la-query">5. La query</a></li>
+          <li class="lvl-2"><a href="#6-il-comando">6. Il comando</a></li>
+          <li class="lvl-2"><a href="#7-la-cancellazione-prima-si-controlla">7. La cancellazione: prima si controlla</a></li>
+          <li class="lvl-2"><a href="#8-le-rotte">8. Le rotte</a></li>
+          <li class="lvl-2"><a href="#9-i-permessi">9. I permessi</a></li>
+          <li class="lvl-2"><a href="#10-tipi-service-store">10. Tipi, service, store</a></li>
+          <li class="lvl-2"><a href="#11-le-pagine">11. Le pagine</a></li>
+          <li class="lvl-2"><a href="#12-rotte-e-testi">12. Rotte e testi</a></li>
           <li class="lvl-2"><a href="#prima-di-dire-che-e-finita">Prima di dire che è finita</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
 <p>Il percorso completo per portare una nuova entità dal database fino alla pagina, attraversando tutti
@@ -112,185 +123,300 @@ case-sensitive su PostgreSQL.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>_Shared/Entities/Category.cs</code></td>
-<td>L'entità EF Core</td>
+<td><code>&lt;Progetto&gt;.Domain/Catalog/Category.cs</code></td>
+<td>L'entità di dominio</td>
 </tr>
 <tr>
 <td>2</td>
-<td><code>_Shared/Persistence/AppDbContext.cs</code></td>
+<td><code>&lt;Progetto&gt;.Infrastructure/Persistence/Configurations/CategoryConfiguration.cs</code></td>
 <td>La mappatura: tabella, colonne, indici</td>
 </tr>
 <tr>
 <td>3</td>
-<td><code>Migrations/SqlServer/</code> + <code>Migrations/Postgres/</code></td>
+<td><code>Persistence/Migrations/SqlServer/</code> + <code>.../Postgres/</code></td>
 <td><strong>Due</strong> migration</td>
 </tr>
 <tr>
 <td>4</td>
-<td><code>Features/Categories/GetCategories/</code></td>
-<td>La query</td>
+<td><code>&lt;Progetto&gt;.Application/Abstractions/Persistence/ICategoryRepository.cs</code> + implementazione</td>
+<td>L'accesso in scrittura</td>
 </tr>
 <tr>
 <td>5</td>
-<td><code>Features/Categories/CreateCategory/</code></td>
-<td>Il comando, con validazione e audit</td>
+<td><code>&lt;Progetto&gt;.Application/Categories/GetCategories/</code></td>
+<td>La query</td>
 </tr>
 <tr>
 <td>6</td>
-<td><code>Features/Categories/UpdateCategory/</code>, <code>DeleteCategory/</code></td>
-<td>Modifica e cancellazione</td>
+<td><code>&lt;Progetto&gt;.Application/Categories/CreateCategory/</code></td>
+<td>Il comando, con validazione</td>
 </tr>
 <tr>
 <td>7</td>
-<td><code>Features/Categories/CategoryEndpoints.cs</code> + <code>_Shared/Extensions/EndpointExtensions.cs</code></td>
-<td>Le rotte</td>
+<td><code>&lt;Progetto&gt;.Application/Categories/UpdateCategory/</code>, <code>DeleteCategory/</code></td>
+<td>Modifica e cancellazione</td>
 </tr>
 <tr>
 <td>8</td>
-<td><code>_Shared/Seed/DataSeeder.cs</code></td>
-<td>I permessi</td>
+<td><code>&lt;Progetto&gt;.Api/Endpoints/CategoryEndpoints.cs</code> + <code>Extensions/EndpointExtensions.cs</code></td>
+<td>Le rotte</td>
 </tr>
 <tr>
 <td>9</td>
-<td><code>types/api.types.ts</code> → <code>services/</code> → <code>stores/</code> → <code>pages/</code></td>
-<td>Il frontend</td>
+<td><code>Infrastructure/Persistence/Seed/DataSeeder.cs</code></td>
+<td>I permessi</td>
 </tr>
 <tr>
-<td>10</td>
-<td><code>router/index.ts</code>, <code>locales/it.ts</code>, <code>locales/en.ts</code></td>
-<td>Rotte, testi</td>
+<td>10-12</td>
+<td><code>types/api.types.ts</code> → <code>services/</code> → <code>stores/</code> → <code>pages/</code> → <code>router/</code>, <code>locales/</code></td>
+<td>Il frontend</td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>L'ordine non è casuale: si va <strong>dal centro verso l'esterno</strong>, come le dipendenze. Prima il dominio,
+che non dipende da niente; per ultimo il guscio HTTP, che dipende da tutto.</p>
 <hr>
 <h1 id="backend">Backend</h1>
-<h2 id="1-l-entita">1. L'entità</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Entities/Category.cs</span>
-<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Category</span> : <span class="hljs-title">ITimestamped</span>
+<h2 id="1-l-entita-di-dominio">1. L'entità di dominio</h2>
+<p><code>Category</code> è una lookup piatta: non ha invarianti complessi, quindi resta semplice. Ma <strong>la forma è
+quella di ogni aggregato</strong>, perché è ciò che rende impossibile costruirla in uno stato sbagliato.</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Domain/Catalog/Category.cs</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Category</span> : <span class="hljs-title">AggregateRoot</span>, <span class="hljs-title">ITimestamped</span>
 {
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Id { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> DescIt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> DescEn { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Order { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">const</span> <span class="hljs-built_in">int</span> MaxDescriptionLength = <span class="hljs-number">256</span>;
+
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> DescIt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> DescEn { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Order { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; }
+
+    <span class="hljs-comment">// Li scrive TimestampInterceptor: il tempo non è un dato di dominio.</span>
     <span class="hljs-keyword">public</span> DateTime CreatedAt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
     <span class="hljs-keyword">public</span> DateTime UpdatedAt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Costruttore per EF Core. Non usarlo nel codice applicativo.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-title">Category</span>()</span> { }
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Unica porta di costruzione: se hai l&#x27;oggetto, i valori sono validi.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Category <span class="hljs-title">Create</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> descIt, <span class="hljs-built_in">string</span> descEn, <span class="hljs-built_in">int</span> order</span>)</span> =&gt;
+        <span class="hljs-keyword">new</span>()
+        {
+            DescIt = EnsureDescription(descIt, <span class="hljs-keyword">nameof</span>(descIt)),
+            DescEn = EnsureDescription(descEn, <span class="hljs-keyword">nameof</span>(descEn)),
+            Order = order,
+        };
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Update</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> descIt, <span class="hljs-built_in">string</span> descEn, <span class="hljs-built_in">int</span> order</span>)</span>
+    {
+        DescIt = EnsureDescription(descIt, <span class="hljs-keyword">nameof</span>(descIt));
+        DescEn = EnsureDescription(descEn, <span class="hljs-keyword">nameof</span>(descEn));
+        Order = order;
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-built_in">string</span> <span class="hljs-title">EnsureDescription</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> <span class="hljs-keyword">value</span>, <span class="hljs-built_in">string</span> field</span>)</span>
+    {
+        <span class="hljs-keyword">var</span> trimmed = (<span class="hljs-keyword">value</span> ?? <span class="hljs-built_in">string</span>.Empty).Trim();
+
+        <span class="hljs-keyword">if</span> (trimmed.Length == <span class="hljs-number">0</span>)
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">$&quot;La descrizione (<span class="hljs-subst">{field}</span>) è obbligatoria.&quot;</span>);
+        <span class="hljs-keyword">if</span> (trimmed.Length &gt; MaxDescriptionLength)
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(
+                <span class="hljs-string">$&quot;Descrizione troppo lunga (max <span class="hljs-subst">{MaxDescriptionLength}</span> caratteri).&quot;</span>);
+
+        <span class="hljs-keyword">return</span> trimmed;
+    }
 }
 </code></pre>
-<p>Le regole, tutte e quattro non negoziabili:</p>
+<p>Le regole, tutte non negoziabili:</p>
 <ul>
-<li><strong>Nessun suffisso</strong>: <code>Category</code>, non <code>CategoryDocument</code> né <code>CategoryEntity</code>.</li>
-<li><strong><code>Id</code> di tipo <code>int</code></strong>, mai <code>string</code> né <code>Guid</code>. È identity: lo assegna il database. Il perché è in
-<a href="../infrastructure/decisioni.html">Decisioni</a>.</li>
-<li><strong><code>ITimestamped</code></strong> se l'entità ha <code>CreatedAt</code>/<code>UpdatedAt</code>: è l'interfaccia che fa scattare
-l'assegnazione automatica dei timestamp in <code>SaveChanges</code>. Gli handler non li valorizzano mai a mano.</li>
-<li><strong>Nessun attributo di persistenza.</strong> Niente data annotation: tutta la configurazione sta in
-<code>OnModelCreating</code>, in un punto solo.</li>
+<li><strong>Estende <code>AggregateRoot</code></strong> (o <code>Entity</code> se non è una radice): <code>Id</code> arriva da lì, <code>int</code> identity,
+con setter <code>protected</code>.</li>
+<li><strong>Setter privati</strong> e <strong>factory method</strong> come unica porta di costruzione. I test di architettura
+fanno fallire la build se trovano un setter pubblico.</li>
+<li><strong>Costruttore privato senza parametri</strong> per EF, che materializza senza passare dal factory.</li>
+<li><strong><code>ITimestamped</code></strong> se ha <code>CreatedAt</code>/<code>UpdatedAt</code>: sono le uniche proprietà con setter pubblico
+ammesse, perché le scrive <code>TimestampInterceptor</code>.</li>
+<li><strong>Nessun attributo di persistenza</strong>, nessun <code>using</code> di EF Core: il dominio non sa che esiste un
+database.</li>
 </ul>
+<blockquote>
+<p><strong>Quanta logica mettere qui?</strong> Per una lookup, questa. Se l'entità avesse regole vere — stati con
+transizioni, valori con formati, regole che attraversano altre entità — il posto giusto per
+ciascuna è descritto in <a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a>.</p>
+</blockquote>
 <h2 id="2-la-tabella">2. La tabella</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Persistence/AppDbContext.cs — dentro OnModelCreating</span>
-mb.Entity&lt;Category&gt;(e =&gt;
+<p>La mappatura non sta più in un <code>OnModelCreating</code> centrale: ogni entità ha la propria
+configuration, raccolta automaticamente.</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Infrastructure/Persistence/Configurations/CategoryConfiguration.cs</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CategoryConfiguration</span> : <span class="hljs-title">IEntityTypeConfiguration</span>&lt;<span class="hljs-title">Category</span>&gt;
 {
-    e.ToTable(<span class="hljs-string">&quot;Categories&quot;</span>);
-    e.Property(x =&gt; x.DescIt).HasMaxLength(<span class="hljs-number">256</span>);   <span class="hljs-comment">// mai lasciare nvarchar(max)/text</span>
-    e.Property(x =&gt; x.DescEn).HasMaxLength(<span class="hljs-number">256</span>);
-});
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Configure</span>(<span class="hljs-params">EntityTypeBuilder&lt;Category&gt; e</span>)</span>
+    {
+        e.ToTable(<span class="hljs-string">&quot;Categories&quot;</span>);
+
+        e.Property(x =&gt; x.DescIt).HasMaxLength(Category.MaxDescriptionLength).IsRequired();
+        e.Property(x =&gt; x.DescEn).HasMaxLength(Category.MaxDescriptionLength).IsRequired();
+
+        e.HasIndex(x =&gt; x.Order);
+    }
+}
 </code></pre>
-<p><code>HasKey</code> non serve: EF riconosce <code>Id</code> per convenzione e lo rende identity su entrambi i provider.
-Non serve nemmeno un <code>DbSet</code>: le entità si raggiungono con <code>db.Set&lt;Category&gt;()</code>.</p>
+<p>Non c'è nessun file da toccare per registrarla: <code>ApplyConfigurationsFromAssembly</code> la trova da sé.
+<code>HasKey</code> non serve — EF riconosce <code>Id</code> per convenzione e lo rende identity su entrambi i provider.</p>
 <p><strong>Ogni colonna stringa va dimensionata.</strong> Senza <code>HasMaxLength</code> EF genera <code>nvarchar(max)</code> (SQL Server)
 o <code>text</code> (Postgres): pessimo per indici e storage, e su SQL Server un indice unique non è nemmeno
 ammesso su <code>nvarchar(max)</code>.</p>
+<p>Le lunghezze si prendono dalle costanti del dominio (<code>Category.MaxDescriptionLength</code>), così il
+vincolo del database e quello dell'aggregato non possono divergere.</p>
 <p>Se l'entità avesse una <strong>FK</strong> verso un'altra, andrebbe dichiarata con <code>Restrict</code>, mai <code>Cascade</code>:</p>
-<pre><code class="language-csharp">e.HasOne(x =&gt; x.Parent).WithMany().HasForeignKey(x =&gt; x.ParentId)
+<pre><code class="language-csharp">e.HasOne&lt;Parent&gt;().WithMany().HasForeignKey(x =&gt; x.ParentId)
     .OnDelete(DeleteBehavior.Restrict);
 </code></pre>
 <p><code>Cascade</code> qui sarebbe pericoloso: cancellare una categoria cancellerebbe tutto ciò che la usa.</p>
-<p>Se avesse una relazione <strong>molti-a-molti</strong>, servirebbe una join table con skip navigation
-unidirezionale — vedi <a href="../infrastructure/architettura.html">Architettura</a>.</p>
+<blockquote>
+<p><strong>I value object</strong> si mappano con <code>OwnsOne</code> (per i tipi composti come <code>RentalPeriod</code> o <code>Money</code>) o
+con una conversione (per quelli che avvolgono un solo valore, come <code>Username</code> o <code>AssetCode</code>).
+Le configuration della sezione Noleggi sono l'esempio da guardare.</p>
+</blockquote>
 <h2 id="3-le-due-migration">3. Le due migration</h2>
 <pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/&lt;Progetto&gt;.Api
 
-dotnet dotnet-ef migrations add AddCategories --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add AddCategories --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+dotnet dotnet-ef migrations add AddCategories \
+  --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj \
+  --startup-project &lt;Progetto&gt;.Api.csproj \
+  --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+
+dotnet dotnet-ef migrations add AddCategories \
+  --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj \
+  --startup-project &lt;Progetto&gt;.Api.csproj \
+  --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 </code></pre>
-<p>Il <code>--context</code> seleziona quale delle due derivate usare, e quindi in quale cartella finisce la
-migration. Si applicano da sole all'avvio (<code>MigrateAsync</code>).</p>
+<p>Le migration vivono in <code>&lt;Progetto&gt;.Infrastructure</code>, ma il comando ha bisogno di <code>&lt;Progetto&gt;.Api</code>
+come startup project: è lì la configurazione. Il <code>--context</code> seleziona quale delle due derivate
+usare, e quindi in quale cartella finisce la migration. Si applicano da sole all'avvio
+(<code>MigrateAsync</code>).</p>
 <blockquote>
 <p><strong>Mai modificare una migration già committata</strong>: una correzione è una migration nuova.</p>
 </blockquote>
-<h2 id="4-la-query">4. La query</h2>
+<h2 id="4-il-repository">4. Il repository</h2>
+<p>I <strong>comandi</strong> non vedono EF Core: passano da un repository, dichiarato in <code>Application</code> e
+implementato in <code>Infrastructure</code>. Le <strong>query</strong> non ne hanno bisogno — usano <code>IReadDbContext</code>.</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Application/Abstractions/Persistence/ICategoryRepository.cs</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-title">ICategoryRepository</span>
+{
+    Task&lt;Category?&gt; GetByIdAsync(<span class="hljs-built_in">int</span> id, CancellationToken ct = <span class="hljs-literal">default</span>);
+    <span class="hljs-function">Task&lt;<span class="hljs-built_in">bool</span>&gt; <span class="hljs-title">ExistsByDescriptionAsync</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> descIt, <span class="hljs-built_in">int</span>? excludingId = <span class="hljs-literal">null</span>, CancellationToken ct = <span class="hljs-literal">default</span></span>)</span>;
+
+    <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">Add</span>(<span class="hljs-params">Category category</span>)</span>;
+    <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">Remove</span>(<span class="hljs-params">Category category</span>)</span>;
+}
+</code></pre>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Infrastructure/Persistence/Repositories/CategoryRepository.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">sealed</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CategoryRepository</span>(<span class="hljs-params">AppDbContext db, AuditSnapshotTracker tracker</span>) : ICategoryRepository</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;Category?&gt; GetByIdAsync(<span class="hljs-built_in">int</span> id, CancellationToken ct = <span class="hljs-literal">default</span>)
+    {
+        <span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> db.Set&lt;Category&gt;().FirstOrDefaultAsync(x =&gt; x.Id == id, ct);
+        tracker.Capture(category);   <span class="hljs-comment">// snapshot &quot;Before&quot; per l&#x27;audit</span>
+        <span class="hljs-keyword">return</span> category;
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> Task&lt;<span class="hljs-built_in">bool</span>&gt; <span class="hljs-title">ExistsByDescriptionAsync</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> descIt, <span class="hljs-built_in">int</span>? excludingId = <span class="hljs-literal">null</span>, CancellationToken ct = <span class="hljs-literal">default</span></span>)</span> =&gt;
+        db.Set&lt;Category&gt;().AnyAsync(x =&gt; x.DescIt == descIt &amp;&amp; x.Id != excludingId, ct);
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Add</span>(<span class="hljs-params">Category category</span>)</span> =&gt; db.Add(category);
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Remove</span>(<span class="hljs-params">Category category</span>)</span> =&gt; db.Remove(category);
+}
+</code></pre>
+<p>Poi la registrazione, in <code>Infrastructure/DependencyInjection.cs</code>:</p>
+<pre><code class="language-csharp">services.AddScoped&lt;ICategoryRepository, CategoryRepository&gt;();
+</code></pre>
+<p>Due punti che contano:</p>
+<ul>
+<li><strong><code>Add</code>/<code>Remove</code> non salvano</strong>: registrano l'intenzione. Il commit è di <code>IUnitOfWork</code>.</li>
+<li><strong><code>tracker.Capture(...)</code></strong> in ogni metodo che carica un'entità <em>per modificarla</em>: è ciò che
+permette all'audit di avere lo snapshot <em>prima</em>. Dimenticarlo non rompe niente in modo visibile —
+l'audit avrà solo un <code>Before</code> vuoto.</li>
+</ul>
+<h2 id="5-la-query">5. La query</h2>
 <p>Una slice è fatta di quattro file al massimo — richiesta, handler, validatore, risposta — nella
 stessa cartella. Per una lettura ne bastano tre.</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/GetCategories/CategoryResponse.cs</span>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Application/Categories/Common/CategoryResponse.cs</span>
 <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">CategoryResponse</span>(<span class="hljs-params">
     <span class="hljs-built_in">int</span> Id, <span class="hljs-built_in">string</span> DescIt, <span class="hljs-built_in">string</span> DescEn, <span class="hljs-built_in">int</span> Order,
     DateTime CreatedAt, DateTime UpdatedAt</span>)</span>;
 
-<span class="hljs-comment">// Features/Categories/GetCategories/GetCategoriesQuery.cs</span>
+<span class="hljs-comment">// &lt;Progetto&gt;.Application/Categories/GetCategories/GetCategoriesQuery.cs</span>
 <span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">GetCategoriesQuery</span> : <span class="hljs-title">IRequest</span>&lt;<span class="hljs-title">List</span>&lt;<span class="hljs-title">CategoryResponse</span>&gt;&gt;;
 
-<span class="hljs-comment">// Features/Categories/GetCategories/GetCategoriesHandler.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GetCategoriesHandler</span>(<span class="hljs-params">AppDbContext db</span>) : IRequestHandler&lt;GetCategoriesQuery, List&lt;CategoryResponse&gt;&gt;</span>
+<span class="hljs-comment">// &lt;Progetto&gt;.Application/Categories/GetCategories/GetCategoriesHandler.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GetCategoriesHandler</span>(<span class="hljs-params">IReadDbContext db, IQueryExecutor executor</span>)
+    : IRequestHandler&lt;GetCategoriesQuery, List&lt;CategoryResponse&gt;&gt;</span>
 {
-    <span class="hljs-keyword">public</span> Task&lt;List&lt;CategoryResponse&gt;&gt; Handle(GetCategoriesQuery request, CancellationToken cancellationToken) =&gt;
-        db.Set&lt;Category&gt;()
-            .OrderBy(x =&gt; x.Order)
-            .Select(x =&gt; <span class="hljs-keyword">new</span> CategoryResponse(x.Id, x.DescIt, x.DescEn, x.Order, x.CreatedAt, x.UpdatedAt))
-            .ToListAsync(cancellationToken);
+    <span class="hljs-keyword">public</span> Task&lt;List&lt;CategoryResponse&gt;&gt; Handle(GetCategoriesQuery request, CancellationToken ct) =&gt;
+        executor.ToListAsync(
+            db.Categories
+                .OrderBy(x =&gt; x.Order)
+                .Select(x =&gt; <span class="hljs-keyword">new</span> CategoryResponse(
+                    x.Id, x.DescIt, x.DescEn, x.Order, x.CreatedAt, x.UpdatedAt)),
+            ct);
 }
+</code></pre>
+<p>Perché la nuova entità compaia su <code>db.Categories</code>, va aggiunta a <code>IReadDbContext</code> e alla sua
+implementazione in <code>AppDbContext</code>:</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// Application/Abstractions/Persistence/IReadDbContext.cs</span>
+IQueryable&lt;Category&gt; Categories { <span class="hljs-keyword">get</span>; }
+
+<span class="hljs-comment">// Infrastructure/Persistence/AppDbContext.cs</span>
+IQueryable&lt;Category&gt; IReadDbContext.Categories =&gt; Set&lt;Category&gt;().AsNoTracking();
 </code></pre>
 <p>Tre cose da notare:</p>
 <ul>
 <li>Le response sono <strong><code>record</code> immutabili</strong>, e l'<code>Id</code> esce come <strong><code>int</code></strong>.</li>
 <li>La <code>Select</code> proietta <strong>direttamente</strong> sul response: EF genera una <code>SELECT</code> con le sole colonne
-necessarie e non popola il change tracker. Niente entità intermedie, niente mapping a mano.</li>
-<li>L'handler dipende <strong>solo</strong> da <code>AppDbContext</code> e non sa quale database ci sia sotto.</li>
+necessarie. Niente entità intermedie, niente mapping a mano.</li>
+<li>L'esecuzione passa da <strong><code>IQueryExecutor</code></strong>, non da <code>ToListAsync</code> diretto: è ciò che rende
+l'handler eseguibile in un test unitario con un <code>IQueryable</code> in memoria.</li>
 </ul>
-<blockquote>
-<p>In lettura, <code>Select</code> verso un record rende <code>AsNoTracking()</code> superfluo: una proiezione non traccia
-nulla di per sé. <code>AsNoTracking()</code> serve quando si materializzano <strong>entità</strong>.</p>
-</blockquote>
 <p>L'handler non va registrato da nessuna parte: MediatR lo scopre da sé nell'assembly.</p>
-<h2 id="5-il-comando-validazione-e-audit">5. Il comando: validazione e audit</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/CreateCategory/CreateCategoryCommand.cs</span>
+<h2 id="6-il-comando">6. Il comando</h2>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Application/Categories/CreateCategory/CreateCategoryCommand.cs</span>
 <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">CreateCategoryCommand</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> DescIt, <span class="hljs-built_in">string</span> DescEn, <span class="hljs-built_in">int</span> Order</span>) : IRequest&lt;CreateCategoryResponse&gt;</span>;
 
-<span class="hljs-comment">// Features/Categories/CreateCategory/CreateCategoryResponse.cs</span>
+<span class="hljs-comment">// .../CreateCategoryResponse.cs</span>
 <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">record</span> <span class="hljs-title">CreateCategoryResponse</span>(<span class="hljs-params"><span class="hljs-built_in">int</span> Id</span>)</span>;
 
-<span class="hljs-comment">// Features/Categories/CreateCategory/CreateCategoryValidator.cs</span>
+<span class="hljs-comment">// .../CreateCategoryValidator.cs</span>
 <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateCategoryValidator</span> : <span class="hljs-title">AbstractValidator</span>&lt;<span class="hljs-title">CreateCategoryCommand</span>&gt;
 {
     <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">CreateCategoryValidator</span>()</span>
     {
-        RuleFor(x =&gt; x.DescIt).NotEmpty().MaximumLength(<span class="hljs-number">200</span>);
-        RuleFor(x =&gt; x.DescEn).NotEmpty().MaximumLength(<span class="hljs-number">200</span>);
+        RuleFor(x =&gt; x.DescIt).NotEmpty().MaximumLength(Category.MaxDescriptionLength);
+        RuleFor(x =&gt; x.DescEn).NotEmpty().MaximumLength(Category.MaxDescriptionLength);
     }
 }
 </code></pre>
 <p>Il validatore <strong>non va invocato</strong>: il <code>ValidationBehavior</code> della pipeline MediatR lo trova da sé e,
 se fallisce, la richiesta non arriva mai all'handler — il middleware restituisce <code>400</code> con
 ProblemDetails.</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/CreateCategory/CreateCategoryHandler.cs</span>
+<p>Il validatore controlla la <strong>forma</strong> dell'input; il dominio garantisce la <strong>regola</strong>. La
+sovrapposizione è voluta: il validatore dà un messaggio gentile su tutti i campi in una volta, il
+factory <code>Category.Create</code> impedisce che la regola sia aggirabile da un'altra strada.</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// .../CreateCategoryHandler.cs</span>
 <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateCategoryHandler</span>(<span class="hljs-params">
-    AppDbContext db,
-    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;CreateCategoryCommand, CreateCategoryResponse&gt;</span>
+    ICategoryRepository categories,
+    IUnitOfWork unitOfWork</span>) : IRequestHandler&lt;CreateCategoryCommand, CreateCategoryResponse&gt;</span>
 {
-    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;CreateCategoryResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">CreateCategoryCommand request, CancellationToken cancellationToken</span>)</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;CreateCategoryResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">CreateCategoryCommand request, CancellationToken ct</span>)</span>
     {
-        <span class="hljs-keyword">var</span> category = <span class="hljs-keyword">new</span> Category
-        {
-            DescIt = request.DescIt,
-            DescEn = request.DescEn,
-            Order = request.Order,
-        };
+        <span class="hljs-comment">// L&#x27;unicità richiede il database: è una verifica dell&#x27;handler, non del dominio.</span>
+        <span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> categories.ExistsByDescriptionAsync(request.DescIt, ct: ct))
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(<span class="hljs-string">$&quot;Esiste già una categoria &#x27;<span class="hljs-subst">{request.DescIt}</span>&#x27;.&quot;</span>);
 
-        db.Add(category);
-        <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);   <span class="hljs-comment">// assegna l&#x27;id identity</span>
+        <span class="hljs-keyword">var</span> category = Category.Create(request.DescIt, request.DescEn, request.Order);
 
-        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Category&quot;</span>, category.Id, <span class="hljs-string">&quot;Created&quot;</span>));
-        <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
+        categories.Add(category);
+        <span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(ct);
 
         <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CreateCategoryResponse(category.Id);
     }
@@ -298,13 +424,27 @@ ProblemDetails.</p>
 </code></pre>
 <p>Tre punti da non perdere:</p>
 <ul>
-<li><strong><code>CreatedAt</code>/<code>UpdatedAt</code> non compaiono</strong>: li imposta <code>ApplyTimestamps</code> dentro <code>SaveChangesAsync</code>.</li>
-<li><strong>I due <code>SaveChangesAsync</code> non sono una svista.</strong> L'audit log ha bisogno dell'id, che il database
-assegna solo al primo salvataggio. È la conseguenza diretta degli id identity.</li>
-<li><strong>L'attore si legge dai claim del JWT</strong>, mai dal corpo della richiesta: lo fa <code>AuditTrail.New</code>, che
-compila da sé <code>ActorId</code> (claim <code>sub</code>, 0 se assente), <code>ActorEmail</code>, <code>Timestamp</code> e <code>IpAddress</code>.</li>
+<li><strong>Un solo <code>SaveChangesAsync</code></strong>, e nessuna menzione dell'audit: lo scrive <code>AuditLogInterceptor</code>.</li>
+<li><strong><code>CreatedAt</code>/<code>UpdatedAt</code> non compaiono</strong>: li imposta <code>TimestampInterceptor</code>.</li>
+<li><strong>L'handler non costruisce l'entità con un object initializer</strong>: chiama il factory, che valida.</li>
 </ul>
-<p><strong>Ogni scrittura registra un audit log.</strong> Gli snapshot seguono uno schema uniforme in tutto il codice:</p>
+<p>L'update ha la stessa forma, e la modifica passa da un metodo dell'aggregato:</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// UpdateCategoryHandler</span>
+<span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> categories.GetByIdAsync(request.Id, ct)
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Categoria con id <span class="hljs-subst">{request.Id}</span> non trovata.&quot;</span>);
+
+category.Update(request.Body.DescIt, request.Body.DescEn, request.Body.Order);
+
+<span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(ct);
+</code></pre>
+<p>Non c'è nessuna assegnazione a proprietà: i setter sono privati, e l'unico modo di modificare
+l'entità è il metodo che ne garantisce gli invarianti.</p>
+<blockquote>
+<p><strong>L'audit è automatico.</strong> <code>AuditLogInterceptor</code> scrive una riga per ogni radice di aggregato
+creata, modificata o cancellata, con gli snapshot prima/dopo. Lo snapshot <em>prima</em> viene da
+<code>AuditSnapshotTracker</code>, alimentato dal repository al caricamento. Un handler non nomina mai
+<code>AuditLog</code>.</p>
+</blockquote>
 <div class="table-wrap">
 <table>
 <thead>
@@ -318,12 +458,12 @@ compila da sé <code>ActorId</code> (claim <code>sub</code>, 0 se assente), <cod
 <tr>
 <td><code>Created</code></td>
 <td>—</td>
-<td>— (lo stato creato è quello corrente dell'entità)</td>
+<td>lo stato dell'entità creata</td>
 </tr>
 <tr>
 <td><code>Updated</code></td>
-<td>snapshot prima della modifica</td>
-<td>snapshot dopo il <code>SaveChanges</code></td>
+<td>snapshot catturato al caricamento</td>
+<td>snapshot dopo il salvataggio</td>
 </tr>
 <tr>
 <td><code>Deleted</code></td>
@@ -333,70 +473,43 @@ compila da sé <code>ActorId</code> (claim <code>sub</code>, 0 se assente), <cod
 </tbody>
 </table>
 </div>
-<pre><code class="language-csharp"><span class="hljs-comment">// UpdateCategoryHandler — la forma dello snapshot</span>
-<span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> db.Set&lt;Category&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, cancellationToken)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Category&quot;</span>, request.Id);
-
-<span class="hljs-keyword">var</span> before = category.ToAuditJson();      <span class="hljs-comment">// PRIMA di toccare l&#x27;oggetto</span>
-category.DescIt = request.Body.DescIt;
-category.DescEn = request.Body.DescEn;
-category.Order = request.Body.Order;
-
-<span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);   <span class="hljs-comment">// UpdatedAt lo imposta ApplyTimestamps</span>
-
-db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Category&quot;</span>, category.Id, <span class="hljs-string">&quot;Updated&quot;</span>,
-    before: before, after: category.ToAuditJson()));
-<span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
-</code></pre>
-<p>Lo snapshot <code>Before</code> va catturato <strong>prima</strong> di modificare l'oggetto — è un errore facile e silenzioso,
-perché l'entità è tracciata e mutarla cambierebbe anche lo snapshot.</p>
-<blockquote>
-<p>Gli snapshot sono <strong>JSON camelCase in una colonna testo</strong>, prodotti da <code>ToAuditJson()</code>. È un metodo
-esplicito per entità, non una serializzazione generica: per gli utenti, <code>passwordHash</code> non può
-finirci <strong>per costruzione</strong>.</p>
-</blockquote>
-<p>⚠️ <strong>Il caso M2M.</strong> Se l'update tocca <strong>solo</strong> le collezioni molti-a-molti, l'entità non viene marcata
-<code>Modified</code> e <code>UpdatedAt</code> non si aggiorna da solo: va toccato esplicitamente (vedi <code>UpdateUserHandler</code>).
-Per una lookup piatta come <code>Category</code> il problema non si pone.</p>
-<h2 id="6-la-cancellazione-prima-si-controlla">6. La cancellazione: prima si controlla</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/DeleteCategory/DeleteCategoryHandler.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">DeleteCategoryHandler</span>(<span class="hljs-params">
-    AppDbContext db,
-    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;DeleteCategoryCommand&gt;</span>
+<h2 id="7-la-cancellazione-prima-si-controlla">7. La cancellazione: prima si controlla</h2>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">DeleteCategoryHandler</span>(<span class="hljs-params">
+    ICategoryRepository categories,
+    IReadDbContext db,
+    IQueryExecutor executor,
+    IUnitOfWork unitOfWork</span>) : IRequestHandler&lt;DeleteCategoryCommand&gt;</span>
 {
-    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Handle</span>(<span class="hljs-params">DeleteCategoryCommand request, CancellationToken cancellationToken</span>)</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Handle</span>(<span class="hljs-params">DeleteCategoryCommand request, CancellationToken ct</span>)</span>
     {
-        <span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> db.Set&lt;Category&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, cancellationToken)
-            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Category&quot;</span>, request.Id);
+        <span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> categories.GetByIdAsync(request.Id, ct)
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Categoria con id <span class="hljs-subst">{request.Id}</span> non trovata.&quot;</span>);
 
         <span class="hljs-comment">// Conteggio prima della DELETE per dare un 409 con messaggio chiaro: la FK Restrict</span>
         <span class="hljs-comment">// farebbe comunque fallire la cancellazione, ma con un errore generico.</span>
-        <span class="hljs-keyword">var</span> count = <span class="hljs-keyword">await</span> db.Set&lt;Article&gt;().CountAsync(x =&gt; x.CategoryId == request.Id, cancellationToken);
+        <span class="hljs-keyword">var</span> count = <span class="hljs-keyword">await</span> executor.CountAsync(db.Articles.Where(x =&gt; x.CategoryId == request.Id), ct);
         <span class="hljs-keyword">if</span> (count &gt; <span class="hljs-number">0</span>)
             <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(
                 <span class="hljs-string">$&quot;Impossibile eliminare questa categoria: è ancora utilizzata in <span class="hljs-subst">{count}</span> elemento/i. &quot;</span> +
                 <span class="hljs-string">&quot;Rimuovila da tutti gli elementi prima di eliminarla.&quot;</span>);
 
-        <span class="hljs-keyword">var</span> before = category.ToAuditJson();
-        db.Remove(category);
-        <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
-
-        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Category&quot;</span>, category.Id, <span class="hljs-string">&quot;Deleted&quot;</span>, before: before));
-        <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
+        categories.Remove(category);
+        <span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(ct);
     }
 }
 </code></pre>
-<p>Il pattern si ritrova identico in tutte le lookup: <strong>due difese sovrapposte, deliberatamente</strong>.
-L'handler produce un <code>409 Conflict</code> con un messaggio comprensibile; la FK <code>Restrict</code> è la stessa
-regola applicata anche a chi scrivesse sul database da fuori. (Il conteggio serve solo se qualche
-altra entità referenzia questa.)</p>
-<p>Non serve validare la forma dell'id: il constraint di rotta <code>{id:int}</code> fa sì che un id malformato non
-arrivi nemmeno all'handler (404 dal routing).</p>
-<p>Se l'operazione dovesse toccare più entità insieme, un singolo <code>SaveChangesAsync</code> è già atomico; per
-blocchi più ampi si usa <code>db.Database.BeginTransactionAsync</code> — ricordando che con
-<code>EnableRetryOnFailure</code> attivo va eseguito dentro la strategia di esecuzione.</p>
-<h2 id="7-le-rotte">7. Le rotte</h2>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/Categories/CategoryEndpoints.cs</span>
+<p><strong>Due difese sovrapposte, deliberatamente</strong>: l'handler produce un <code>409 Conflict</code> con un messaggio
+comprensibile, la FK <code>Restrict</code> è la stessa regola applicata anche a chi scrivesse sul database da
+fuori.</p>
+<p>Se la regola di cancellabilità dipendesse dallo <strong>stato dell'entità</strong> e non da altre tabelle,
+apparterrebbe al dominio — come <code>RentalContract.EnsureDeletable()</code>, che rifiuta di cancellare un
+contratto già confermato. L'handler si limiterebbe a chiamarla.</p>
+<p>Non serve validare la forma dell'id: il constraint di rotta <code>{id:int}</code> fa sì che un id malformato
+non arrivi nemmeno all'handler (404 dal routing).</p>
+<p>Se l'operazione dovesse toccare più aggregati insieme, un singolo <code>SaveChangesAsync</code> è già atomico:
+è esattamente ciò per cui <code>IUnitOfWork</code> è separato dai repository.</p>
+<h2 id="8-le-rotte">8. Le rotte</h2>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Api/Endpoints/CategoryEndpoints.cs</span>
 <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CategoryEndpoints</span>
 {
     <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> IEndpointRouteBuilder <span class="hljs-title">MapCategoryEndpoints</span>(<span class="hljs-params"><span class="hljs-keyword">this</span> IEndpointRouteBuilder app</span>)</span>
@@ -461,11 +574,11 @@ che tocchino l'applicazione.</li>
 viene dalla rotta, non dal corpo della richiesta.</li>
 </ul>
 <p>Poi va agganciato:</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Extensions/EndpointExtensions.cs</span>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Api/Extensions/EndpointExtensions.cs</span>
 app.MapCategoryEndpoints();
 </code></pre>
-<h2 id="8-i-permessi">8. I permessi</h2>
-<p>Vanno aggiunti al seed (<code>_Shared/Seed/DataSeeder.cs</code>) come <code>categories.read</code>, <code>categories.write</code>,
+<h2 id="9-i-permessi">9. I permessi</h2>
+<p>Vanno aggiunti al seed (<code>Infrastructure/Persistence/Seed/DataSeeder.cs</code>) come <code>categories.read</code>, <code>categories.write</code>,
 <code>categories.delete</code>, e assegnati ai ruoli che devono averli.</p>
 <pre><code class="language-csharp">(<span class="hljs-string">&quot;categories.read&quot;</span>,   <span class="hljs-string">&quot;Categories&quot;</span>, <span class="hljs-string">&quot;read&quot;</span>,   <span class="hljs-string">&quot;Legge la lista categorie&quot;</span>),
 (<span class="hljs-string">&quot;categories.write&quot;</span>,  <span class="hljs-string">&quot;Categories&quot;</span>, <span class="hljs-string">&quot;write&quot;</span>,  <span class="hljs-string">&quot;Crea e modifica categorie&quot;</span>),
@@ -481,7 +594,7 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
 <hr>
 <h1 id="frontend">Frontend</h1>
 <p>La catena è sempre la stessa, e non si salta un anello: <strong>tipi → service → store → pagina</strong>.</p>
-<h2 id="9-tipi-service-store">9. Tipi, service, store</h2>
+<h2 id="10-tipi-service-store">10. Tipi, service, store</h2>
 <pre><code class="language-typescript"><span class="hljs-comment">// types/api.types.ts</span>
 <span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">Category</span> {
   <span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span>
@@ -555,7 +668,7 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
 </code></pre>
 <p>Lo store <strong>rilancia</strong> l'eccezione dopo averla registrata: senza, la pagina chiuderebbe il dialog come
 se l'operazione fosse riuscita.</p>
-<h2 id="10-le-pagine">10. Le pagine</h2>
+<h2 id="11-le-pagine">11. Le pagine</h2>
 <p>Due: la lista (<code>CategoriesPage.vue</code>) e il dettaglio, usato sia per la creazione sia per la modifica
 (<code>CategoryDetailPage.vue</code>).</p>
 <pre><code class="language-vue"><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">setup</span> <span class="hljs-attr">lang</span>=<span class="hljs-string">&quot;ts&quot;</span>&gt;</span><span class="language-javascript">
@@ -591,7 +704,7 @@ l'operazione è il backend.</li>
 <code>409 Conflict</code> del delete handler arriva all'utente come una frase di senso compiuto.</li>
 <li>Un componente oltre le ~150 righe va spezzato.</li>
 </ul>
-<h2 id="11-rotte-e-testi">11. Rotte e testi</h2>
+<h2 id="12-rotte-e-testi">12. Rotte e testi</h2>
 <pre><code class="language-typescript"><span class="hljs-comment">// router/index.ts</span>
 {
   <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;categories&#x27;</span>,
@@ -641,14 +754,27 @@ via URL. Nota che la creazione richiede <code>categories.write</code> mentre il 
 <hr>
 <h2 id="prima-di-dire-che-e-finita">Prima di dire che è finita</h2>
 <ul>
-<li>[ ] L'entità ha <code>int Id</code>, implementa <code>ITimestamped</code> se ha i timestamp, non ha attributi di persistenza</li>
-<li>[ ] La mappatura in <code>OnModelCreating</code> c'è, le colonne stringa sono <strong>dimensionate</strong>, le FK sono <code>Restrict</code></li>
+<li>[ ] L'entità estende <code>Entity</code>/<code>AggregateRoot</code>, ha <strong>setter privati</strong>, un <strong>factory method</strong> e un
+costruttore privato per EF; niente attributi di persistenza né <code>using</code> di EF Core</li>
+<li>[ ] La <code>IEntityTypeConfiguration</code> c'è, le colonne stringa sono <strong>dimensionate</strong>, le FK sono <code>Restrict</code></li>
 <li>[ ] <strong>Entrambe</strong> le migration sono generate (SqlServer + Postgres) e committate</li>
+<li>[ ] I <strong>comandi</strong> iniettano repository + <code>IUnitOfWork</code>; le <strong>query</strong> <code>IReadDbContext</code> + <code>IQueryExecutor</code>.
+Nessun handler nomina <code>AppDbContext</code></li>
+<li>[ ] Il repository è registrato in <code>DependencyInjection.cs</code>, e i metodi che caricano per modificare
+chiamano <code>tracker.Capture(...)</code></li>
+<li>[ ] Le regole di business stanno nell'aggregato o in un domain service, non in <code>if</code> sparsi negli handler</li>
 <li>[ ] Le query LINQ sono traducibili da entrambi i provider — attenzione a <code>Contains</code> su stringa</li>
 <li>[ ] Le rotte con id usano il constraint <code>{id:int}</code>, e gli endpoint sono agganciati in <code>EndpointExtensions</code></li>
-<li>[ ] Ogni scrittura produce un audit log, con lo snapshot <code>Before</code> catturato <strong>prima</strong> della modifica</li>
+<li>[ ] Nessun handler scrive un audit log a mano: lo fa l'interceptor</li>
 <li>[ ] I permessi sono nel seed e assegnati ai ruoli giusti</li>
 <li>[ ] I testi esistono in italiano <strong>e</strong> in inglese</li>
+<li>[ ] <code>dotnet test</code> passa — i test di architettura sono la rete che intercetta le violazioni dei layer</li>
+</ul>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></strong> — quando una regola va nell'aggregato, in un domain service o nell'handler</li>
+<li><strong><a href="../architettura/il-dominio.html">Il dominio</a></strong> — aggregati, value object, eventi, specification</li>
+<li><strong><a href="../architettura/comandi-e-query.html">Comandi e query</a></strong> — repository, unit of work, <code>IReadDbContext</code></li>
 </ul>
 
       </article>

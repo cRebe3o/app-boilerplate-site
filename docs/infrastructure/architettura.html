@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -105,17 +114,21 @@ portabilità. Il codice corrispondente è in <a href="implementazione.html">Impl
                                      ▼
                      AppDbContext (abstract, provider-agnostico)
                                      ▲
-                                     │  unica dipendenza consentita
-                          Handler MediatR (Features/**)
+                                     │  implementa IReadDbContext, usato dai repository
+                     Repository · IReadDbContext  (Infrastructure)
+                                     ▲
+                                     │  astrazioni dichiarate da Application
+                          Handler MediatR (Application/**)
 </code></pre>
 <p>Le due catene <strong>divergono in un punto solo</strong> — <code>AddDatabase</code> — e <strong>riconvergono su un tipo solo</strong>:
 <code>AppDbContext</code>. Tutto ciò che sta sopra e sotto è provider-agnostico.</p>
 <h2 id="il-seam-appdbcontext-astratto">Il seam: <code>AppDbContext</code> astratto</h2>
 <p>Il punto architetturale che rende possibile tutto è un <code>DbContext</code> <strong>astratto</strong> che contiene
 <strong>l'intera</strong> configurazione del modello, e due derivate <strong>vuote</strong>:</p>
-<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">DbContextOptions options</span>) : <span class="hljs-title">DbContext</span>(<span class="hljs-params">options</span>)</span>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">DbContextOptions options</span>) : <span class="hljs-title">DbContext</span>(<span class="hljs-params">options</span>), IReadDbContext</span>
 {
-    <span class="hljs-function"><span class="hljs-keyword">protected</span> <span class="hljs-keyword">override</span> <span class="hljs-keyword">void</span> <span class="hljs-title">OnModelCreating</span>(<span class="hljs-params">ModelBuilder mb</span>)</span> { <span class="hljs-comment">/* tutto il model config */</span> }
+    <span class="hljs-function"><span class="hljs-keyword">protected</span> <span class="hljs-keyword">override</span> <span class="hljs-keyword">void</span> <span class="hljs-title">OnModelCreating</span>(<span class="hljs-params">ModelBuilder mb</span>)</span> =&gt;
+        mb.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 }
 
 <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">SqlServerAppDbContext</span>(<span class="hljs-params">DbContextOptions&lt;SqlServerAppDbContext&gt; options</span>) : <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">options</span>)</span>;
@@ -127,52 +140,88 @@ migration. È il pattern Microsoft <em>&quot;migrations with multiple providers&
 <p>La DI registra la derivata giusta <strong>dietro il tipo base</strong>:</p>
 <pre><code class="language-csharp">services.AddDbContext&lt;AppDbContext, SqlServerAppDbContext&gt;(...);
 </code></pre>
-<p>Così ogni handler può iniettare <code>AppDbContext</code> e non sapere nulla del provider attivo.</p>
-<p><strong>Niente strato repository.</strong> Gli handler usano direttamente <code>db.Set&lt;Entità&gt;()</code> con LINQ: il seam
-non è un insieme di interfacce da mantenere, è un tipo che EF Core fornisce già. Il perché — e il
-prezzo che si paga — sono in <a href="decisioni.html">Decisioni</a>.</p>
-<h2 id="layout-delle-cartelle">Layout delle cartelle</h2>
-<pre><code>Features/_Shared/
-├── Entities/                       # POCO EF: int Id identity, ITimestamped, navigation M2M
-│   ├── User.cs · Group.cs · Role.cs · Permission.cs
-│   ├── AuditLog.cs · ErrorLog.cs · ErrorLevel.cs · ErrorSource.cs
-│   ├── RefreshToken.cs · SystemConfig.cs
-│   └── ITimestamped.cs
-├── Persistence/
-│   ├── AppDbContext.cs             # abstract: TUTTO il model config + ApplyTimestamps
-│   ├── SqlServerAppDbContext.cs    # derivata vuota → Migrations/SqlServer
-│   ├── PostgresAppDbContext.cs     # derivata vuota → Migrations/Postgres
-│   ├── DesignTimeFactories.cs      # una factory per derivata, per `dotnet ef`
-│   ├── ExpiredTokenCleanupService.cs
-│   └── Migrations/
-│       ├── SqlServer/              # vuota nel template: la riempie il primo InitialCreate
-│       └── Postgres/
-├── DatabaseStats/                  # l'unico punto con SQL provider-specifico
-│   ├── IDatabaseStatsProvider.cs
-│   ├── SqlServerDatabaseStatsProvider.cs
-│   └── PostgresDatabaseStatsProvider.cs
-├── Behaviors/                      # pipeline MediatR: logging, validazione
-├── Middleware/                     # ExceptionHandlingMiddleware
-├── Exceptions/                     # NotFound, Conflict, Forbidden, Unauthorized
-├── Helpers/                        # AuditTrail, Username.Normalize, snapshot JSON
-├── Seed/DataSeeder.cs              # comune, solo su store vuoto
-└── Extensions/                     # AddDatabase, AddMediatRWithBehaviors, Auth, endpoint
+<p><strong>Gli handler non vedono nemmeno questo tipo.</strong> Il seam per loro sta un livello più in alto: i
+comandi dipendono da <code>I{Aggregato}Repository</code> + <code>IUnitOfWork</code>, le query da <code>IReadDbContext</code> — tutte
+interfacce dichiarate in <code>&lt;Progetto&gt;.Application</code> e implementate qui.</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// L&#x27;unico punto in cui i due mondi si toccano: il DbContext È il read context.</span>
+services.AddScoped&lt;IReadDbContext&gt;(sp =&gt; sp.GetRequiredService&lt;AppDbContext&gt;());
 </code></pre>
-<p>Le entità di dominio del progetto si aggiungono in <code>Entities/</code>, accanto a queste.</p>
+<p>Il perché di questa divisione — e il prezzo che si paga — sono in <a href="decisioni.html">Decisioni</a> e in
+<a href="../architettura/comandi-e-query.html">Comandi e query</a>.</p>
+<h2 id="layout-delle-cartelle">Layout delle cartelle</h2>
+<pre><code>apps/backend/
+├── &lt;Progetto&gt;.Domain/                  # nessuna dipendenza esterna
+│   ├── Common/                         # Entity, AggregateRoot, IDomainEvent, Specification…
+│   ├── Users/ Groups/ Roles/ Permissions/
+│   ├── Auditing/ Logging/ Configuration/ Auth/
+│   └── Exceptions/                     # NotFound, Conflict, InvariantViolation…
+│
+├── &lt;Progetto&gt;.Application/             # casi d'uso
+│   ├── Abstractions/
+│   │   ├── Persistence/                # I*Repository, IReadDbContext, IUnitOfWork, IQueryExecutor
+│   │   ├── Identity/                   # ICurrentUser, ITokenService, IPasswordHasher…
+│   │   └── Services/                   # IDateTimeProvider, IDomainEventDispatcher…
+│   ├── Users/ Groups/ Roles/ …         # una cartella per slice
+│   ├── Behaviors/                      # pipeline MediatR: logging, validazione
+│   └── Common/                         # paginazione, messaggi
+│
+├── &lt;Progetto&gt;.Infrastructure/          # i dettagli sostituibili
+│   ├── Persistence/
+│   │   ├── AppDbContext.cs             # abstract, implementa IReadDbContext
+│   │   ├── SqlServerAppDbContext.cs    # derivata vuota → Migrations/SqlServer
+│   │   ├── PostgresAppDbContext.cs     # derivata vuota → Migrations/Postgres
+│   │   ├── Configurations/             # una IEntityTypeConfiguration per entità
+│   │   ├── Repositories/               # le implementazioni + UnitOfWork + QueryExecutor
+│   │   ├── Interceptors/               # timestamp, audit log, concurrency token
+│   │   ├── Seed/DataSeeder.cs          # comune, solo su store vuoto
+│   │   ├── DesignTimeFactories.cs      # una factory per derivata, per `dotnet ef`
+│   │   └── Migrations/{SqlServer,Postgres}/
+│   ├── Identity/                       # JWT, BCrypt, CurrentUser, PermissionResolver
+│   ├── Services/                       # DomainEventDispatcher, DatabaseStats per provider…
+│   └── DependencyInjection.cs          # AddDatabase e tutte le registrazioni
+│
+└── &lt;Progetto&gt;.Api/                     # il guscio HTTP — composition root
+    ├── Endpoints/                      # solo routing
+    ├── Middleware/                     # ExceptionHandlingMiddleware
+    └── Extensions/                     # EndpointExtensions, auth, servizi
+</code></pre>
+<p>Le entità di dominio del progetto si aggiungono in <code>&lt;Progetto&gt;.Domain/&lt;Dominio&gt;/</code>, con la loro
+configurazione in <code>Infrastructure/Persistence/Configurations/</code>.</p>
 <h2 id="il-modello-dati">Il modello dati</h2>
-<p>Le POCO in <code>Entities/</code> sono l'<strong>unico modello</strong>: niente entità separate per provider, niente mapping
-layer, nessun suffisso <code>Document</code> o <code>Entity</code>.</p>
-<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">User</span> : <span class="hljs-title">ITimestamped</span>
+<p>Gli aggregati in <code>&lt;Progetto&gt;.Domain</code> sono l'<strong>unico modello</strong>: niente entità separate per provider,
+niente mapping layer, nessun suffisso <code>Document</code> o <code>Entity</code>.</p>
+<p>Non sono POCO con setter pubblici: sono aggregati che proteggono i propri invarianti.</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">User</span> : <span class="hljs-title">AggregateRoot</span>, <span class="hljs-title">ITimestamped</span>
 {
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Id { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }                     <span class="hljs-comment">// identity: lo assegna il DB</span>
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Username { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;   <span class="hljs-comment">// l&#x27;identità di login, unica</span>
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span>? Email { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }              <span class="hljs-comment">// anagrafico, opzionale</span>
-    <span class="hljs-keyword">public</span> List&lt;Group&gt; Groups { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = [];   <span class="hljs-comment">// M2M → join table UserGroups</span>
-    <span class="hljs-keyword">public</span> List&lt;Role&gt; Roles { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; } = [];     <span class="hljs-comment">// M2M → join table UserRoles</span>
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> List&lt;Role&gt; _roles = [];
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> List&lt;Group&gt; _groups = [];
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Identità di login: unica, sempre normalizzata. È un value object.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-keyword">public</span> Username Username { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; } = <span class="hljs-literal">null</span>!;
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Dato anagrafico: NON è la chiave di login. Opzionale.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span>? Email { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; }
+
+    <span class="hljs-keyword">public</span> Language Language { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; } = Language.Italian;
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span></span>
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> M2M unidirezionali. Esposte in sola lettura: l&#x27;unico modo per cambiarle è</span>
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> AssignRoles / AssignGroups.</span>
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-keyword">public</span> IReadOnlyList&lt;Role&gt; Roles =&gt; _roles.AsReadOnly();
+    <span class="hljs-keyword">public</span> IReadOnlyList&lt;Group&gt; Groups =&gt; _groups.AsReadOnly();
+
+    <span class="hljs-comment">// Li scrive TimestampInterceptor: il dominio non possiede il tempo.</span>
     <span class="hljs-keyword">public</span> DateTime CreatedAt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
     <span class="hljs-keyword">public</span> DateTime UpdatedAt { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }
+
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-title">User</span>()</span> { }                              <span class="hljs-comment">// per EF (materializzazione)</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> User <span class="hljs-title">Create</span>(<span class="hljs-params"><span class="hljs-comment">/* … */</span></span>)</span> { <span class="hljs-comment">/* unica porta di costruzione */</span> }
 }
 </code></pre>
+<p><code>Id</code> non è dichiarato qui: arriva da <code>Entity</code>, con setter <code>protected</code> — nessun codice applicativo
+può riscrivere l'id di un'entità già creata.</p>
 <p>Regole del modello:</p>
 <div class="table-wrap">
 <table>
@@ -185,27 +234,39 @@ layer, nessun suffisso <code>Document</code> o <code>Entity</code>.</p>
 <tbody>
 <tr>
 <td>Chiave primaria</td>
-<td><code>int Id</code>, identity — mai <code>string</code> o <code>Guid</code></td>
+<td><code>int Id</code>, identity, ereditato da <code>Entity</code> — mai <code>string</code> o <code>Guid</code></td>
 </tr>
 <tr>
 <td>Nomi</td>
 <td>Nessun suffisso: <code>User</code>, <code>Group</code>, <code>AuditLog</code></td>
 </tr>
 <tr>
-<td>Stringhe</td>
-<td>Sempre dimensionate con <code>HasMaxLength</code> in <code>OnModelCreating</code>; testo illimitato solo dove serve (messaggi, stack trace, snapshot audit)</td>
+<td>Incapsulamento</td>
+<td>Setter <strong>privati</strong>, collezioni in <strong>sola lettura</strong>, factory method come unica porta di costruzione. Verificato dai test di architettura</td>
 </tr>
 <tr>
-<td>Enum</td>
-<td>Mappati come <strong>stringa</strong> (<code>HasConversion&lt;string&gt;()</code>): leggibili nel DB e stabili se cambia l'ordine dei membri</td>
+<td>Costruttore</td>
+<td>Uno <strong>privato senza parametri</strong> per EF, che materializza senza passare dai factory</td>
+</tr>
+<tr>
+<td>Value object</td>
+<td>I valori con regole proprie sono tipi (<code>Username</code>, <code>Money</code>, <code>RentalPeriod</code>), non <code>string</code> o <code>decimal</code></td>
+</tr>
+<tr>
+<td>Stringhe</td>
+<td>Sempre dimensionate con <code>HasMaxLength</code> nella <code>IEntityTypeConfiguration</code>; testo illimitato solo dove serve (messaggi, stack trace, snapshot audit)</td>
+</tr>
+<tr>
+<td>Enum e stati</td>
+<td>Mappati come <strong>stringa</strong>: leggibili nel DB e stabili se cambia l'ordine dei membri. Gli stati con transizioni sono record con la tabella delle transizioni ammesse</td>
 </tr>
 <tr>
 <td>Date</td>
-<td><code>DateTime</code> UTC</td>
+<td><code>DateTime</code> UTC, ottenute da <code>IDateTimeProvider</code></td>
 </tr>
 <tr>
 <td>Timestamp</td>
-<td><code>CreatedAt</code>/<code>UpdatedAt</code> impostati automaticamente da <code>ApplyTimestamps</code> in <code>SaveChanges</code></td>
+<td><code>CreatedAt</code>/<code>UpdatedAt</code> impostati da <code>TimestampInterceptor</code></td>
 </tr>
 <tr>
 <td>M2M</td>
@@ -215,9 +276,12 @@ layer, nessun suffisso <code>Document</code> o <code>Entity</code>.</p>
 </table>
 </div>
 <h3 id="i-timestamp-sono-automatici">I timestamp sono automatici</h3>
-<p><code>AppDbContext.SaveChangesAsync</code> percorre il change tracker e imposta i timestamp sulle entità
-<code>ITimestamped</code>: <code>CreatedAt</code>+<code>UpdatedAt</code> sugli insert, il solo <code>UpdatedAt</code> sugli update. <strong>Gli handler
-non li valorizzano mai a mano.</strong></p>
+<p><code>TimestampInterceptor</code> percorre il change tracker e imposta i timestamp sulle entità
+<code>ITimestamped</code>: <code>CreatedAt</code>+<code>UpdatedAt</code> sugli insert, il solo <code>UpdatedAt</code> sugli update — comprese le
+modifiche alle sole collezioni M2M, che EF non marcherebbe come <code>Modified</code>. <strong>Gli handler non li
+valorizzano mai a mano</strong>, ed è il motivo per cui <code>CreatedAt</code>/<code>UpdatedAt</code> sono le uniche proprietà
+con setter pubblico ammesse dai test di architettura: il tempo è un fatto infrastrutturale, non di
+dominio.</p>
 <p>⚠️ <strong>Unica eccezione da ricordare</strong>: modificare <strong>solo</strong> le collezioni M2M di un'entità non la marca
 come <code>Modified</code>, quindi <code>UpdatedAt</code> non si aggiorna da solo. Chi cambia solo i ruoli o i gruppi di un
 utente deve toccare <code>UpdatedAt</code> esplicitamente (vedi <code>UpdateUserHandler</code>).</p>
@@ -405,7 +469,8 @@ si ripara, non fallire a metà di una richiesta.</p>
 <h2 id="approfondimenti">Approfondimenti</h2>
 <ul>
 <li><strong><a href="implementazione.html">Implementazione</a></strong> — il codice di ogni componente citato qui</li>
-<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché niente repository, che cosa è stato scartato</li>
+<li><strong><a href="../architettura/clean-architecture.html">Clean Architecture</a></strong> — i quattro layer e la regola delle dipendenze</li>
+<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché i repository solo sulle scritture, che cosa è stato scartato</li>
 </ul>
 
       </article>

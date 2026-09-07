@@ -53,13 +53,40 @@ Tutte e tre le strategie, alla fine, cercano l'utente locale **per `Username`** 
 | Identità Windows | `DOMINIO\utente` (o l'UPN), come lo restituisce il sistema |
 
 Il backend **non interpreta** il contenuto: fa un confronto esatto sul valore normalizzato. La
-normalizzazione è centralizzata in un unico helper, `Username.Normalize`, applicato sia in scrittura
-(creazione/modifica utente, seed) sia in lettura (ogni handler di login):
+normalizzazione non è affidata a un helper da ricordarsi di chiamare — `Username` è un **value
+object**, e la garanzia è per costruzione:
 
 ```csharp
-// Features/_Shared/Helpers/Username.cs
-public static string Normalize(string? value) => (value ?? string.Empty).Trim().ToLowerInvariant();
+// <Progetto>.Domain/Users/Username.cs
+public sealed record Username
+{
+    public const int MaxLength = 256;
+
+    public string Value { get; private set; } = string.Empty;
+
+    private Username() { }                       // per EF (materializzazione)
+    private Username(string value) => Value = value;
+
+    /// <summary>Crea l'username normalizzato. Lancia se vuoto o troppo lungo.</summary>
+    public static Username From(string? value)
+    {
+        var normalized = (value ?? string.Empty).Trim().ToLowerInvariant();
+
+        if (normalized.Length == 0)
+            throw new InvariantViolationException("Username obbligatorio.");
+        if (normalized.Length > MaxLength)
+            throw new InvariantViolationException($"Username troppo lungo (max {MaxLength} caratteri).");
+
+        return new Username(normalized);
+    }
+}
 ```
+
+Il commento nel file spiega che cosa si guadagna rispetto a un helper statico:
+
+> Come value object, la normalizzazione è garantita PER COSTRUZIONE: non esiste un `Username` non
+> normalizzato, quindi non esiste il bug "ho dimenticato di chiamare `Normalize`" che con un helper
+> statico era sempre possibile.
 
 Regola: **trim + minuscolo**. Serve perché Postgres confronta le stringhe in modo case-sensitive
 (SQL Server no) e perché Windows non distingue il maiuscolo/minuscolo nei nomi account. Domini
@@ -581,15 +608,20 @@ token di produzione.
 
 | File | Ruolo |
 |---|---|
-| `Features/Auth/AuthEndpoints.cs` | Le rotte, il rate limiting, il cookie, il bypass dev di Windows |
-| `Features/Auth/Login/LoginHandler.cs` | Username + password, BCrypt |
-| `Features/Auth/MsalLogin/MsalLoginHandler.cs` | Validazione del token Azure, lookup dell'utente locale |
-| `Features/Auth/WindowsLogin/WindowsLoginHandler.cs` | Identità Windows → lookup dell'utente locale per `Username` |
-| `Features/Auth/RefreshToken/RefreshTokenHandler.cs` | Rotation e ririsoluzione dei permessi |
-| `Features/Auth/Logout/LogoutHandler.cs` | Revoca |
-| `Features/Auth/Shared/JwtTokenHelper.cs` | Generazione del JWT e del refresh token |
-| `Features/_Shared/Helpers/Username.cs` | Normalizzazione dell'identità di login (trim + minuscolo) |
-| `Features/_Shared/Extensions/AuthExtensions.cs` | Registrazione di JwtBearer + Negotiate e delle policy |
+| `Api/Endpoints/AuthEndpoints.cs` | Le rotte, il rate limiting, il cookie, il bypass dev di Windows |
+| `Application/Auth/Login/LoginHandler.cs` | Username + password, BCrypt |
+| `Application/Auth/MsalLogin/MsalLoginHandler.cs` | Validazione del token Azure, lookup dell'utente locale |
+| `Application/Auth/WindowsLogin/WindowsLoginHandler.cs` | Identità Windows → lookup dell'utente locale per `Username` |
+| `Application/Auth/RefreshToken/RefreshTokenHandler.cs` | Rotation e ririsoluzione dei permessi |
+| `Application/Auth/Logout/LogoutHandler.cs` | Revoca |
+| `Application/Abstractions/Identity/` | Le astrazioni: `ITokenService`, `IPasswordHasher`, `IPermissionResolver`, `IExternalTokenValidator`, `ICurrentUser` |
+| `Infrastructure/Identity/JwtTokenService.cs` | Generazione del JWT e del refresh token |
+| `Infrastructure/Identity/BcryptPasswordHasher.cs` | Hashing delle password |
+| `Infrastructure/Identity/AzureAdTokenValidator.cs` | Validazione del token Azure |
+| `Infrastructure/Identity/PermissionResolver.cs` | Ruoli diretti + ereditati dai gruppi → permessi |
+| `Infrastructure/Identity/CurrentUser.cs` | L'utente della richiesta, letto dai claim: tiene ASP.NET fuori da Application |
+| `Domain/Users/Username.cs` | L'identità di login come value object (trim + minuscolo per costruzione) |
+| `Api/Extensions/AuthExtensions.cs` | Registrazione di JwtBearer + Negotiate e delle policy |
 | `plugins/msal.ts` | Istanza `PublicClientApplication`, `redirectUri`, `msalReady` (initialize + handleRedirectPromise) |
 | `services/msal.service.ts` | `loginRedirect()` e `handleRedirectResult()` — lo scope che fissa l'`aud`, il flag a colpo singolo |
 | `plugins/axios.ts` · `stores/auth.store.ts` · `pages/auth/LoginPage.vue` | Bearer token, sessione in `localStorage`, scelta della schermata via `VITE_AUTH_STRATEGY` |

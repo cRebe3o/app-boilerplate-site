@@ -41,6 +41,31 @@ const SITE = {
       ],
     },
     {
+      title: 'Architettura',
+      pages: [
+        {
+          file: 'architettura/clean-architecture.md',
+          title: 'Clean Architecture',
+          summary: 'I quattro layer, la regola delle dipendenze e i test che la fanno rispettare dalla build.',
+        },
+        {
+          file: 'architettura/dove-mettere-la-logica.md',
+          title: 'Dove mettere la logica',
+          summary: 'Handler, domain service o aggregato: la domanda che decide, con gli esempi reali del progetto.',
+        },
+        {
+          file: 'architettura/il-dominio.md',
+          title: 'Il dominio',
+          summary: 'Aggregati, value object, macchine a stati, eventi e specification: i mattoni e quando usarli.',
+        },
+        {
+          file: 'architettura/comandi-e-query.md',
+          title: 'Comandi e query',
+          summary: 'Repository e unit of work per le scritture, IReadDbContext per le letture. Perché due strade.',
+        },
+      ],
+    },
+    {
       title: 'Infrastruttura',
       pages: [
         {

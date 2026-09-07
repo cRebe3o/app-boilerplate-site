@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Il dominio — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html" aria-current="page">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Architettura</p>
+      <article class="prose">
+<h1 id="il-dominio">Il dominio</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#i-mattoni-di-base">I mattoni di base</a></li>
+          <li class="lvl-2"><a href="#l-aggregato-e-il-suo-confine">L'aggregato e il suo confine</a></li>
+          <li class="lvl-3"><a href="#le-tre-protezioni-di-ogni-aggregato">Le tre protezioni di ogni aggregato</a></li>
+          <li class="lvl-2"><a href="#value-object">Value object</a></li>
+          <li class="lvl-2"><a href="#macchine-a-stati">Macchine a stati</a></li>
+          <li class="lvl-2"><a href="#eventi-di-dominio">Eventi di dominio</a></li>
+          <li class="lvl-3"><a href="#la-coerenza-e-eventuale-ed-e-una-scelta">La coerenza è eventuale, ed è una scelta</a></li>
+          <li class="lvl-3"><a href="#quando-l-evento-nasce-senza-id">Quando l'evento nasce senza id</a></li>
+          <li class="lvl-2"><a href="#specification">Specification</a></li>
+          <li class="lvl-2"><a href="#eccezioni-di-dominio">Eccezioni di dominio</a></li>
+          <li class="lvl-2"><a href="#testare-il-dominio">Testare il dominio</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p><code>AppDemo.Domain</code> è il centro della cipolla: <strong>zero dipendenze</strong>, nemmeno EF Core. Questa pagina
+percorre i mattoni con cui è costruito — aggregati, value object, macchine a stati, eventi,
+specification — e il criterio con cui si sceglie quale usare.</p>
+<blockquote>
+<p><strong>Da dove vengono gli esempi.</strong> Il template non porta un dominio applicativo: porta l'impianto.
+Gli esempi di questa pagina vengono dalla sezione <strong>Noleggi</strong> di <code>app-demo</code>
+(<code>AppDemo.Domain/Rentals</code> e <code>AppDemo.Domain/Customers</code>), che esiste apposta come <em>reference
+implementation</em>: tre aggregati, quattro value object, tre domain service, due macchine a stati e
+la comunicazione per eventi. È il modello da imitare, non codice da portarsi dietro.</p>
+</blockquote>
+<h2 id="i-mattoni-di-base">I mattoni di base</h2>
+<pre><code>AppDemo.Domain/Common/
+├── Entity.cs                   identità per Id
+├── AggregateRoot.cs            radice + raccolta eventi
+├── IDomainEvent.cs             fatto avvenuto
+├── IDeferredIdentityEvent.cs   evento di un'entità con id non ancora assegnato
+├── Specification.cs            criterio di selezione componibile
+├── ITimestamped.cs             CreatedAt / UpdatedAt scritti dall'interceptor
+└── IVersioned.cs               token di concorrenza ottimistica
+</code></pre>
+<p><code>Entity</code> dà l'identità; <code>AggregateRoot</code> aggiunge la raccolta degli eventi:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AggregateRoot</span> : <span class="hljs-title">Entity</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> List&lt;IDomainEvent&gt; _domainEvents = [];
+
+    <span class="hljs-keyword">public</span> IReadOnlyCollection&lt;IDomainEvent&gt; DomainEvents =&gt; _domainEvents.AsReadOnly();
+
+    <span class="hljs-function"><span class="hljs-keyword">protected</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Raise</span>(<span class="hljs-params">IDomainEvent domainEvent</span>)</span> =&gt; _domainEvents.Add(domainEvent);
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">ClearDomainEvents</span>()</span> =&gt; _domainEvents.Clear();
+}
+</code></pre>
+<p><code>Raise</code> è <code>protected</code>: <strong>un evento lo solleva solo l'aggregato che lo produce.</strong></p>
+<h2 id="l-aggregato-e-il-suo-confine">L'aggregato e il suo confine</h2>
+<p>La domanda più difficile del DDD tattico non è &quot;che cos'è un aggregato&quot;, ma <strong>dove finisce</strong>.</p>
+<p><code>RentalContract</code> è la radice di un aggregato che comprende le proprie <code>RentalLine</code>. Il commento in
+testa alla classe spiega il criterio:</p>
+<blockquote>
+<p>Dentro ci sono le righe, perché non hanno vita propria e i loro invarianti sono anche i suoi (il
+totale deve corrispondere alle righe, le righe non si toccano dopo la conferma). Fuori restano
+Customer ed Equipment, referenziati per id: sono radici autonome, con un ciclo di vita
+indipendente, e inglobarle significherebbe caricare mezzo database per aggiungere una riga.</p>
+<p>La regola pratica: un aggregato è l'unità che si carica e si salva INSIEME, perché i suoi pezzi
+devono essere coerenti fra loro nello stesso istante. Il totale e le righe sì; il contratto e
+l'anagrafica cliente no.</p>
+</blockquote>
+<p>Nel codice il confine si vede da due dettagli:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> CustomerId { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; }             <span class="hljs-comment">// altro aggregato → solo l&#x27;id</span>
+<span class="hljs-keyword">public</span> IReadOnlyList&lt;RentalLine&gt; Lines =&gt; _lines.AsReadOnly();   <span class="hljs-comment">// dentro → ma in sola lettura</span>
+</code></pre>
+<p>Niente navigation property verso <code>Customer</code>: <strong>si referenzia per id ciò che sta oltre il confine.</strong>
+E le righe si espongono in sola lettura, perché si aggiungono solo con <code>AddLine</code>, che verifica lo
+stato e mantiene coerente il totale.</p>
+<h3 id="le-tre-protezioni-di-ogni-aggregato">Le tre protezioni di ogni aggregato</h3>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">RentalContract</span> : <span class="hljs-title">AggregateRoot</span>, <span class="hljs-title">ITimestamped</span>, <span class="hljs-title">IVersioned</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> List&lt;RentalLine&gt; _lines = [];
+
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Reference { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;   <span class="hljs-comment">// 1. setter privati</span>
+
+    <span class="hljs-keyword">public</span> IReadOnlyList&lt;RentalLine&gt; Lines =&gt; _lines.AsReadOnly();  <span class="hljs-comment">// 2. collezioni in sola lettura</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-title">RentalContract</span>()</span> { }                                    <span class="hljs-comment">// 3. costruttore per EF</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> RentalContract <span class="hljs-title">Open</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> reference, <span class="hljs-built_in">int</span> customerId, RentalPeriod period, <span class="hljs-built_in">string</span>? notes = <span class="hljs-literal">null</span></span>)</span>
+    {
+        <span class="hljs-comment">// … unica porta di costruzione, con le validazioni</span>
+    }
+}
+</code></pre>
+<ol>
+<li><strong>Setter privati</strong>: nessuno può portare l'entità in uno stato che gli invarianti non ammettono.</li>
+<li><strong>Collezioni in sola lettura</strong>: niente <code>Add</code> dall'esterno, che scavalcherebbe i controlli.</li>
+<li><strong>Costruttore privato senza parametri per EF</strong>, più un <strong>factory method</strong> che è l'unica porta
+pubblica di costruzione.</li>
+</ol>
+<p>Le prime due sono verificate da <code>DomainModelTests</code>: violarle <strong>fa fallire la build</strong>. Le uniche
+eccezioni ammesse sono <code>CreatedAt</code>/<code>UpdatedAt</code> e <code>ConcurrencyToken</code>, che il dominio non possiede e
+che gli interceptor devono poter scrivere.</p>
+<h2 id="value-object">Value object</h2>
+<p>Un valore con regole proprie diventa un tipo. <code>Money</code>, <code>RentalPeriod</code>, <code>AssetCode</code>, <code>TaxCode</code>,
+<code>Username</code>, <code>Language</code>: ognuno rende <strong>irrappresentabile</strong> uno stato sbagliato.</p>
+<p><code>Money</code> tiene insieme importo e valuta:</p>
+<blockquote>
+<p>Un <code>decimal</code> nudo permette di sommare euro e dollari senza che nulla protesti, e di scrivere
+importi negativi dove non hanno senso. Qui la valuta viaggia con il numero e le operazioni fra
+valute diverse sono un errore esplicito: <strong>il bug diventa impossibile da scrivere, invece che
+difficile da trovare.</strong></p>
+</blockquote>
+<p><code>RentalPeriod</code> è ancora più esplicito sul perché non bastano due <code>DateTime</code>:</p>
+<blockquote>
+<p>Con due campi sciolti su un'entità, &quot;fine prima di inizio&quot; è uno stato rappresentabile: qualcuno
+lo scriverà, e il bug si manifesterà lontano, in un totale sbagliato o in una disponibilità
+calcolata male. Tenendoli in un tipo con un solo costruttore validante, quello stato non esiste:
+<code>Days</code> è sempre positivo perché non c'è modo di costruire un periodo invertito.</p>
+</blockquote>
+<p>La forma è sempre la stessa:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">sealed</span> <span class="hljs-keyword">record</span> <span class="hljs-title">RentalPeriod</span>        <span class="hljs-comment">// record: uguaglianza strutturale</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">const</span> <span class="hljs-built_in">int</span> MaxDays = <span class="hljs-number">365</span>;
+
+    <span class="hljs-keyword">public</span> DateTime Start { <span class="hljs-keyword">get</span>; }
+    <span class="hljs-keyword">public</span> DateTime End { <span class="hljs-keyword">get</span>; }
+
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-title">RentalPeriod</span>(<span class="hljs-params">DateTime start, DateTime end</span>)</span> { <span class="hljs-comment">/* … */</span> }   <span class="hljs-comment">// costruttore privato</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> RentalPeriod <span class="hljs-title">From</span>(<span class="hljs-params">DateTime start, DateTime end</span>)    <span class="hljs-comment">// unica porta, valida</span></span>
+    { <span class="hljs-comment">/* … */</span> }
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>True se le date formano un periodo valido. Per i validator, che non devono lanciare.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-built_in">bool</span> <span class="hljs-title">IsValid</span>(<span class="hljs-params">DateTime start, DateTime end</span>)</span> { <span class="hljs-comment">/* … */</span> }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">int</span> Days =&gt; (End - Start).Days + <span class="hljs-number">1</span>;
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-built_in">bool</span> <span class="hljs-title">Overlaps</span>(<span class="hljs-params">RentalPeriod other</span>)</span> =&gt; Start &lt;= other.End &amp;&amp; other.Start &lt;= End;
+}
+</code></pre>
+<p>Quattro punti da ripetere in ogni value object:</p>
+<ul>
+<li><strong><code>record</code>, non <code>class</code></strong>: l'uguaglianza è strutturale, ed è la definizione stessa di value object
+— due <code>Money</code> con stesso importo e valuta <em>sono</em> lo stesso valore.</li>
+<li><strong>Costruttore privato + <code>From()</code> che valida</strong>: se hai il tipo, hai la garanzia.</li>
+<li><strong><code>IsValid()</code> accanto a <code>From()</code></strong>: il validator interroga la stessa regola senza lanciare.</li>
+<li><strong>I comportamenti del valore stanno sul valore</strong>: <code>Overlaps</code> è una proprietà degli intervalli, non
+del noleggio. Metterla qui è ciò che permette a <code>RentalAvailabilityService</code> di restare corto.</li>
+</ul>
+<h2 id="macchine-a-stati">Macchine a stati</h2>
+<p>Gli stati con transizioni non sono <code>enum</code>: sono record con la tabella delle transizioni ammesse
+dentro il tipo. Così <strong>la tabella è un dato, non una serie di <code>if</code> sparsi negli handler.</strong></p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">sealed</span> <span class="hljs-keyword">record</span> <span class="hljs-title">RentalStatus</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> RentalStatus Draft = <span class="hljs-keyword">new</span>(<span class="hljs-string">&quot;Draft&quot;</span>);
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> RentalStatus Confirmed = <span class="hljs-keyword">new</span>(<span class="hljs-string">&quot;Confirmed&quot;</span>);
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> RentalStatus Closed = <span class="hljs-keyword">new</span>(<span class="hljs-string">&quot;Closed&quot;</span>);
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> RentalStatus Cancelled = <span class="hljs-keyword">new</span>(<span class="hljs-string">&quot;Cancelled&quot;</span>);
+
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> Dictionary&lt;<span class="hljs-built_in">string</span>, <span class="hljs-built_in">string</span>[]&gt; AllowedTransitions = <span class="hljs-keyword">new</span>()
+    {
+        [<span class="hljs-meta">Draft.Code</span>] = [Confirmed.Code, Cancelled.Code],
+        [<span class="hljs-meta">Confirmed.Code</span>] = [Closed.Code, Cancelled.Code],
+        [<span class="hljs-meta">Closed.Code</span>] = [],       <span class="hljs-comment">// terminale</span>
+        [<span class="hljs-meta">Cancelled.Code</span>] = [],    <span class="hljs-comment">// terminale</span>
+    };
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">EnsureCanTransitionTo</span>(<span class="hljs-params">RentalStatus target</span>)</span> { <span class="hljs-comment">/* lancia con i valori ammessi */</span> }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">bool</span> IsEditable =&gt; <span class="hljs-keyword">this</span> == Draft;
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">bool</span> IsCommitted =&gt; <span class="hljs-keyword">this</span> == Confirmed;
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">bool</span> IsFinal =&gt; <span class="hljs-keyword">this</span> == Closed || <span class="hljs-keyword">this</span> == Cancelled;
+}
+</code></pre>
+<p>Le proprietà <code>IsEditable</code> / <code>IsCommitted</code> / <code>IsFinal</code> sono importanti quanto la tabella: danno un
+<strong>nome di dominio</strong> alla condizione, e sono quelle che gli altri pezzi interrogano. Il controllo
+disponibilità chiede <code>status.IsCommitted</code>, non <code>status == Confirmed</code>, e il giorno in cui si
+aggiungesse uno stato &quot;Sospeso&quot; ci sarebbe un punto solo da rivedere.</p>
+<p>Anche la distinzione fra stati simili è una scelta di dominio:</p>
+<blockquote>
+<p>La differenza fra Closed e Cancelled non è formale: un contratto CHIUSO si è svolto e va
+fatturato, uno ANNULLATO non è mai partito. Tenerli distinti evita di dover indovinare, guardando
+lo storico, se quel noleggio sia stato eseguito o no.</p>
+</blockquote>
+<h2 id="eventi-di-dominio">Eventi di dominio</h2>
+<p>Un evento è un <strong>fatto già avvenuto</strong> — nome sempre al passato, <code>RentalContractConfirmed</code>, mai
+<code>ConfirmRentalContract</code>. Serve quando un'operazione deve produrre effetti su <strong>un altro aggregato</strong>.</p>
+<p><code>RentalContract.Confirm()</code> deve anche portare le attrezzature in stato &quot;Rented&quot;, ma non può farlo:</p>
+<blockquote>
+<p>Equipment è un altro aggregato, e modificarne uno dall'interno di un altro creerebbe esattamente
+l'accoppiamento che il confine di aggregato serve a impedire.</p>
+</blockquote>
+<p>Quindi il contratto <strong>dichiara il fatto</strong> e lascia che chi ha il compito di reagire lo faccia:</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Confirm</span>(<span class="hljs-params">DateTime now</span>)</span>
+{
+    Status.EnsureCanTransitionTo(RentalStatus.Confirmed);
+
+    <span class="hljs-keyword">if</span> (_lines.Count == <span class="hljs-number">0</span>)
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">&quot;Non si può confermare un contratto senza attrezzature.&quot;</span>);
+
+    Status = RentalStatus.Confirmed;
+    ConfirmedAt = now;
+
+    Raise(<span class="hljs-keyword">new</span> RentalContractConfirmed(
+        Id, Reference, CustomerId, [.. _lines.Select(l =&gt; l.EquipmentId)], TotalAmount.Amount));
+}
+</code></pre>
+<p>L'handler dell'evento vive in <code>AppDemo.Application/Rentals/EventHandlers/</code> ed è un normale
+<code>INotificationHandler</code>:</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">sealed</span> <span class="hljs-keyword">class</span> <span class="hljs-title">RentalContractConfirmedHandler</span>(<span class="hljs-params">
+    IEquipmentRepository equipment,
+    IUnitOfWork unitOfWork,
+    ILogger&lt;RentalContractConfirmedHandler&gt; logger</span>)
+    : INotificationHandler&lt;DomainEventNotification&lt;RentalContractConfirmed&gt;&gt;</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Handle</span>(<span class="hljs-params">
+        DomainEventNotification&lt;RentalContractConfirmed&gt; notification, CancellationToken cancellationToken</span>)</span>
+    {
+        <span class="hljs-keyword">var</span> pezzi = <span class="hljs-keyword">await</span> equipment.GetByIdsAsync(notification.DomainEvent.EquipmentIds, cancellationToken);
+
+        <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> pezzo <span class="hljs-keyword">in</span> pezzi)
+            pezzo.ChangeStatus(EquipmentStatus.Rented);
+
+        <span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+}
+</code></pre>
+<p>Il dominio non conosce MediatR: l'involucro <code>DomainEventNotification&lt;T&gt;</code> vive in <code>Application</code>, ed è
+il punto di contatto fra un fatto di business e il messaggio di una libreria.</p>
+<h3 id="la-coerenza-e-eventuale-ed-e-una-scelta">La coerenza è eventuale, ed è una scelta</h3>
+<p>Fra la conferma del contratto e l'aggiornamento dei pezzi c'è un istante in cui il contratto è
+confermato e le attrezzature risultano ancora disponibili. Il commento nell'handler spiega perché in
+questo dominio va bene:</p>
+<blockquote>
+<p>Nessuno può prenotare nel frattempo, perché il controllo di disponibilità guarda i CONTRATTI, non
+lo stato del pezzo. Dove servisse coerenza immediata, i due dovrebbero stare nello stesso
+aggregato, con tutto il costo che comporta.</p>
+</blockquote>
+<h3 id="quando-l-evento-nasce-senza-id">Quando l'evento nasce senza id</h3>
+<p>Un factory come <code>Equipment.Register</code> solleva l'evento <strong>mentre costruisce l'entità</strong>, quando l'id
+identity non esiste ancora e vale <code>0</code>. <code>IDeferredIdentityEvent</code> risolve il problema: dopo il commit,
+<code>UnitOfWork</code> chiama <code>WithIdentity(id)</code> e ottiene una copia corretta dell'evento — sono <code>record</code>
+immutabili, quindi &quot;correggere&quot; significa produrne uno nuovo.</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">sealed</span> <span class="hljs-keyword">record</span> <span class="hljs-title">RentalContractOpened</span>(<span class="hljs-params"><span class="hljs-built_in">int</span> ContractId, <span class="hljs-built_in">string</span> Reference, <span class="hljs-built_in">int</span> CustomerId</span>)
+    : IDeferredIdentityEvent</span>
+{
+    <span class="hljs-keyword">public</span> DateTime OccurredAt { <span class="hljs-keyword">get</span>; } = DateTime.UtcNow;
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> IDomainEvent <span class="hljs-title">WithIdentity</span>(<span class="hljs-params"><span class="hljs-built_in">int</span> id</span>)</span> =&gt; <span class="hljs-keyword">this</span> <span class="hljs-keyword">with</span> { ContractId = id };
+}
+</code></pre>
+<p>Serve solo alla <strong>creazione</strong>: gli eventi di aggiornamento nascono su entità già salvate.</p>
+<p>Il resto della meccanica — perché gli eventi si raccolgono dopo il <code>SaveChanges</code> e si pubblicano
+dopo il commit — è in <a href="comandi-e-query.html#gli-eventi-di-dominio-e-la-transazione">Comandi e query</a>.</p>
+<h2 id="specification">Specification</h2>
+<p>Un criterio di selezione con un nome, riusabile e componibile, espresso come <code>Expression</code> perché EF
+possa tradurlo in SQL.</p>
+<p>Il problema che risolve:</p>
+<blockquote>
+<p>&quot;Un contratto è attivo se è confermato e non ancora chiuso&quot; è una definizione di dominio. Scritta
+come <code>Where(c =&gt; c.Status == &quot;Confirmed&quot;)</code> dentro un handler, finisce copiata in cinque query
+diverse; il giorno in cui si aggiunge uno stato &quot;Sospeso&quot; bisogna ricordarsi di tutte e cinque, e
+quella che sfugge diventa un bug silenzioso — non un errore, solo numeri leggermente sbagliati.</p>
+</blockquote>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">RentalContractSpecs</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Specification&lt;RentalContract&gt; Active =&gt;
+        <span class="hljs-keyword">new</span> ExpressionSpecification&lt;RentalContract&gt;(c =&gt; c.Status == RentalStatus.Confirmed);
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Specification&lt;RentalContract&gt; <span class="hljs-title">ForCustomer</span>(<span class="hljs-params"><span class="hljs-built_in">int</span> customerId</span>)</span> =&gt;
+        <span class="hljs-keyword">new</span> ExpressionSpecification&lt;RentalContract&gt;(c =&gt; c.CustomerId == customerId);
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Contratti attivi la cui data di fine è già passata.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Specification&lt;RentalContract&gt; <span class="hljs-title">Overdue</span>(<span class="hljs-params">DateTime today</span>)</span>
+    {
+        <span class="hljs-keyword">var</span> reference = today.Date;
+        <span class="hljs-keyword">return</span> Active.And(<span class="hljs-keyword">new</span> ExpressionSpecification&lt;RentalContract&gt;(c =&gt; c.Period.End &lt; reference));
+    }
+}
+</code></pre>
+<p>Si usano come un normale predicato, e EF le traduce in SQL:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">if</span> (request.OnlyOverdue == <span class="hljs-literal">true</span>)
+    query = query.Where(RentalContractSpecs.Overdue(clock.UtcNow));
+</code></pre>
+<p><strong>Perché <code>Expression</code> e non <code>Func&lt;T, bool&gt;</code>.</strong> Un <code>Func</code> è codice compilato: EF non può leggerlo,
+quindi lo eseguirebbe in memoria dopo aver caricato l'intera tabella. Un'<code>Expression</code> è l'albero
+sintattico del predicato, che EF sa tradurre in una <code>WHERE</code>. Su una tabella grande, la differenza è
+fra una query e un disastro.</p>
+<p><strong>Quando NON usarla.</strong> Per un filtro una tantum di una schermata resta un normale <code>Where</code>
+nell'handler: incapsulare tutto in specification produce solo indirezione senza guadagno. La
+specification è per una regola di dominio <strong>con un nome</strong>, riusata o riusabile.</p>
+<h2 id="eccezioni-di-dominio">Eccezioni di dominio</h2>
+<p>Il dominio lancia; il middleware traduce. Nessun handler cattura.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Eccezione</th>
+<th>HTTP</th>
+<th>Quando</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InvariantViolationException</code></td>
+<td>422</td>
+<td>Una regola dell'aggregato è violata: contratto vuoto, transizione illecita</td>
+</tr>
+<tr>
+<td><code>ConflictException</code></td>
+<td>409</td>
+<td>Lo stato del sistema non permette l'operazione: attrezzatura occupata, fido insufficiente</td>
+</tr>
+<tr>
+<td><code>NotFoundException</code></td>
+<td>404</td>
+<td>L'entità richiesta non esiste</td>
+</tr>
+<tr>
+<td><code>ValidationException</code> (FluentValidation)</td>
+<td>400</td>
+<td>La forma dell'input è sbagliata</td>
+</tr>
+<tr>
+<td><code>UnauthorizedException</code> / <code>ForbiddenException</code></td>
+<td>401 / 403</td>
+<td>Accesso</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>I messaggi sono scritti per essere <strong>letti da chi usa l'applicazione</strong>, con i numeri in chiaro:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(
+    <span class="hljs-string">$&quot;Fido insufficiente per il cliente <span class="hljs-subst">{customer.Name}</span>: &quot;</span> +
+    <span class="hljs-string">$&quot;l&#x27;importo di <span class="hljs-subst">{amount}</span> supera il credito residuo di <span class="hljs-subst">{available}</span> &quot;</span> +
+    <span class="hljs-string">$&quot;(massimale <span class="hljs-subst">{customer.CreditLimit}</span>, esposizione attuale <span class="hljs-subst">{CurrentExposure(contracts)}</span>).&quot;</span>);
+</code></pre>
+<p>Un &quot;operazione non consentita&quot; secco costringerebbe l'operatore a indovinare quale delle regole ha
+incontrato.</p>
+<h2 id="testare-il-dominio">Testare il dominio</h2>
+<p><code>AppDemo.Domain.Tests</code> non ha database, mock né contesto HTTP: gli oggetti si costruiscono e si
+interrogano. È la verifica pratica che il dominio sia davvero puro — se un test ha bisogno di
+infrastruttura, la regola sotto esame è nel posto sbagliato.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="dove-mettere-la-logica.html">Dove mettere la logica</a></strong> — aggregato, domain service o handler</li>
+<li><strong><a href="comandi-e-query.html">Comandi e query</a></strong> — repository, unit of work, dispatch degli eventi</li>
+<li><strong><a href="clean-architecture.html">Clean Architecture</a></strong> — i layer e la regola delle dipendenze</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

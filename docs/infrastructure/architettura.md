@@ -33,8 +33,11 @@ portabilità. Il codice corrispondente è in [Implementazione](implementazione.m
                                      ▼
                      AppDbContext (abstract, provider-agnostico)
                                      ▲
-                                     │  unica dipendenza consentita
-                          Handler MediatR (Features/**)
+                                     │  implementa IReadDbContext, usato dai repository
+                     Repository · IReadDbContext  (Infrastructure)
+                                     ▲
+                                     │  astrazioni dichiarate da Application
+                          Handler MediatR (Application/**)
 ```
 
 Le due catene **divergono in un punto solo** — `AddDatabase` — e **riconvergono su un tipo solo**:
@@ -46,9 +49,10 @@ Il punto architetturale che rende possibile tutto è un `DbContext` **astratto**
 **l'intera** configurazione del modello, e due derivate **vuote**:
 
 ```csharp
-public abstract class AppDbContext(DbContextOptions options) : DbContext(options)
+public abstract class AppDbContext(DbContextOptions options) : DbContext(options), IReadDbContext
 {
-    protected override void OnModelCreating(ModelBuilder mb) { /* tutto il model config */ }
+    protected override void OnModelCreating(ModelBuilder mb) =>
+        mb.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 }
 
 public class SqlServerAppDbContext(DbContextOptions<SqlServerAppDbContext> options) : AppDbContext(options);
@@ -65,79 +69,125 @@ La DI registra la derivata giusta **dietro il tipo base**:
 services.AddDbContext<AppDbContext, SqlServerAppDbContext>(...);
 ```
 
-Così ogni handler può iniettare `AppDbContext` e non sapere nulla del provider attivo.
+**Gli handler non vedono nemmeno questo tipo.** Il seam per loro sta un livello più in alto: i
+comandi dipendono da `I{Aggregato}Repository` + `IUnitOfWork`, le query da `IReadDbContext` — tutte
+interfacce dichiarate in `<Progetto>.Application` e implementate qui.
 
-**Niente strato repository.** Gli handler usano direttamente `db.Set<Entità>()` con LINQ: il seam
-non è un insieme di interfacce da mantenere, è un tipo che EF Core fornisce già. Il perché — e il
-prezzo che si paga — sono in [Decisioni](decisioni.md).
+```csharp
+// L'unico punto in cui i due mondi si toccano: il DbContext È il read context.
+services.AddScoped<IReadDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+```
+
+Il perché di questa divisione — e il prezzo che si paga — sono in [Decisioni](decisioni.md) e in
+[Comandi e query](../architettura/comandi-e-query.md).
 
 ## Layout delle cartelle
 
 ```
-Features/_Shared/
-├── Entities/                       # POCO EF: int Id identity, ITimestamped, navigation M2M
-│   ├── User.cs · Group.cs · Role.cs · Permission.cs
-│   ├── AuditLog.cs · ErrorLog.cs · ErrorLevel.cs · ErrorSource.cs
-│   ├── RefreshToken.cs · SystemConfig.cs
-│   └── ITimestamped.cs
-├── Persistence/
-│   ├── AppDbContext.cs             # abstract: TUTTO il model config + ApplyTimestamps
-│   ├── SqlServerAppDbContext.cs    # derivata vuota → Migrations/SqlServer
-│   ├── PostgresAppDbContext.cs     # derivata vuota → Migrations/Postgres
-│   ├── DesignTimeFactories.cs      # una factory per derivata, per `dotnet ef`
-│   ├── ExpiredTokenCleanupService.cs
-│   └── Migrations/
-│       ├── SqlServer/              # vuota nel template: la riempie il primo InitialCreate
-│       └── Postgres/
-├── DatabaseStats/                  # l'unico punto con SQL provider-specifico
-│   ├── IDatabaseStatsProvider.cs
-│   ├── SqlServerDatabaseStatsProvider.cs
-│   └── PostgresDatabaseStatsProvider.cs
-├── Behaviors/                      # pipeline MediatR: logging, validazione
-├── Middleware/                     # ExceptionHandlingMiddleware
-├── Exceptions/                     # NotFound, Conflict, Forbidden, Unauthorized
-├── Helpers/                        # AuditTrail, Username.Normalize, snapshot JSON
-├── Seed/DataSeeder.cs              # comune, solo su store vuoto
-└── Extensions/                     # AddDatabase, AddMediatRWithBehaviors, Auth, endpoint
+apps/backend/
+├── <Progetto>.Domain/                  # nessuna dipendenza esterna
+│   ├── Common/                         # Entity, AggregateRoot, IDomainEvent, Specification…
+│   ├── Users/ Groups/ Roles/ Permissions/
+│   ├── Auditing/ Logging/ Configuration/ Auth/
+│   └── Exceptions/                     # NotFound, Conflict, InvariantViolation…
+│
+├── <Progetto>.Application/             # casi d'uso
+│   ├── Abstractions/
+│   │   ├── Persistence/                # I*Repository, IReadDbContext, IUnitOfWork, IQueryExecutor
+│   │   ├── Identity/                   # ICurrentUser, ITokenService, IPasswordHasher…
+│   │   └── Services/                   # IDateTimeProvider, IDomainEventDispatcher…
+│   ├── Users/ Groups/ Roles/ …         # una cartella per slice
+│   ├── Behaviors/                      # pipeline MediatR: logging, validazione
+│   └── Common/                         # paginazione, messaggi
+│
+├── <Progetto>.Infrastructure/          # i dettagli sostituibili
+│   ├── Persistence/
+│   │   ├── AppDbContext.cs             # abstract, implementa IReadDbContext
+│   │   ├── SqlServerAppDbContext.cs    # derivata vuota → Migrations/SqlServer
+│   │   ├── PostgresAppDbContext.cs     # derivata vuota → Migrations/Postgres
+│   │   ├── Configurations/             # una IEntityTypeConfiguration per entità
+│   │   ├── Repositories/               # le implementazioni + UnitOfWork + QueryExecutor
+│   │   ├── Interceptors/               # timestamp, audit log, concurrency token
+│   │   ├── Seed/DataSeeder.cs          # comune, solo su store vuoto
+│   │   ├── DesignTimeFactories.cs      # una factory per derivata, per `dotnet ef`
+│   │   └── Migrations/{SqlServer,Postgres}/
+│   ├── Identity/                       # JWT, BCrypt, CurrentUser, PermissionResolver
+│   ├── Services/                       # DomainEventDispatcher, DatabaseStats per provider…
+│   └── DependencyInjection.cs          # AddDatabase e tutte le registrazioni
+│
+└── <Progetto>.Api/                     # il guscio HTTP — composition root
+    ├── Endpoints/                      # solo routing
+    ├── Middleware/                     # ExceptionHandlingMiddleware
+    └── Extensions/                     # EndpointExtensions, auth, servizi
 ```
 
-Le entità di dominio del progetto si aggiungono in `Entities/`, accanto a queste.
+Le entità di dominio del progetto si aggiungono in `<Progetto>.Domain/<Dominio>/`, con la loro
+configurazione in `Infrastructure/Persistence/Configurations/`.
 
 ## Il modello dati
 
-Le POCO in `Entities/` sono l'**unico modello**: niente entità separate per provider, niente mapping
-layer, nessun suffisso `Document` o `Entity`.
+Gli aggregati in `<Progetto>.Domain` sono l'**unico modello**: niente entità separate per provider,
+niente mapping layer, nessun suffisso `Document` o `Entity`.
+
+Non sono POCO con setter pubblici: sono aggregati che proteggono i propri invarianti.
 
 ```csharp
-public class User : ITimestamped
+public class User : AggregateRoot, ITimestamped
 {
-    public int Id { get; set; }                     // identity: lo assegna il DB
-    public string Username { get; set; } = string.Empty;   // l'identità di login, unica
-    public string? Email { get; set; }              // anagrafico, opzionale
-    public List<Group> Groups { get; set; } = [];   // M2M → join table UserGroups
-    public List<Role> Roles { get; set; } = [];     // M2M → join table UserRoles
+    private readonly List<Role> _roles = [];
+    private readonly List<Group> _groups = [];
+
+    /// <summary>Identità di login: unica, sempre normalizzata. È un value object.</summary>
+    public Username Username { get; private set; } = null!;
+
+    /// <summary>Dato anagrafico: NON è la chiave di login. Opzionale.</summary>
+    public string? Email { get; private set; }
+
+    public Language Language { get; private set; } = Language.Italian;
+
+    /// <summary>
+    /// M2M unidirezionali. Esposte in sola lettura: l'unico modo per cambiarle è
+    /// AssignRoles / AssignGroups.
+    /// </summary>
+    public IReadOnlyList<Role> Roles => _roles.AsReadOnly();
+    public IReadOnlyList<Group> Groups => _groups.AsReadOnly();
+
+    // Li scrive TimestampInterceptor: il dominio non possiede il tempo.
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    private User() { }                              // per EF (materializzazione)
+
+    public static User Create(/* … */) { /* unica porta di costruzione */ }
 }
 ```
+
+`Id` non è dichiarato qui: arriva da `Entity`, con setter `protected` — nessun codice applicativo
+può riscrivere l'id di un'entità già creata.
 
 Regole del modello:
 
 | Aspetto | Regola |
 |---|---|
-| Chiave primaria | `int Id`, identity — mai `string` o `Guid` |
+| Chiave primaria | `int Id`, identity, ereditato da `Entity` — mai `string` o `Guid` |
 | Nomi | Nessun suffisso: `User`, `Group`, `AuditLog` |
-| Stringhe | Sempre dimensionate con `HasMaxLength` in `OnModelCreating`; testo illimitato solo dove serve (messaggi, stack trace, snapshot audit) |
-| Enum | Mappati come **stringa** (`HasConversion<string>()`): leggibili nel DB e stabili se cambia l'ordine dei membri |
-| Date | `DateTime` UTC |
-| Timestamp | `CreatedAt`/`UpdatedAt` impostati automaticamente da `ApplyTimestamps` in `SaveChanges` |
+| Incapsulamento | Setter **privati**, collezioni in **sola lettura**, factory method come unica porta di costruzione. Verificato dai test di architettura |
+| Costruttore | Uno **privato senza parametri** per EF, che materializza senza passare dai factory |
+| Value object | I valori con regole proprie sono tipi (`Username`, `Money`, `RentalPeriod`), non `string` o `decimal` |
+| Stringhe | Sempre dimensionate con `HasMaxLength` nella `IEntityTypeConfiguration`; testo illimitato solo dove serve (messaggi, stack trace, snapshot audit) |
+| Enum e stati | Mappati come **stringa**: leggibili nel DB e stabili se cambia l'ordine dei membri. Gli stati con transizioni sono record con la tabella delle transizioni ammesse |
+| Date | `DateTime` UTC, ottenute da `IDateTimeProvider` |
+| Timestamp | `CreatedAt`/`UpdatedAt` impostati da `TimestampInterceptor` |
 | M2M | Skip navigation **unidirezionale** (`User.Groups`, non `Group.Users`); la join table la gestisce EF |
 
 ### I timestamp sono automatici
 
-`AppDbContext.SaveChangesAsync` percorre il change tracker e imposta i timestamp sulle entità
-`ITimestamped`: `CreatedAt`+`UpdatedAt` sugli insert, il solo `UpdatedAt` sugli update. **Gli handler
-non li valorizzano mai a mano.**
+`TimestampInterceptor` percorre il change tracker e imposta i timestamp sulle entità
+`ITimestamped`: `CreatedAt`+`UpdatedAt` sugli insert, il solo `UpdatedAt` sugli update — comprese le
+modifiche alle sole collezioni M2M, che EF non marcherebbe come `Modified`. **Gli handler non li
+valorizzano mai a mano**, ed è il motivo per cui `CreatedAt`/`UpdatedAt` sono le uniche proprietà
+con setter pubblico ammesse dai test di architettura: il tempo è un fatto infrastrutturale, non di
+dominio.
 
 ⚠️ **Unica eccezione da ricordare**: modificare **solo** le collezioni M2M di un'entità non la marca
 come `Modified`, quindi `UpdatedAt` non si aggiorna da solo. Chi cambia solo i ruoli o i gruppi di un
@@ -233,4 +283,5 @@ si ripara, non fallire a metà di una richiesta.
 ## Approfondimenti
 
 - **[Implementazione](implementazione.md)** — il codice di ogni componente citato qui
-- **[Decisioni](decisioni.md)** — perché `int`, perché niente repository, che cosa è stato scartato
+- **[Clean Architecture](../architettura/clean-architecture.md)** — i quattro layer e la regola delle dipendenze
+- **[Decisioni](decisioni.md)** — perché `int`, perché i repository solo sulle scritture, che cosa è stato scartato

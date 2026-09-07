@@ -77,34 +77,42 @@ Cambiando provider non cambia **niente di visibile**:
 ## Come funziona, in parole semplici
 
 ```
-        Handler MediatR (la logica di business)
-                    │
-                    │  unica dipendenza: AppDbContext
-                    ▼
-         AppDbContext (abstract, provider-agnostico)
-         tutto il model config vive qui
-                    │
-          ┌─────────┴─────────┐
-          ▼                   ▼
- SqlServerAppDbContext   PostgresAppDbContext
-   (derivata vuota)        (derivata vuota)
-          │                   │
-   Migrations/SqlServer  Migrations/Postgres
-          │                   │
-          ▼                   ▼
-      SQL Server          PostgreSQL
+   Handler (AppDemo.Application)
+            │
+            │  dipende solo da astrazioni:
+            │  I*Repository + IUnitOfWork   (comandi)
+            │  IReadDbContext + IQueryExecutor (query)
+            ▼
+   ─────────────────────────────────  confine Application / Infrastructure
+            │
+   Repository / IReadDbContext (AppDemo.Infrastructure)
+            │
+            ▼
+   AppDbContext (abstract, provider-agnostico)
+   tutto il model config vive qui
+            │
+  ┌─────────┴─────────┐
+  ▼                   ▼
+SqlServerAppDbContext   PostgresAppDbContext
+  (derivata vuota)        (derivata vuota)
+  │                   │
+Migrations/SqlServer  Migrations/Postgres
+  │                   │
+  ▼                   ▼
+SQL Server          PostgreSQL
 ```
 
-1. **Un solo modello dati.** Le entità POCO in `Entities/` valgono per entrambi i provider.
-2. **Un solo `AppDbContext`.** È `abstract` e contiene **tutta** la configurazione del modello
-   (`OnModelCreating`): tabelle, lunghezze colonne, indici, relazioni.
+1. **Un solo modello dati.** Gli aggregati in `AppDemo.Domain` valgono per entrambi i provider; la
+   mappatura vive nelle `IEntityTypeConfiguration` di `Infrastructure/Persistence/Configurations/`.
+2. **Un solo `AppDbContext`.** È `abstract` e applica **tutta** la configurazione del modello.
 3. **Due derivate vuote.** `SqlServerAppDbContext` e `PostgresAppDbContext` non aggiungono nulla:
    esistono **solo** per separare i due set di migration (è il pattern Microsoft "migrations with
    multiple providers").
 4. **Uno switch all'avvio.** `AddDatabase` legge `Database:Provider` e registra la derivata giusta
    dietro il tipo `AppDbContext`.
 
-Chi scrive un handler inietta `AppDbContext` e non sa quale dei due sta girando.
+Chi scrive un handler non vede niente di tutto questo: dipende da un repository o da
+`IReadDbContext`, e non sa quale dei due provider stia girando — né che ci sia EF Core sotto.
 
 ## La pipeline di una richiesta
 
@@ -127,13 +135,19 @@ HTTP
                                    │
                                    ├─ LoggingBehavior      durata ed esito
                                    ├─ ValidationBehavior   FluentValidation → 400
-                                   └─ Handler              la logica, qui e solo qui
+                                   └─ Handler              orchestrazione
                                         │
-                                        └─ AppDbContext
+                                        ├─ repository / IReadDbContext   (astrazioni)
+                                        ├─ aggregato di dominio          (la decisione)
+                                        └─ IUnitOfWork.SaveChangesAsync()
+                                                 │
+                                                 └─ commit → eventi di dominio
 ```
 
-Le tre regole che discendono da questo schema, e che valgono per ogni feature aggiunta dopo:
+Le quattro regole che discendono da questo schema, e che valgono per ogni feature aggiunta dopo:
 
+- **Gli handler non vedono mai `AppDbContext`.** Dipendono da astrazioni: `I{Aggregato}Repository` +
+  `IUnitOfWork` per i comandi, `IReadDbContext` + `IQueryExecutor` per le query.
 - **Gli endpoint non contengono logica.** Instradano e dichiarano il permesso richiesto.
 - **I validator non si invocano.** Il `ValidationBehavior` li trova da sé: se la validazione
   fallisce, l'handler non viene mai raggiunto.
@@ -156,29 +170,43 @@ lascerebbe dati parziali che il gate al riavvio non riconoscerebbe come "databas
 
 ## Che cosa cambia per chi sviluppa
 
-**Niente strato repository.** Gli handler iniettano `AppDbContext` e usano `db.Set<Entità>()` con
-LINQ. Le letture proiettano direttamente sul response record — niente tracking, niente mapping
-intermedio:
+**Gli handler non vedono EF Core.** I comandi passano dai repository, le query da `IReadDbContext`:
 
 ```csharp
-var items = await db.Set<Group>()
-    .AsNoTracking()
-    .Select(g => new GroupResponse(g.Id, g.Name, g.Description))
-    .ToListAsync(ct);
+// Comando — l'aggregato si carica intero, si modifica, si salva.
+var contract = await contracts.GetByIdAsync(request.Id, ct)
+    ?? throw new NotFoundException($"Contratto con id {request.Id} non trovato.");
+
+contract.Confirm(clock.UtcNow);
+await unitOfWork.SaveChangesAsync(ct);
 ```
 
-**Una nuova entità richiede due migration**, una per provider:
+```csharp
+// Query — IQueryable componibile, proiettato direttamente sul response record.
+var items = await executor.ToListAsync(
+    db.Groups.Select(g => new GroupResponse(g.Id, g.Name, g.Description)), ct);
+```
+
+Il perché di questa asimmetria è in [Comandi e query](../architettura/comandi-e-query.md).
+
+**Una nuova entità richiede due migration**, una per provider. Vivono in
+`<Progetto>.Infrastructure`, ma il comando ha bisogno di `<Progetto>.Api` come startup project
+(è lì la configurazione):
 
 ```bash
-dotnet dotnet-ef migrations add <Nome> --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add <Nome> --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+cd apps/backend/<Progetto>.Api
+
+dotnet dotnet-ef migrations add <Nome>   --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj   --startup-project <Progetto>.Api.csproj   --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+
+dotnet dotnet-ef migrations add <Nome>   --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj   --startup-project <Progetto>.Api.csproj   --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 ```
 
 Il percorso completo, passo per passo, è nella pagina
 [Aggiungere una feature](../guide/nuova-feature.md).
 
 La regola da non violare mai: **ogni query LINQ deve essere traducibile da entrambi i provider**.
-Le uniche query provider-specifiche ammesse vivono in `DatabaseStats/`, dietro un'interfaccia.
+Le uniche query provider-specifiche ammesse sono le due implementazioni di
+`IDatabaseStatsProvider` in `Infrastructure/Services/`, una per provider, dietro l'interfaccia.
 
 ⚠️ **Trappola nota**: `Contains` su stringa è **case-insensitive su SQL Server** (per la collation
 di default) e **case-sensitive su PostgreSQL**. Per questo l'username di login si salva in minuscolo
@@ -210,6 +238,8 @@ caso il database va creato a monte.
 
 ## Approfondimenti
 
+- **[Clean Architecture](../architettura/clean-architecture.md)** — i quattro layer e la regola delle dipendenze
+- **[Comandi e query](../architettura/comandi-e-query.md)** — repository, unit of work, `IReadDbContext`
 - **[Architettura](architettura.md)** — il modello EF, lo schema relazionale, i due set di migration
 - **[Implementazione](implementazione.md)** — il codice: switch, `AppDbContext`, pipeline, handler, seed
-- **[Decisioni](decisioni.md)** — perché la chiave primaria è `int`, perché niente repository
+- **[Decisioni](decisioni.md)** — perché la chiave primaria è `int`, perché i repository solo sulle scritture

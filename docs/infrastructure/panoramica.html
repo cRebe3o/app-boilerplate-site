@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html" aria-current="page">Panoramica</a></li>
@@ -173,34 +182,42 @@ esista un solo ruolo perché il seeder esca subito). Mai una cancellazione, mai 
 <li><strong>L'audit</strong>: ogni scrittura produce lo stesso record, con gli snapshot prima/dopo in JSON.</li>
 </ul>
 <h2 id="come-funziona-in-parole-semplici">Come funziona, in parole semplici</h2>
-<pre><code>        Handler MediatR (la logica di business)
-                    │
-                    │  unica dipendenza: AppDbContext
-                    ▼
-         AppDbContext (abstract, provider-agnostico)
-         tutto il model config vive qui
-                    │
-          ┌─────────┴─────────┐
-          ▼                   ▼
- SqlServerAppDbContext   PostgresAppDbContext
-   (derivata vuota)        (derivata vuota)
-          │                   │
-   Migrations/SqlServer  Migrations/Postgres
-          │                   │
-          ▼                   ▼
-      SQL Server          PostgreSQL
+<pre><code>   Handler (AppDemo.Application)
+            │
+            │  dipende solo da astrazioni:
+            │  I*Repository + IUnitOfWork   (comandi)
+            │  IReadDbContext + IQueryExecutor (query)
+            ▼
+   ─────────────────────────────────  confine Application / Infrastructure
+            │
+   Repository / IReadDbContext (AppDemo.Infrastructure)
+            │
+            ▼
+   AppDbContext (abstract, provider-agnostico)
+   tutto il model config vive qui
+            │
+  ┌─────────┴─────────┐
+  ▼                   ▼
+SqlServerAppDbContext   PostgresAppDbContext
+  (derivata vuota)        (derivata vuota)
+  │                   │
+Migrations/SqlServer  Migrations/Postgres
+  │                   │
+  ▼                   ▼
+SQL Server          PostgreSQL
 </code></pre>
 <ol>
-<li><strong>Un solo modello dati.</strong> Le entità POCO in <code>Entities/</code> valgono per entrambi i provider.</li>
-<li><strong>Un solo <code>AppDbContext</code>.</strong> È <code>abstract</code> e contiene <strong>tutta</strong> la configurazione del modello
-(<code>OnModelCreating</code>): tabelle, lunghezze colonne, indici, relazioni.</li>
+<li><strong>Un solo modello dati.</strong> Gli aggregati in <code>AppDemo.Domain</code> valgono per entrambi i provider; la
+mappatura vive nelle <code>IEntityTypeConfiguration</code> di <code>Infrastructure/Persistence/Configurations/</code>.</li>
+<li><strong>Un solo <code>AppDbContext</code>.</strong> È <code>abstract</code> e applica <strong>tutta</strong> la configurazione del modello.</li>
 <li><strong>Due derivate vuote.</strong> <code>SqlServerAppDbContext</code> e <code>PostgresAppDbContext</code> non aggiungono nulla:
 esistono <strong>solo</strong> per separare i due set di migration (è il pattern Microsoft &quot;migrations with
 multiple providers&quot;).</li>
 <li><strong>Uno switch all'avvio.</strong> <code>AddDatabase</code> legge <code>Database:Provider</code> e registra la derivata giusta
 dietro il tipo <code>AppDbContext</code>.</li>
 </ol>
-<p>Chi scrive un handler inietta <code>AppDbContext</code> e non sa quale dei due sta girando.</p>
+<p>Chi scrive un handler non vede niente di tutto questo: dipende da un repository o da
+<code>IReadDbContext</code>, e non sa quale dei due provider stia girando — né che ci sia EF Core sotto.</p>
 <h2 id="la-pipeline-di-una-richiesta">La pipeline di una richiesta</h2>
 <p>La persistenza è metà del quadro. L'altra metà è il percorso che ogni richiesta compie, uguale per
 tutte le feature:</p>
@@ -219,12 +236,18 @@ tutte le feature:</p>
                                    │
                                    ├─ LoggingBehavior      durata ed esito
                                    ├─ ValidationBehavior   FluentValidation → 400
-                                   └─ Handler              la logica, qui e solo qui
+                                   └─ Handler              orchestrazione
                                         │
-                                        └─ AppDbContext
+                                        ├─ repository / IReadDbContext   (astrazioni)
+                                        ├─ aggregato di dominio          (la decisione)
+                                        └─ IUnitOfWork.SaveChangesAsync()
+                                                 │
+                                                 └─ commit → eventi di dominio
 </code></pre>
-<p>Le tre regole che discendono da questo schema, e che valgono per ogni feature aggiunta dopo:</p>
+<p>Le quattro regole che discendono da questo schema, e che valgono per ogni feature aggiunta dopo:</p>
 <ul>
+<li><strong>Gli handler non vedono mai <code>AppDbContext</code>.</strong> Dipendono da astrazioni: <code>I{Aggregato}Repository</code> +
+<code>IUnitOfWork</code> per i comandi, <code>IReadDbContext</code> + <code>IQueryExecutor</code> per le query.</li>
 <li><strong>Gli endpoint non contengono logica.</strong> Instradano e dichiarano il permesso richiesto.</li>
 <li><strong>I validator non si invocano.</strong> Il <code>ValidationBehavior</code> li trova da sé: se la validazione
 fallisce, l'handler non viene mai raggiunto.</li>
@@ -260,22 +283,33 @@ lascerebbe dati parziali che il gate al riavvio non riconoscerebbe come &quot;da
 droppa a mano.</p>
 </blockquote>
 <h2 id="che-cosa-cambia-per-chi-sviluppa">Che cosa cambia per chi sviluppa</h2>
-<p><strong>Niente strato repository.</strong> Gli handler iniettano <code>AppDbContext</code> e usano <code>db.Set&lt;Entità&gt;()</code> con
-LINQ. Le letture proiettano direttamente sul response record — niente tracking, niente mapping
-intermedio:</p>
-<pre><code class="language-csharp"><span class="hljs-keyword">var</span> items = <span class="hljs-keyword">await</span> db.Set&lt;Group&gt;()
-    .AsNoTracking()
-    .Select(g =&gt; <span class="hljs-keyword">new</span> GroupResponse(g.Id, g.Name, g.Description))
-    .ToListAsync(ct);
+<p><strong>Gli handler non vedono EF Core.</strong> I comandi passano dai repository, le query da <code>IReadDbContext</code>:</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// Comando — l&#x27;aggregato si carica intero, si modifica, si salva.</span>
+<span class="hljs-keyword">var</span> contract = <span class="hljs-keyword">await</span> contracts.GetByIdAsync(request.Id, ct)
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Contratto con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
+
+contract.Confirm(clock.UtcNow);
+<span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(ct);
 </code></pre>
-<p><strong>Una nuova entità richiede due migration</strong>, una per provider:</p>
-<pre><code class="language-bash">dotnet dotnet-ef migrations add &lt;Nome&gt; --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add &lt;Nome&gt; --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+<pre><code class="language-csharp"><span class="hljs-comment">// Query — IQueryable componibile, proiettato direttamente sul response record.</span>
+<span class="hljs-keyword">var</span> items = <span class="hljs-keyword">await</span> executor.ToListAsync(
+    db.Groups.Select(g =&gt; <span class="hljs-keyword">new</span> GroupResponse(g.Id, g.Name, g.Description)), ct);
+</code></pre>
+<p>Il perché di questa asimmetria è in <a href="../architettura/comandi-e-query.html">Comandi e query</a>.</p>
+<p><strong>Una nuova entità richiede due migration</strong>, una per provider. Vivono in
+<code>&lt;Progetto&gt;.Infrastructure</code>, ma il comando ha bisogno di <code>&lt;Progetto&gt;.Api</code> come startup project
+(è lì la configurazione):</p>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/&lt;Progetto&gt;.Api
+
+dotnet dotnet-ef migrations add &lt;Nome&gt;   --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj   --startup-project &lt;Progetto&gt;.Api.csproj   --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+
+dotnet dotnet-ef migrations add &lt;Nome&gt;   --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj   --startup-project &lt;Progetto&gt;.Api.csproj   --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 </code></pre>
 <p>Il percorso completo, passo per passo, è nella pagina
 <a href="../guide/nuova-feature.html">Aggiungere una feature</a>.</p>
 <p>La regola da non violare mai: <strong>ogni query LINQ deve essere traducibile da entrambi i provider</strong>.
-Le uniche query provider-specifiche ammesse vivono in <code>DatabaseStats/</code>, dietro un'interfaccia.</p>
+Le uniche query provider-specifiche ammesse sono le due implementazioni di
+<code>IDatabaseStatsProvider</code> in <code>Infrastructure/Services/</code>, una per provider, dietro l'interfaccia.</p>
 <p>⚠️ <strong>Trappola nota</strong>: <code>Contains</code> su stringa è <strong>case-insensitive su SQL Server</strong> (per la collation
 di default) e <strong>case-sensitive su PostgreSQL</strong>. Per questo l'username di login si salva in minuscolo
 e si confronta con input già normalizzato.</p>
@@ -299,9 +333,11 @@ espone host <code>*-pooler</code> — la <code>CREATE DATABASE</code> non è con
 caso il database va creato a monte.</p>
 <h2 id="approfondimenti">Approfondimenti</h2>
 <ul>
+<li><strong><a href="../architettura/clean-architecture.html">Clean Architecture</a></strong> — i quattro layer e la regola delle dipendenze</li>
+<li><strong><a href="../architettura/comandi-e-query.html">Comandi e query</a></strong> — repository, unit of work, <code>IReadDbContext</code></li>
 <li><strong><a href="architettura.html">Architettura</a></strong> — il modello EF, lo schema relazionale, i due set di migration</li>
 <li><strong><a href="implementazione.html">Implementazione</a></strong> — il codice: switch, <code>AppDbContext</code>, pipeline, handler, seed</li>
-<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché la chiave primaria è <code>int</code>, perché niente repository</li>
+<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché la chiave primaria è <code>int</code>, perché i repository solo sulle scritture</li>
 </ul>
 
       </article>

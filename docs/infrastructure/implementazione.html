@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -62,19 +71,19 @@
         <ul>
           <li class="lvl-2"><a href="#1-lo-switch-di-provider">1. Lo switch di provider</a></li>
           <li class="lvl-3"><a href="#la-configurazione-in-ordine-di-precedenza">La configurazione, in ordine di precedenza</a></li>
-          <li class="lvl-2"><a href="#2-appdbcontext-astratto-con-tutto-il-modello">2. <code>AppDbContext</code>: astratto, con tutto il modello</a></li>
-          <li class="lvl-3"><a href="#i-timestamp-automatici">I timestamp automatici</a></li>
+          <li class="lvl-2"><a href="#2-appdbcontext-astratto-e-invisibile-agli-handler">2. <code>AppDbContext</code>: astratto, e invisibile agli handler</a></li>
+          <li class="lvl-3"><a href="#i-timestamp-l-audit-e-la-concorrenza-tre-interceptor">I timestamp, l'audit e la concorrenza: tre interceptor</a></li>
           <li class="lvl-3"><a href="#le-m2m-skip-navigation-unidirezionale">Le M2M: skip navigation unidirezionale</a></li>
           <li class="lvl-3"><a href="#le-colonne-vanno-dimensionate">Le colonne vanno dimensionate</a></li>
           <li class="lvl-3"><a href="#gli-enum-come-stringa">Gli enum come stringa</a></li>
           <li class="lvl-3"><a href="#systemconfig-oggetti-annidati-senza-tabella-extra"><code>SystemConfig</code>: oggetti annidati senza tabella extra</a></li>
           <li class="lvl-2"><a href="#3-la-pipeline-mediatr">3. La pipeline MediatR</a></li>
           <li class="lvl-3"><a href="#la-gestione-degli-errori">La gestione degli errori</a></li>
-          <li class="lvl-2"><a href="#4-gli-handler-appdbcontext-diretto-niente-repository">4. Gli handler: <code>AppDbContext</code> diretto, niente repository</a></li>
-          <li class="lvl-3"><a href="#lettura-proiezione-diretta-sul-response">Lettura: proiezione diretta sul response</a></li>
-          <li class="lvl-3"><a href="#scrittura-l-id-identity-esiste-solo-dopo-il-savechanges">Scrittura: l'id identity esiste solo dopo il <code>SaveChanges</code></a></li>
-          <li class="lvl-3"><a href="#delete-con-dipendenze-conteggio-prima-per-un-errore-leggibile">Delete con dipendenze: conteggio prima, per un errore leggibile</a></li>
-          <li class="lvl-3"><a href="#update-con-m2m-il-caso-di-updatedat">Update con M2M: il caso di <code>UpdatedAt</code></a></li>
+          <li class="lvl-2"><a href="#4-gli-handler-astrazioni-mai-appdbcontext">4. Gli handler: astrazioni, mai <code>AppDbContext</code></a></li>
+          <li class="lvl-3"><a href="#lettura-iqueryable-componibile-proiettato-sul-response">Lettura: <code>IQueryable</code> componibile, proiettato sul response</a></li>
+          <li class="lvl-3"><a href="#scrittura-carica-l-aggregato-chiedi-al-dominio-salva">Scrittura: carica l'aggregato, chiedi al dominio, salva</a></li>
+          <li class="lvl-3"><a href="#iunitofwork-il-commit-e-poi-gli-eventi"><code>IUnitOfWork</code>: il commit e poi gli eventi</a></li>
+          <li class="lvl-3"><a href="#delete-con-dipendenze-due-difese-sovrapposte">Delete con dipendenze: due difese sovrapposte</a></li>
           <li class="lvl-3"><a href="#operazioni-bulk-senza-caricare-le-entita">Operazioni bulk senza caricare le entità</a></li>
           <li class="lvl-2"><a href="#5-le-due-migration-una-per-provider">5. Le due migration, una per provider</a></li>
           <li class="lvl-3"><a href="#lo-stesso-modello-tipi-nativi-diversi">Lo stesso modello, tipi nativi diversi</a></li>
@@ -87,11 +96,12 @@
         </ul>
       </nav>
 <p>Il codice di ogni pezzo dell'architettura, nell'ordine in cui lo si incontra leggendo il backend.
-I frammenti riproducono i file reali in <code>apps/backend/&lt;Progetto&gt;.Api/Features/_Shared/</code>, che restano
-la fonte di verità: qui sono accompagnati dal <strong>perché</strong>, che nel codice non sempre c'è.</p>
+I frammenti riproducono i file reali in <code>apps/backend/</code>, che restano la fonte di verità: qui sono
+accompagnati dal <strong>perché</strong>, che nel codice non sempre c'è.</p>
 <h2 id="1-lo-switch-di-provider">1. Lo switch di provider</h2>
-<p><code>Features/_Shared/Extensions/DatabaseExtensions.cs</code> è il punto unico in cui il provider viene scelto.
-È l'unico file dell'applicazione che nomina <code>UseSqlServer</code> e <code>UseNpgsql</code>.</p>
+<p><code>&lt;Progetto&gt;.Infrastructure/DependencyInjection.cs</code> è il punto unico in cui il provider viene scelto.
+È l'unico file dell'applicazione che nomina <code>UseSqlServer</code> e <code>UseNpgsql</code> (a parte le factory
+design-time, che servono a <code>dotnet ef</code>).</p>
 <pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">DatabaseExtensions</span>
 {
     <span class="hljs-keyword">public</span> <span class="hljs-keyword">const</span> <span class="hljs-built_in">string</span> SqlServerProvider = <span class="hljs-string">&quot;SqlServer&quot;</span>;
@@ -157,41 +167,80 @@ ignorato in silenzio: l'applicazione si ferma dicendo quali valori sono ammessi.
 builder.Configuration.AddJsonFile(<span class="hljs-string">&quot;appsettings.local.json&quot;</span>, optional: <span class="hljs-literal">true</span>, reloadOnChange: <span class="hljs-literal">true</span>);
 builder.Configuration.AddEnvironmentVariables();
 </code></pre>
-<h2 id="2-appdbcontext-astratto-con-tutto-il-modello">2. <code>AppDbContext</code>: astratto, con tutto il modello</h2>
-<p><code>Persistence/AppDbContext.cs</code> è <code>abstract</code> e contiene l'intero <code>OnModelCreating</code>. Le due derivate
-sono <strong>una riga ciascuna</strong>:</p>
+<h2 id="2-appdbcontext-astratto-e-invisibile-agli-handler">2. <code>AppDbContext</code>: astratto, e invisibile agli handler</h2>
+<p><code>Persistence/AppDbContext.cs</code> è <code>abstract</code>. Le due derivate sono <strong>una riga ciascuna</strong>:</p>
 <pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">SqlServerAppDbContext</span>(<span class="hljs-params">DbContextOptions&lt;SqlServerAppDbContext&gt; options</span>) : <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">options</span>)</span>;
 <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">PostgresAppDbContext</span>(<span class="hljs-params">DbContextOptions&lt;PostgresAppDbContext&gt; options</span>)  : <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">options</span>)</span>;
 </code></pre>
 <p>Non contengono configurazione: esistono <strong>solo</strong> per dare un'identità ai due set di migration.</p>
-<p>Nota che non ci sono proprietà <code>DbSet</code> nominate: le entità si raggiungono con <code>db.Set&lt;T&gt;()</code>. Una
-entità in meno da dichiarare a ogni aggiunta.</p>
-<h3 id="i-timestamp-automatici">I timestamp automatici</h3>
-<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">void</span> <span class="hljs-title">ApplyTimestamps</span>()</span>
+<p>Il commento in testa alla classe dichiara il proprio confine:</p>
+<blockquote>
+<p>Gli handler NON vedono questa classe: usano <code>IReadDbContext</code> per le query e i repository per i
+comandi. Qui dentro resta solo la meccanica di persistenza.</p>
+</blockquote>
+<p>La configurazione del modello non è più in un <code>OnModelCreating</code> monolitico: ogni entità ha la
+propria <code>IEntityTypeConfiguration</code> in <code>Persistence/Configurations/</code>, raccolta automaticamente.</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">protected</span> <span class="hljs-keyword">override</span> <span class="hljs-keyword">void</span> <span class="hljs-title">OnModelCreating</span>(<span class="hljs-params">ModelBuilder modelBuilder</span>)</span>
 {
-    <span class="hljs-keyword">var</span> now = DateTime.UtcNow;
-    <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> entry <span class="hljs-keyword">in</span> ChangeTracker.Entries&lt;ITimestamped&gt;())
-    {
-        <span class="hljs-keyword">if</span> (entry.State == EntityState.Added)
-        {
-            entry.Entity.CreatedAt = now;
-            entry.Entity.UpdatedAt = now;
-        }
-        <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (entry.State == EntityState.Modified)
-        {
-            entry.Entity.UpdatedAt = now;
-        }
-    }
-}
-
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">override</span> Task&lt;<span class="hljs-built_in">int</span>&gt; <span class="hljs-title">SaveChangesAsync</span>(<span class="hljs-params"><span class="hljs-built_in">bool</span> acceptAllChangesOnSuccess, CancellationToken cancellationToken = <span class="hljs-literal">default</span></span>)</span>
-{
-    ApplyTimestamps();
-    <span class="hljs-keyword">return</span> <span class="hljs-keyword">base</span>.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    <span class="hljs-comment">// Raccoglie tutte le IEntityTypeConfiguration di questo assembly: aggiungere</span>
+    <span class="hljs-comment">// un&#x27;entità non richiede di toccare questo file.</span>
+    modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 }
 </code></pre>
-<p>L'override è sulla versione con <code>acceptAllChangesOnSuccess</code>, che è quella su cui convergono tutti gli
-overload: intercettarla copre ogni chiamata, sync e async.</p>
+<p><code>AppDbContext</code> implementa anche <code>IReadDbContext</code>, ed è l'unico punto in cui i due mondi si toccano:</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AppDbContext</span>(<span class="hljs-params">DbContextOptions options</span>) : <span class="hljs-title">DbContext</span>(<span class="hljs-params">options</span>), IReadDbContext</span>
+{
+    <span class="hljs-comment">// AsNoTracking su tutte: le query di lettura non devono popolare il change tracker,</span>
+    <span class="hljs-comment">// che sarebbe puro costo — nessuna entità restituita da qui viene mai modificata.</span>
+    IQueryable&lt;User&gt; IReadDbContext.Users =&gt; Set&lt;User&gt;().AsNoTracking();
+    IQueryable&lt;RentalContract&gt; IReadDbContext.RentalContracts =&gt; Set&lt;RentalContract&gt;().AsNoTracking();
+    <span class="hljs-comment">// …</span>
+}
+</code></pre>
+<p>Le implementazioni sono <strong>esplicite</strong> (<code>IReadDbContext.Users</code>): sono raggiungibili solo attraverso
+l'interfaccia, non da chi ha in mano un <code>AppDbContext</code>.</p>
+<h3 id="i-timestamp-l-audit-e-la-concorrenza-tre-interceptor">I timestamp, l'audit e la concorrenza: tre interceptor</h3>
+<p>Non sono più responsabilità del <code>DbContext</code> né degli handler. Sono interceptor registrati in
+<code>DependencyInjection</code>, così valgono per <strong>qualunque</strong> salvataggio — anche quelli del seed o di un
+hosted service, che non passano da un handler.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Interceptor</th>
+<th>Che cosa fa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TimestampInterceptor</code></td>
+<td><code>CreatedAt</code> / <code>UpdatedAt</code> su ogni entità <code>ITimestamped</code></td>
+</tr>
+<tr>
+<td><code>AuditLogInterceptor</code></td>
+<td>Una riga <code>AuditLogs</code> per ogni radice di aggregato creata, modificata o cancellata, con snapshot prima/dopo</td>
+</tr>
+<tr>
+<td><code>ConcurrencyTokenInterceptor</code></td>
+<td>Rigenera il <code>Guid</code> di concorrenza delle entità <code>IVersioned</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-csharp">services.AddScoped&lt;TimestampInterceptor&gt;();
+services.AddScoped&lt;AuditLogInterceptor&gt;();
+services.AddScoped&lt;ConcurrencyTokenInterceptor&gt;();
+</code></pre>
+<p>Il ragionamento è lo stesso per tutti e tre, ed è scritto in <code>ConcurrencyTokenInterceptor</code>:</p>
+<blockquote>
+<p>Farlo qui invece che negli aggregati significa che nessuno può dimenticarsene: un nuovo metodo su
+Equipment, un import massivo, una correzione fatta da un hosted service, sono tutti coperti senza
+scrivere una riga in più.</p>
+</blockquote>
+<blockquote>
+<p>⚠️ <strong>Un handler non scrive mai un audit log a mano.</strong> Se stai per aggiungere una riga <code>AuditLog</code>
+in un handler, l'interceptor lo sta già facendo.</p>
+</blockquote>
 <h3 id="le-m2m-skip-navigation-unidirezionale">Le M2M: skip navigation unidirezionale</h3>
 <p>Il pattern si ripete quattro volte (<code>User.Groups</code>, <code>User.Roles</code>, <code>Group.Roles</code>, <code>Role.Permissions</code>):</p>
 <pre><code class="language-csharp">e.HasMany(u =&gt; u.Groups).WithMany()
@@ -204,6 +253,20 @@ overload: intercettarla copre ogni chiamata, sync e async.</p>
 <p><code>WithMany()</code> <strong>senza argomenti</strong> è la parte importante: la navigazione è unidirezionale, esiste
 <code>User.Groups</code> ma non <code>Group.Users</code>. Meno superficie da mantenere, e nessun rischio di cicli di
 serializzazione. La join table non ha una classe: le righe le gestisce EF quando si modifica la lista.</p>
+<p>Le liste non si riassegnano da fuori: l'aggregato espone metodi che controllano le proprie
+relazioni (<code>user.AssignRoles(...)</code>, <code>user.AssignGroups(...)</code>), e la collezione è in sola lettura.</p>
+<p>⚠️ <strong>La trappola EF, e come è stata chiusa.</strong> Cambiare solo una collezione M2M lascia l'entità in
+stato <code>Unchanged</code>: senza accorgimenti, riassegnare i ruoli di un utente non aggiornerebbe il suo
+<code>UpdatedAt</code>. Prima bisognava ricordarsi di toccarlo a mano in ogni handler che riassegnava una
+lista. Ora se ne occupa <code>TimestampInterceptor</code>, che guarda anche le collezioni:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (entry.State == EntityState.Modified || HasModifiedCollections(entry))
+    entry.Entity.UpdatedAt = now;
+
+<span class="hljs-comment">// Riassegnare una M2M non marca l&#x27;entità Modified, ma per l&#x27;utente è a tutti</span>
+<span class="hljs-comment">// gli effetti una modifica.</span>
+<span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-built_in">bool</span> <span class="hljs-title">HasModifiedCollections</span>(<span class="hljs-params">EntityEntry entry</span>)</span> =&gt;
+    entry.State == EntityState.Unchanged &amp;&amp; entry.Collections.Any(c =&gt; c.IsModified);
+</code></pre>
 <h3 id="le-colonne-vanno-dimensionate">Le colonne vanno dimensionate</h3>
 <pre><code class="language-csharp">e.Property(u =&gt; u.Username).HasMaxLength(<span class="hljs-number">256</span>).IsRequired();
 e.Property(u =&gt; u.Email).HasMaxLength(<span class="hljs-number">256</span>);
@@ -265,102 +328,157 @@ nei log con la sua durata.</p>
 <h3 id="la-gestione-degli-errori">La gestione degli errori</h3>
 <p><code>ExceptionHandlingMiddleware</code> è il solo punto in cui un'eccezione diventa una risposta HTTP. Gli
 handler <strong>lanciano</strong> e non catturano:</p>
-<pre><code class="language-csharp"><span class="hljs-keyword">var</span> <span class="hljs-keyword">group</span> = <span class="hljs-keyword">await</span> db.Set&lt;Group&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, ct)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Group&quot;</span>, request.Id);
+<pre><code class="language-csharp"><span class="hljs-keyword">var</span> <span class="hljs-keyword">group</span> = <span class="hljs-keyword">await</span> groups.GetByIdAsync(request.Id, ct)
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Gruppo con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
 </code></pre>
-<p>Le eccezioni di dominio vivono in <code>_Shared/Exceptions/</code> — <code>NotFoundException</code>, <code>ConflictException</code>,
-<code>ForbiddenException</code>, <code>UnauthorizedException</code> — e il middleware le mappa su 404, 409, 403, 401. Tutto
-il resto è un 500, con il dettaglio nel log e non nella risposta.</p>
+<p>Le eccezioni di dominio vivono in <code>&lt;Progetto&gt;.Domain/Exceptions/</code> — <code>NotFoundException</code>,
+<code>ConflictException</code>, <code>InvariantViolationException</code>, <code>ForbiddenException</code>, <code>UnauthorizedException</code> —
+e il middleware le mappa su 404, 409, 422, 403, 401. Tutto il resto è un 500, con il dettaglio nel
+log e non nella risposta.</p>
+<p>Che stiano nel <strong>dominio</strong> e non in un progetto di utilità è coerente con il resto: un contratto
+confermato che rifiuta una modifica sta esprimendo una regola di business, non un errore tecnico.</p>
 <p>Il formato è sempre <strong>ProblemDetails</strong> (RFC 7807), quindi il frontend può tradurre ogni errore con
 un unico composable (<code>useApiErrors</code>) invece che caso per caso.</p>
-<h2 id="4-gli-handler-appdbcontext-diretto-niente-repository">4. Gli handler: <code>AppDbContext</code> diretto, niente repository</h2>
-<p>Gli handler iniettano <code>AppDbContext</code> e usano <code>db.Set&lt;T&gt;()</code>. Non c'è nessuno strato intermedio.</p>
-<h3 id="lettura-proiezione-diretta-sul-response">Lettura: proiezione diretta sul response</h3>
-<pre><code class="language-csharp"><span class="hljs-keyword">var</span> items = <span class="hljs-keyword">await</span> db.Set&lt;Group&gt;()
-    .AsNoTracking()
-    .Select(g =&gt; <span class="hljs-keyword">new</span> GroupResponse(g.Id, g.Name, g.Description))
-    .ToListAsync(ct);
-</code></pre>
-<p><code>Select</code> verso il record di response fa sì che EF generi una <code>SELECT</code> con le sole colonne che servono
-e non popoli il change tracker. Niente entità intermedie, niente mapping manuale.</p>
-<h3 id="scrittura-l-id-identity-esiste-solo-dopo-il-savechanges">Scrittura: l'id identity esiste solo dopo il <code>SaveChanges</code></h3>
-<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateGroupHandler</span>(<span class="hljs-params">
-    AppDbContext db,
-    IHttpContextAccessor httpContextAccessor</span>) : IRequestHandler&lt;CreateGroupCommand, CreateGroupResponse&gt;</span>
+<h2 id="4-gli-handler-astrazioni-mai-appdbcontext">4. Gli handler: astrazioni, mai <code>AppDbContext</code></h2>
+<p>Gli handler vivono in <code>&lt;Progetto&gt;.Application</code> e non conoscono EF Core. Che cosa iniettano dipende
+dal tipo di operazione:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Operazione</th>
+<th>Dipendenze</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Comando</strong> (Create / Update / Delete)</td>
+<td><code>I{Aggregato}Repository</code> + <code>IUnitOfWork</code></td>
+</tr>
+<tr>
+<td><strong>Query</strong> (lettura)</td>
+<td><code>IReadDbContext</code> + <code>IQueryExecutor</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il perché di questa asimmetria è in <a href="../architettura/comandi-e-query.html">Comandi e query</a>.</p>
+<h3 id="lettura-iqueryable-componibile-proiettato-sul-response">Lettura: <code>IQueryable</code> componibile, proiettato sul response</h3>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">GetGroupsHandler</span>(<span class="hljs-params">IReadDbContext db, IQueryExecutor executor</span>)
+    : IRequestHandler&lt;GetGroupsQuery, List&lt;GroupResponse&gt;&gt;</span>
 {
-    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;CreateGroupResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">CreateGroupCommand request, CancellationToken ct</span>)</span>
+    <span class="hljs-keyword">public</span> Task&lt;List&lt;GroupResponse&gt;&gt; Handle(GetGroupsQuery request, CancellationToken ct) =&gt;
+        executor.ToListAsync(
+            db.Groups.Select(g =&gt; <span class="hljs-keyword">new</span> GroupResponse(g.Id, g.Name, g.Description)), ct);
+}
+</code></pre>
+<p><code>Select</code> verso il record di response fa sì che EF generi una <code>SELECT</code> con le sole colonne che
+servono. Il tracking è già disattivato a monte, in <code>IReadDbContext</code>.</p>
+<p><code>IQueryExecutor</code> esiste perché <code>ToListAsync</code> e <code>CountAsync</code> sono extension method legate al provider
+EF: invocarle su un <code>IQueryable</code> prodotto da un fake in memoria fallirebbe a runtime. Passando
+dall'astrazione, l'handler resta eseguibile nei test unitari.</p>
+<h3 id="scrittura-carica-l-aggregato-chiedi-al-dominio-salva">Scrittura: carica l'aggregato, chiedi al dominio, salva</h3>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ConfirmRentalContractHandler</span>(<span class="hljs-params">
+    IRentalContractRepository contracts,
+    ICustomerRepository customers,
+    IDateTimeProvider clock,
+    IUnitOfWork unitOfWork</span>) : IRequestHandler&lt;ConfirmRentalContractCommand, ConfirmRentalContractResponse&gt;</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;ConfirmRentalContractResponse&gt; <span class="hljs-title">Handle</span>(<span class="hljs-params">
+        ConfirmRentalContractCommand request, CancellationToken ct</span>)</span>
     {
-        <span class="hljs-keyword">var</span> <span class="hljs-keyword">group</span> = <span class="hljs-keyword">new</span> Group { Name = request.Name, Description = request.Description };
+        <span class="hljs-keyword">var</span> contract = <span class="hljs-keyword">await</span> contracts.GetByIdAsync(request.Id, ct)
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Contratto con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
 
-        db.Add(<span class="hljs-keyword">group</span>);
-        <span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);   <span class="hljs-comment">// assegna l&#x27;id identity</span>
+        <span class="hljs-keyword">var</span> customer = <span class="hljs-keyword">await</span> customers.GetByIdAsync(contract.CustomerId, ct)
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Cliente con id <span class="hljs-subst">{contract.CustomerId}</span> non trovato.&quot;</span>);
 
-        db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Group&quot;</span>, <span class="hljs-keyword">group</span>.Id, <span class="hljs-string">&quot;Created&quot;</span>));
-        <span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);
+        <span class="hljs-comment">// L&#x27;handler CARICA i dati, il domain service DECIDE.</span>
+        <span class="hljs-keyword">var</span> active = <span class="hljs-keyword">await</span> contracts.GetActiveByCustomerAsync(customer.Id, ct);
+        CustomerCreditService.EnsureCanCommit(customer, contract.TotalAmount, active);
 
-        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> CreateGroupResponse(<span class="hljs-keyword">group</span>.Id);
+        <span class="hljs-comment">// L&#x27;aggregato impone i propri invarianti e solleva l&#x27;evento.</span>
+        contract.Confirm(clock.UtcNow);
+
+        <span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(ct);   <span class="hljs-comment">// audit e timestamp: li fanno gli interceptor</span>
+
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> ConfirmRentalContractResponse(<span class="hljs-comment">/* … */</span>);
     }
 }
 </code></pre>
-<p>I due <code>SaveChangesAsync</code> non sono una svista: <strong>l'audit log ha bisogno dell'id</strong>, che il database
-assegna solo al primo salvataggio. È la conseguenza pratica più visibile della scelta di id generati
-dal database.</p>
-<h3 id="delete-con-dipendenze-conteggio-prima-per-un-errore-leggibile">Delete con dipendenze: conteggio prima, per un errore leggibile</h3>
-<p>Quando un'entità è referenziata da altre, il pattern del template è anticipare il vincolo del
-database con un controllo applicativo:</p>
-<pre><code class="language-csharp"><span class="hljs-keyword">var</span> role = <span class="hljs-keyword">await</span> db.Set&lt;Role&gt;().FirstOrDefaultAsync(x =&gt; x.Id == request.Id, ct)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;Role&quot;</span>, request.Id);
+<p><strong>Un solo <code>SaveChangesAsync</code></strong>, e nessuna menzione dell'audit: lo scrive l'interceptor. Nota anche
+<code>clock.UtcNow</code> al posto di <code>DateTime.UtcNow</code> — è ciò che rende l'handler testabile con una data
+fissata.</p>
+<h3 id="iunitofwork-il-commit-e-poi-gli-eventi"><code>IUnitOfWork</code>: il commit e poi gli eventi</h3>
+<p><code>SaveChangesAsync</code> non è solo un passaggio al <code>DbContext</code>: è anche il punto in cui gli eventi di
+dominio vengono pubblicati, nell'ordine giusto.</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;<span class="hljs-built_in">int</span>&gt; <span class="hljs-title">SaveChangesAsync</span>(<span class="hljs-params">CancellationToken cancellationToken = <span class="hljs-literal">default</span></span>)</span>
+{
+    <span class="hljs-keyword">var</span> affected = <span class="hljs-keyword">await</span> db.SaveChangesAsync(cancellationToken);
 
-<span class="hljs-keyword">if</span> (role.IsSystem)
-    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(<span class="hljs-string">&quot;Impossibile eliminare un ruolo di sistema.&quot;</span>);
+    <span class="hljs-comment">// Solo ora gli id identity esistono e gli eventi puntano a entità reali.</span>
+    <span class="hljs-keyword">var</span> domainEvents = CollectAndClearDomainEvents();
 
-<span class="hljs-keyword">var</span> before = role.ToAuditJson();
-db.Remove(role);
-<span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);
+    <span class="hljs-keyword">if</span> (domainEvents.Count &gt; <span class="hljs-number">0</span>)
+        <span class="hljs-keyword">await</span> dispatcher.DispatchAsync(domainEvents, cancellationToken);
 
-db.Add(AuditTrail.New(httpContextAccessor, <span class="hljs-string">&quot;Role&quot;</span>, role.Id, <span class="hljs-string">&quot;Deleted&quot;</span>, before: before));
-<span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);
+    <span class="hljs-keyword">return</span> affected;
+}
 </code></pre>
-<p>Sulle entità di dominio con FK <code>Restrict</code> il controllo diventa un conteggio delle righe che
-puntano all'entità: l'handler dà il messaggio comprensibile (<code>409 Conflict</code>), la FK è la stessa
-regola applicata anche a chi scrivesse sul database da fuori. <strong>Due difese sovrapposte,
-deliberatamente.</strong></p>
-<h3 id="update-con-m2m-il-caso-di-updatedat">Update con M2M: il caso di <code>UpdatedAt</code></h3>
-<pre><code class="language-csharp"><span class="hljs-comment">// Include delle M2M: servono per lo snapshot audit e perché EF possa calcolare</span>
-<span class="hljs-comment">// il delta delle righe di join quando riassegnamo le liste.</span>
-<span class="hljs-keyword">var</span> user = <span class="hljs-keyword">await</span> db.Set&lt;User&gt;()
-    .Include(u =&gt; u.Groups)
-    .Include(u =&gt; u.Roles)
-    .FirstOrDefaultAsync(u =&gt; u.Id == request.Id, ct)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">&quot;User&quot;</span>, request.Id);
-
-<span class="hljs-keyword">var</span> before = user.ToAuditJson();
-
-user.Roles  = <span class="hljs-keyword">await</span> db.Set&lt;Role&gt;().Where(r =&gt; roleIds.Contains(r.Id)).ToListAsync(ct);
-user.Groups = <span class="hljs-keyword">await</span> db.Set&lt;Group&gt;().Where(g =&gt; groupIds.Contains(g.Id)).ToListAsync(ct);
-
-<span class="hljs-comment">// Le modifiche alle sole M2M non marcano l&#x27;utente come Modified: si tocca UpdatedAt</span>
-<span class="hljs-comment">// esplicitamente così ApplyTimestamps lo aggiorna anche in quel caso.</span>
-user.UpdatedAt = DateTime.UtcNow;
-
-<span class="hljs-keyword">await</span> db.SaveChangesAsync(ct);
+<p>Gli eventi si raccolgono <strong>dopo</strong> il salvataggio (prima, gli id delle entità nuove varrebbero <code>0</code>) e
+si pubblicano <strong>dopo</strong> il commit (un evento dice che un fatto <em>è avvenuto</em>). Il dettaglio è in
+<a href="../architettura/comandi-e-query.html#gli-eventi-di-dominio-e-la-transazione">Comandi e query</a>.</p>
+<h3 id="delete-con-dipendenze-due-difese-sovrapposte">Delete con dipendenze: due difese sovrapposte</h3>
+<p>La regola di cancellabilità appartiene all'aggregato, non all'handler:</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// AppDemo.Domain/Rentals/RentalContract.cs</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">EnsureDeletable</span>()</span>
+{
+    <span class="hljs-comment">// Un contratto confermato o chiuso è un documento commerciale: si annulla, non si</span>
+    <span class="hljs-comment">// cancella. Farlo sparire toglierebbe la traccia di un impegno realmente assunto.</span>
+    <span class="hljs-keyword">if</span> (Status != RentalStatus.Draft)
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(
+            <span class="hljs-string">$&quot;Solo i contratti in bozza si possono eliminare: <span class="hljs-subst">{Reference}</span> è in stato <span class="hljs-subst">{Status}</span>. &quot;</span> +
+            <span class="hljs-string">&quot;Usa l&#x27;annullamento per interrompere un contratto già confermato.&quot;</span>);
+}
 </code></pre>
-<p>⚠️ È <strong>la trappola EF da non reintrodurre</strong>: cambiare solo le collezioni non porta l'entità in stato
-<code>Modified</code>, quindi <code>ApplyTimestamps</code> non la vedrebbe. Il pattern corretto è <code>Include</code> → riassegna la
-lista con le entità caricate → tocca <code>UpdatedAt</code>.</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// L&#x27;handler la chiama soltanto.</span>
+<span class="hljs-keyword">var</span> contract = <span class="hljs-keyword">await</span> contracts.GetByIdAsync(request.Id, ct)
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Contratto con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
+
+contract.EnsureDeletable();
+
+contracts.Remove(contract);
+<span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(ct);
+</code></pre>
+<p>Sulle entità referenziate da altre, il controllo applicativo anticipa il vincolo del database: il
+dominio dà il messaggio comprensibile (<code>409 Conflict</code>), la FK <code>Restrict</code> è la stessa regola applicata
+anche a chi scrivesse sul database da fuori. <strong>Due difese sovrapposte, deliberatamente.</strong></p>
 <h3 id="operazioni-bulk-senza-caricare-le-entita">Operazioni bulk senza caricare le entità</h3>
 <pre><code class="language-csharp"><span class="hljs-keyword">await</span> db.Set&lt;RefreshToken&gt;()
     .Where(t =&gt; t.UserId == user.Id &amp;&amp; !t.IsRevoked)
     .ExecuteUpdateAsync(s =&gt; s.SetProperty(t =&gt; t.IsRevoked, <span class="hljs-literal">true</span>), ct);
 </code></pre>
 <p><code>ExecuteUpdateAsync</code> / <code>ExecuteDeleteAsync</code> emettono una sola <code>UPDATE</code>/<code>DELETE</code> senza materializzare
-le righe. Attenzione: <strong>bypassano il change tracker</strong>, quindi non passano da <code>ApplyTimestamps</code> e non
-aggiornano entità già in memoria.</p>
+le righe. Vivono <strong>dentro un repository</strong>, perché toccano EF direttamente.</p>
+<p>⚠️ <strong>Bypassano il change tracker</strong>, quindi non passano dagli interceptor: niente timestamp, niente
+audit log, nessun evento di dominio. Vanno usate dove quel comportamento è accettabile — la revoca
+massiva dei token lo è, la cancellazione di entità di dominio quasi mai.</p>
 <h2 id="5-le-due-migration-una-per-provider">5. Le due migration, una per provider</h2>
 <p>Ogni modifica al modello richiede <strong>due</strong> migration. I comandi sono nel commento di
 <code>DesignTimeFactories.cs</code>:</p>
-<pre><code class="language-bash">dotnet dotnet-ef migrations add &lt;Nome&gt; --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add &lt;Nome&gt; --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+<p>Le migration vivono in <code>&lt;Progetto&gt;.Infrastructure</code>, ma il comando ha bisogno di <code>&lt;Progetto&gt;.Api</code>
+come startup project — è lì la configurazione:</p>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/&lt;Progetto&gt;.Api
+
+dotnet dotnet-ef migrations add &lt;Nome&gt; \
+  --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj \
+  --startup-project &lt;Progetto&gt;.Api.csproj \
+  --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+
+dotnet dotnet-ef migrations add &lt;Nome&gt; \
+  --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj \
+  --startup-project &lt;Progetto&gt;.Api.csproj \
+  --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 </code></pre>
 <blockquote>
 <p>Nel template le due cartelle sono <strong>vuote</strong>: la prima coppia di migration (<code>InitialCreate</code>) si
@@ -523,18 +641,29 @@ girando; le dimensioni tornano in <strong>byte</strong>, e la conversione in MB 
 l'handler, uguali per entrambi.</p>
 <h2 id="9-checklist-per-una-nuova-entita">9. Checklist per una nuova entità</h2>
 <ol>
-<li>Classe in <code>Entities/</code> — <code>int Id</code>, <code>ITimestamped</code> se ha i timestamp.</li>
-<li>Blocco in <code>OnModelCreating</code>: <code>ToTable</code>, <code>HasMaxLength</code> su ogni stringa, indici, FK/M2M.</li>
+<li><strong>Aggregato</strong> in <code>&lt;Progetto&gt;.Domain/&lt;Dominio&gt;/</code>: estende <code>Entity</code> o <code>AggregateRoot</code>, setter
+privati, collezioni in sola lettura, factory method come unica porta di costruzione. Aggiungi
+<code>ITimestamped</code> se ha i timestamp e <code>IVersioned</code> se serve concorrenza ottimistica.</li>
+<li><strong><code>IEntityTypeConfiguration</code></strong> in <code>Infrastructure/Persistence/Configurations/</code>: <code>ToTable</code>,
+<code>HasMaxLength</code> su ogni stringa, indici, FK/M2M. Viene raccolta in automatico, non c'è nessun
+file centrale da toccare.</li>
+<li><strong>Repository</strong> (se l'entità si scrive): interfaccia in <code>Application/Abstractions/Persistence/</code>,
+implementazione in <code>Infrastructure/Persistence/Repositories/</code>, registrazione in
+<code>DependencyInjection.cs</code>.</li>
 <li><strong>Due</strong> migration (SqlServer + Postgres) con i comandi della sezione 5.</li>
 <li>Verifica su <strong>entrambi</strong> i provider — in particolare le query con <code>Contains</code> su stringa, che
 cambiano comportamento fra i due.</li>
 </ol>
+<p>I test di architettura verificano da soli i punti 1 e 3: setter pubblici o collezioni mutabili
+fanno fallire la build.</p>
 <p>Il percorso end-to-end, backend + frontend, è in
 <a href="../guide/nuova-feature.html">Aggiungere una feature</a>.</p>
 <h2 id="approfondimenti">Approfondimenti</h2>
 <ul>
+<li><strong><a href="../architettura/clean-architecture.html">Clean Architecture</a></strong> — i quattro layer e la regola delle dipendenze</li>
+<li><strong><a href="../architettura/comandi-e-query.html">Comandi e query</a></strong> — repository, unit of work, <code>IReadDbContext</code></li>
 <li><strong><a href="architettura.html">Architettura</a></strong> — la struttura in cui questo codice si inserisce</li>
-<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché niente repository, che cosa è stato scartato</li>
+<li><strong><a href="decisioni.html">Decisioni</a></strong> — perché <code>int</code>, perché i repository solo sulle scritture</li>
 </ul>
 
       </article>

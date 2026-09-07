@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="infrastructure/panoramica.html">Panoramica</a></li>
@@ -58,8 +67,8 @@
       <article class="prose">
 <h1 id="documentazione-app-boilerplate">Documentazione app-boilerplate</h1>
 <p><strong>app-boilerplate</strong> è un template <a href="https://copier.readthedocs.io" target="_blank" rel="noopener">Copier</a> da cui nascono
-applicazioni gestionali già impiantate: un monorepo con <strong>API .NET 10</strong> organizzata a vertical
-slice e <strong>frontend Vue 3 + Vuetify</strong>, che gira indifferentemente su <strong>SQL Server o PostgreSQL</strong>
+applicazioni gestionali già impiantate: un monorepo con <strong>API .NET 10</strong> in <strong>Clean Architecture</strong>
+e <strong>frontend Vue 3 + Vuetify</strong>, che gira indifferentemente su <strong>SQL Server o PostgreSQL</strong>
 (via Entity Framework Core) e autentica gli utenti con credenziali locali, con <strong>Azure AD</strong> o con
 l'<strong>identità Windows</strong>.</p>
 <p>Il template non porta un dominio applicativo: porta tutto ciò che in un gestionale viene <em>prima</em>
@@ -84,6 +93,27 @@ documentazione del template: la fonte di verità ultima resta il codice del repo
       <a class="card" href="progetto/skill.html">
         <h3>Le skill Claude</h3>
         <p>Le skill incluse nel template: che cosa scaffoldano e quando conviene invocarle.</p>
+      </a>
+    </div>
+  </section>
+  <section class="home-section">
+    <h2>Architettura</h2>
+    <div class="card-grid">
+      <a class="card" href="architettura/clean-architecture.html">
+        <h3>Clean Architecture</h3>
+        <p>I quattro layer, la regola delle dipendenze e i test che la fanno rispettare dalla build.</p>
+      </a>
+      <a class="card" href="architettura/dove-mettere-la-logica.html">
+        <h3>Dove mettere la logica</h3>
+        <p>Handler, domain service o aggregato: la domanda che decide, con gli esempi reali del progetto.</p>
+      </a>
+      <a class="card" href="architettura/il-dominio.html">
+        <h3>Il dominio</h3>
+        <p>Aggregati, value object, macchine a stati, eventi e specification: i mattoni e quando usarli.</p>
+      </a>
+      <a class="card" href="architettura/comandi-e-query.html">
+        <h3>Comandi e query</h3>
+        <p>Repository e unit of work per le scritture, IReadDbContext per le letture. Perché due strade.</p>
       </a>
     </div>
   </section>

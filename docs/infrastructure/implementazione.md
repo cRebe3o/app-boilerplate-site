@@ -1,13 +1,14 @@
 # Infrastruttura — implementazione
 
 Il codice di ogni pezzo dell'architettura, nell'ordine in cui lo si incontra leggendo il backend.
-I frammenti riproducono i file reali in `apps/backend/<Progetto>.Api/Features/_Shared/`, che restano
-la fonte di verità: qui sono accompagnati dal **perché**, che nel codice non sempre c'è.
+I frammenti riproducono i file reali in `apps/backend/`, che restano la fonte di verità: qui sono
+accompagnati dal **perché**, che nel codice non sempre c'è.
 
 ## 1. Lo switch di provider
 
-`Features/_Shared/Extensions/DatabaseExtensions.cs` è il punto unico in cui il provider viene scelto.
-È l'unico file dell'applicazione che nomina `UseSqlServer` e `UseNpgsql`.
+`<Progetto>.Infrastructure/DependencyInjection.cs` è il punto unico in cui il provider viene scelto.
+È l'unico file dell'applicazione che nomina `UseSqlServer` e `UseNpgsql` (a parte le factory
+design-time, che servono a `dotnet ef`).
 
 ```csharp
 public static class DatabaseExtensions
@@ -83,10 +84,9 @@ builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, relo
 builder.Configuration.AddEnvironmentVariables();
 ```
 
-## 2. `AppDbContext`: astratto, con tutto il modello
+## 2. `AppDbContext`: astratto, e invisibile agli handler
 
-`Persistence/AppDbContext.cs` è `abstract` e contiene l'intero `OnModelCreating`. Le due derivate
-sono **una riga ciascuna**:
+`Persistence/AppDbContext.cs` è `abstract`. Le due derivate sono **una riga ciascuna**:
 
 ```csharp
 public class SqlServerAppDbContext(DbContextOptions<SqlServerAppDbContext> options) : AppDbContext(options);
@@ -95,38 +95,65 @@ public class PostgresAppDbContext(DbContextOptions<PostgresAppDbContext> options
 
 Non contengono configurazione: esistono **solo** per dare un'identità ai due set di migration.
 
-Nota che non ci sono proprietà `DbSet` nominate: le entità si raggiungono con `db.Set<T>()`. Una
-entità in meno da dichiarare a ogni aggiunta.
+Il commento in testa alla classe dichiara il proprio confine:
 
-### I timestamp automatici
+> Gli handler NON vedono questa classe: usano `IReadDbContext` per le query e i repository per i
+> comandi. Qui dentro resta solo la meccanica di persistenza.
+
+La configurazione del modello non è più in un `OnModelCreating` monolitico: ogni entità ha la
+propria `IEntityTypeConfiguration` in `Persistence/Configurations/`, raccolta automaticamente.
 
 ```csharp
-private void ApplyTimestamps()
+protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
-    var now = DateTime.UtcNow;
-    foreach (var entry in ChangeTracker.Entries<ITimestamped>())
-    {
-        if (entry.State == EntityState.Added)
-        {
-            entry.Entity.CreatedAt = now;
-            entry.Entity.UpdatedAt = now;
-        }
-        else if (entry.State == EntityState.Modified)
-        {
-            entry.Entity.UpdatedAt = now;
-        }
-    }
-}
-
-public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
-{
-    ApplyTimestamps();
-    return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    // Raccoglie tutte le IEntityTypeConfiguration di questo assembly: aggiungere
+    // un'entità non richiede di toccare questo file.
+    modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 }
 ```
 
-L'override è sulla versione con `acceptAllChangesOnSuccess`, che è quella su cui convergono tutti gli
-overload: intercettarla copre ogni chiamata, sync e async.
+`AppDbContext` implementa anche `IReadDbContext`, ed è l'unico punto in cui i due mondi si toccano:
+
+```csharp
+public abstract class AppDbContext(DbContextOptions options) : DbContext(options), IReadDbContext
+{
+    // AsNoTracking su tutte: le query di lettura non devono popolare il change tracker,
+    // che sarebbe puro costo — nessuna entità restituita da qui viene mai modificata.
+    IQueryable<User> IReadDbContext.Users => Set<User>().AsNoTracking();
+    IQueryable<RentalContract> IReadDbContext.RentalContracts => Set<RentalContract>().AsNoTracking();
+    // …
+}
+```
+
+Le implementazioni sono **esplicite** (`IReadDbContext.Users`): sono raggiungibili solo attraverso
+l'interfaccia, non da chi ha in mano un `AppDbContext`.
+
+### I timestamp, l'audit e la concorrenza: tre interceptor
+
+Non sono più responsabilità del `DbContext` né degli handler. Sono interceptor registrati in
+`DependencyInjection`, così valgono per **qualunque** salvataggio — anche quelli del seed o di un
+hosted service, che non passano da un handler.
+
+| Interceptor | Che cosa fa |
+|---|---|
+| `TimestampInterceptor` | `CreatedAt` / `UpdatedAt` su ogni entità `ITimestamped` |
+| `AuditLogInterceptor` | Una riga `AuditLogs` per ogni radice di aggregato creata, modificata o cancellata, con snapshot prima/dopo |
+| `ConcurrencyTokenInterceptor` | Rigenera il `Guid` di concorrenza delle entità `IVersioned` |
+
+```csharp
+services.AddScoped<TimestampInterceptor>();
+services.AddScoped<AuditLogInterceptor>();
+services.AddScoped<ConcurrencyTokenInterceptor>();
+```
+
+Il ragionamento è lo stesso per tutti e tre, ed è scritto in `ConcurrencyTokenInterceptor`:
+
+> Farlo qui invece che negli aggregati significa che nessuno può dimenticarsene: un nuovo metodo su
+> Equipment, un import massivo, una correzione fatta da un hosted service, sono tutti coperti senza
+> scrivere una riga in più.
+
+> ⚠️ **Un handler non scrive mai un audit log a mano.** Se stai per aggiungere una riga `AuditLog`
+> in un handler, l'interceptor lo sta già facendo.
 
 ### Le M2M: skip navigation unidirezionale
 
@@ -144,6 +171,24 @@ e.HasMany(u => u.Groups).WithMany()
 `WithMany()` **senza argomenti** è la parte importante: la navigazione è unidirezionale, esiste
 `User.Groups` ma non `Group.Users`. Meno superficie da mantenere, e nessun rischio di cicli di
 serializzazione. La join table non ha una classe: le righe le gestisce EF quando si modifica la lista.
+
+Le liste non si riassegnano da fuori: l'aggregato espone metodi che controllano le proprie
+relazioni (`user.AssignRoles(...)`, `user.AssignGroups(...)`), e la collezione è in sola lettura.
+
+⚠️ **La trappola EF, e come è stata chiusa.** Cambiare solo una collezione M2M lascia l'entità in
+stato `Unchanged`: senza accorgimenti, riassegnare i ruoli di un utente non aggiornerebbe il suo
+`UpdatedAt`. Prima bisognava ricordarsi di toccarlo a mano in ogni handler che riassegnava una
+lista. Ora se ne occupa `TimestampInterceptor`, che guarda anche le collezioni:
+
+```csharp
+else if (entry.State == EntityState.Modified || HasModifiedCollections(entry))
+    entry.Entity.UpdatedAt = now;
+
+// Riassegnare una M2M non marca l'entità Modified, ma per l'utente è a tutti
+// gli effetti una modifica.
+private static bool HasModifiedCollections(EntityEntry entry) =>
+    entry.State == EntityState.Unchanged && entry.Collections.Any(c => c.IsModified);
+```
 
 ### Le colonne vanno dimensionate
 
@@ -228,110 +273,143 @@ nei log con la sua durata.
 handler **lanciano** e non catturano:
 
 ```csharp
-var group = await db.Set<Group>().FirstOrDefaultAsync(x => x.Id == request.Id, ct)
-    ?? throw new NotFoundException("Group", request.Id);
+var group = await groups.GetByIdAsync(request.Id, ct)
+    ?? throw new NotFoundException($"Gruppo con id {request.Id} non trovato.");
 ```
 
-Le eccezioni di dominio vivono in `_Shared/Exceptions/` — `NotFoundException`, `ConflictException`,
-`ForbiddenException`, `UnauthorizedException` — e il middleware le mappa su 404, 409, 403, 401. Tutto
-il resto è un 500, con il dettaglio nel log e non nella risposta.
+Le eccezioni di dominio vivono in `<Progetto>.Domain/Exceptions/` — `NotFoundException`,
+`ConflictException`, `InvariantViolationException`, `ForbiddenException`, `UnauthorizedException` —
+e il middleware le mappa su 404, 409, 422, 403, 401. Tutto il resto è un 500, con il dettaglio nel
+log e non nella risposta.
+
+Che stiano nel **dominio** e non in un progetto di utilità è coerente con il resto: un contratto
+confermato che rifiuta una modifica sta esprimendo una regola di business, non un errore tecnico.
 
 Il formato è sempre **ProblemDetails** (RFC 7807), quindi il frontend può tradurre ogni errore con
 un unico composable (`useApiErrors`) invece che caso per caso.
 
-## 4. Gli handler: `AppDbContext` diretto, niente repository
+## 4. Gli handler: astrazioni, mai `AppDbContext`
 
-Gli handler iniettano `AppDbContext` e usano `db.Set<T>()`. Non c'è nessuno strato intermedio.
+Gli handler vivono in `<Progetto>.Application` e non conoscono EF Core. Che cosa iniettano dipende
+dal tipo di operazione:
 
-### Lettura: proiezione diretta sul response
+| Operazione | Dipendenze |
+|---|---|
+| **Comando** (Create / Update / Delete) | `I{Aggregato}Repository` + `IUnitOfWork` |
+| **Query** (lettura) | `IReadDbContext` + `IQueryExecutor` |
+
+Il perché di questa asimmetria è in [Comandi e query](../architettura/comandi-e-query.md).
+
+### Lettura: `IQueryable` componibile, proiettato sul response
 
 ```csharp
-var items = await db.Set<Group>()
-    .AsNoTracking()
-    .Select(g => new GroupResponse(g.Id, g.Name, g.Description))
-    .ToListAsync(ct);
+public class GetGroupsHandler(IReadDbContext db, IQueryExecutor executor)
+    : IRequestHandler<GetGroupsQuery, List<GroupResponse>>
+{
+    public Task<List<GroupResponse>> Handle(GetGroupsQuery request, CancellationToken ct) =>
+        executor.ToListAsync(
+            db.Groups.Select(g => new GroupResponse(g.Id, g.Name, g.Description)), ct);
+}
 ```
 
-`Select` verso il record di response fa sì che EF generi una `SELECT` con le sole colonne che servono
-e non popoli il change tracker. Niente entità intermedie, niente mapping manuale.
+`Select` verso il record di response fa sì che EF generi una `SELECT` con le sole colonne che
+servono. Il tracking è già disattivato a monte, in `IReadDbContext`.
 
-### Scrittura: l'id identity esiste solo dopo il `SaveChanges`
+`IQueryExecutor` esiste perché `ToListAsync` e `CountAsync` sono extension method legate al provider
+EF: invocarle su un `IQueryable` prodotto da un fake in memoria fallirebbe a runtime. Passando
+dall'astrazione, l'handler resta eseguibile nei test unitari.
+
+### Scrittura: carica l'aggregato, chiedi al dominio, salva
 
 ```csharp
-public class CreateGroupHandler(
-    AppDbContext db,
-    IHttpContextAccessor httpContextAccessor) : IRequestHandler<CreateGroupCommand, CreateGroupResponse>
+public class ConfirmRentalContractHandler(
+    IRentalContractRepository contracts,
+    ICustomerRepository customers,
+    IDateTimeProvider clock,
+    IUnitOfWork unitOfWork) : IRequestHandler<ConfirmRentalContractCommand, ConfirmRentalContractResponse>
 {
-    public async Task<CreateGroupResponse> Handle(CreateGroupCommand request, CancellationToken ct)
+    public async Task<ConfirmRentalContractResponse> Handle(
+        ConfirmRentalContractCommand request, CancellationToken ct)
     {
-        var group = new Group { Name = request.Name, Description = request.Description };
+        var contract = await contracts.GetByIdAsync(request.Id, ct)
+            ?? throw new NotFoundException($"Contratto con id {request.Id} non trovato.");
 
-        db.Add(group);
-        await db.SaveChangesAsync(ct);   // assegna l'id identity
+        var customer = await customers.GetByIdAsync(contract.CustomerId, ct)
+            ?? throw new NotFoundException($"Cliente con id {contract.CustomerId} non trovato.");
 
-        db.Add(AuditTrail.New(httpContextAccessor, "Group", group.Id, "Created"));
-        await db.SaveChangesAsync(ct);
+        // L'handler CARICA i dati, il domain service DECIDE.
+        var active = await contracts.GetActiveByCustomerAsync(customer.Id, ct);
+        CustomerCreditService.EnsureCanCommit(customer, contract.TotalAmount, active);
 
-        return new CreateGroupResponse(group.Id);
+        // L'aggregato impone i propri invarianti e solleva l'evento.
+        contract.Confirm(clock.UtcNow);
+
+        await unitOfWork.SaveChangesAsync(ct);   // audit e timestamp: li fanno gli interceptor
+
+        return new ConfirmRentalContractResponse(/* … */);
     }
 }
 ```
 
-I due `SaveChangesAsync` non sono una svista: **l'audit log ha bisogno dell'id**, che il database
-assegna solo al primo salvataggio. È la conseguenza pratica più visibile della scelta di id generati
-dal database.
+**Un solo `SaveChangesAsync`**, e nessuna menzione dell'audit: lo scrive l'interceptor. Nota anche
+`clock.UtcNow` al posto di `DateTime.UtcNow` — è ciò che rende l'handler testabile con una data
+fissata.
 
-### Delete con dipendenze: conteggio prima, per un errore leggibile
+### `IUnitOfWork`: il commit e poi gli eventi
 
-Quando un'entità è referenziata da altre, il pattern del template è anticipare il vincolo del
-database con un controllo applicativo:
-
-```csharp
-var role = await db.Set<Role>().FirstOrDefaultAsync(x => x.Id == request.Id, ct)
-    ?? throw new NotFoundException("Role", request.Id);
-
-if (role.IsSystem)
-    throw new ConflictException("Impossibile eliminare un ruolo di sistema.");
-
-var before = role.ToAuditJson();
-db.Remove(role);
-await db.SaveChangesAsync(ct);
-
-db.Add(AuditTrail.New(httpContextAccessor, "Role", role.Id, "Deleted", before: before));
-await db.SaveChangesAsync(ct);
-```
-
-Sulle entità di dominio con FK `Restrict` il controllo diventa un conteggio delle righe che
-puntano all'entità: l'handler dà il messaggio comprensibile (`409 Conflict`), la FK è la stessa
-regola applicata anche a chi scrivesse sul database da fuori. **Due difese sovrapposte,
-deliberatamente.**
-
-### Update con M2M: il caso di `UpdatedAt`
+`SaveChangesAsync` non è solo un passaggio al `DbContext`: è anche il punto in cui gli eventi di
+dominio vengono pubblicati, nell'ordine giusto.
 
 ```csharp
-// Include delle M2M: servono per lo snapshot audit e perché EF possa calcolare
-// il delta delle righe di join quando riassegnamo le liste.
-var user = await db.Set<User>()
-    .Include(u => u.Groups)
-    .Include(u => u.Roles)
-    .FirstOrDefaultAsync(u => u.Id == request.Id, ct)
-    ?? throw new NotFoundException("User", request.Id);
+public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+{
+    var affected = await db.SaveChangesAsync(cancellationToken);
 
-var before = user.ToAuditJson();
+    // Solo ora gli id identity esistono e gli eventi puntano a entità reali.
+    var domainEvents = CollectAndClearDomainEvents();
 
-user.Roles  = await db.Set<Role>().Where(r => roleIds.Contains(r.Id)).ToListAsync(ct);
-user.Groups = await db.Set<Group>().Where(g => groupIds.Contains(g.Id)).ToListAsync(ct);
+    if (domainEvents.Count > 0)
+        await dispatcher.DispatchAsync(domainEvents, cancellationToken);
 
-// Le modifiche alle sole M2M non marcano l'utente come Modified: si tocca UpdatedAt
-// esplicitamente così ApplyTimestamps lo aggiorna anche in quel caso.
-user.UpdatedAt = DateTime.UtcNow;
-
-await db.SaveChangesAsync(ct);
+    return affected;
+}
 ```
 
-⚠️ È **la trappola EF da non reintrodurre**: cambiare solo le collezioni non porta l'entità in stato
-`Modified`, quindi `ApplyTimestamps` non la vedrebbe. Il pattern corretto è `Include` → riassegna la
-lista con le entità caricate → tocca `UpdatedAt`.
+Gli eventi si raccolgono **dopo** il salvataggio (prima, gli id delle entità nuove varrebbero `0`) e
+si pubblicano **dopo** il commit (un evento dice che un fatto *è avvenuto*). Il dettaglio è in
+[Comandi e query](../architettura/comandi-e-query.md#gli-eventi-di-dominio-e-la-transazione).
+
+### Delete con dipendenze: due difese sovrapposte
+
+La regola di cancellabilità appartiene all'aggregato, non all'handler:
+
+```csharp
+// AppDemo.Domain/Rentals/RentalContract.cs
+public void EnsureDeletable()
+{
+    // Un contratto confermato o chiuso è un documento commerciale: si annulla, non si
+    // cancella. Farlo sparire toglierebbe la traccia di un impegno realmente assunto.
+    if (Status != RentalStatus.Draft)
+        throw new ConflictException(
+            $"Solo i contratti in bozza si possono eliminare: {Reference} è in stato {Status}. " +
+            "Usa l'annullamento per interrompere un contratto già confermato.");
+}
+```
+
+```csharp
+// L'handler la chiama soltanto.
+var contract = await contracts.GetByIdAsync(request.Id, ct)
+    ?? throw new NotFoundException($"Contratto con id {request.Id} non trovato.");
+
+contract.EnsureDeletable();
+
+contracts.Remove(contract);
+await unitOfWork.SaveChangesAsync(ct);
+```
+
+Sulle entità referenziate da altre, il controllo applicativo anticipa il vincolo del database: il
+dominio dà il messaggio comprensibile (`409 Conflict`), la FK `Restrict` è la stessa regola applicata
+anche a chi scrivesse sul database da fuori. **Due difese sovrapposte, deliberatamente.**
 
 ### Operazioni bulk senza caricare le entità
 
@@ -342,17 +420,32 @@ await db.Set<RefreshToken>()
 ```
 
 `ExecuteUpdateAsync` / `ExecuteDeleteAsync` emettono una sola `UPDATE`/`DELETE` senza materializzare
-le righe. Attenzione: **bypassano il change tracker**, quindi non passano da `ApplyTimestamps` e non
-aggiornano entità già in memoria.
+le righe. Vivono **dentro un repository**, perché toccano EF direttamente.
+
+⚠️ **Bypassano il change tracker**, quindi non passano dagli interceptor: niente timestamp, niente
+audit log, nessun evento di dominio. Vanno usate dove quel comportamento è accettabile — la revoca
+massiva dei token lo è, la cancellazione di entità di dominio quasi mai.
 
 ## 5. Le due migration, una per provider
 
 Ogni modifica al modello richiede **due** migration. I comandi sono nel commento di
 `DesignTimeFactories.cs`:
 
+Le migration vivono in `<Progetto>.Infrastructure`, ma il comando ha bisogno di `<Progetto>.Api`
+come startup project — è lì la configurazione:
+
 ```bash
-dotnet dotnet-ef migrations add <Nome> --context SqlServerAppDbContext --output-dir Features/_Shared/Persistence/Migrations/SqlServer
-dotnet dotnet-ef migrations add <Nome> --context PostgresAppDbContext  --output-dir Features/_Shared/Persistence/Migrations/Postgres
+cd apps/backend/<Progetto>.Api
+
+dotnet dotnet-ef migrations add <Nome> \
+  --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj \
+  --startup-project <Progetto>.Api.csproj \
+  --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+
+dotnet dotnet-ef migrations add <Nome> \
+  --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj \
+  --startup-project <Progetto>.Api.csproj \
+  --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 ```
 
 > Nel template le due cartelle sono **vuote**: la prima coppia di migration (`InitialCreate`) si
@@ -548,16 +641,28 @@ l'handler, uguali per entrambi.
 
 ## 9. Checklist per una nuova entità
 
-1. Classe in `Entities/` — `int Id`, `ITimestamped` se ha i timestamp.
-2. Blocco in `OnModelCreating`: `ToTable`, `HasMaxLength` su ogni stringa, indici, FK/M2M.
-3. **Due** migration (SqlServer + Postgres) con i comandi della sezione 5.
-4. Verifica su **entrambi** i provider — in particolare le query con `Contains` su stringa, che
+1. **Aggregato** in `<Progetto>.Domain/<Dominio>/`: estende `Entity` o `AggregateRoot`, setter
+   privati, collezioni in sola lettura, factory method come unica porta di costruzione. Aggiungi
+   `ITimestamped` se ha i timestamp e `IVersioned` se serve concorrenza ottimistica.
+2. **`IEntityTypeConfiguration`** in `Infrastructure/Persistence/Configurations/`: `ToTable`,
+   `HasMaxLength` su ogni stringa, indici, FK/M2M. Viene raccolta in automatico, non c'è nessun
+   file centrale da toccare.
+3. **Repository** (se l'entità si scrive): interfaccia in `Application/Abstractions/Persistence/`,
+   implementazione in `Infrastructure/Persistence/Repositories/`, registrazione in
+   `DependencyInjection.cs`.
+4. **Due** migration (SqlServer + Postgres) con i comandi della sezione 5.
+5. Verifica su **entrambi** i provider — in particolare le query con `Contains` su stringa, che
    cambiano comportamento fra i due.
+
+I test di architettura verificano da soli i punti 1 e 3: setter pubblici o collezioni mutabili
+fanno fallire la build.
 
 Il percorso end-to-end, backend + frontend, è in
 [Aggiungere una feature](../guide/nuova-feature.md).
 
 ## Approfondimenti
 
+- **[Clean Architecture](../architettura/clean-architecture.md)** — i quattro layer e la regola delle dipendenze
+- **[Comandi e query](../architettura/comandi-e-query.md)** — repository, unit of work, `IReadDbContext`
 - **[Architettura](architettura.md)** — la struttura in cui questo codice si inserisce
-- **[Decisioni](decisioni.md)** — perché `int`, perché niente repository, che cosa è stato scartato
+- **[Decisioni](decisioni.md)** — perché `int`, perché i repository solo sulle scritture

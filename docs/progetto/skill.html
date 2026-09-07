@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -99,15 +108,19 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 <tbody>
 <tr>
 <td><strong><code>vertical-slice-backend</code></strong></td>
-<td>Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend</td>
+<td>Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + <code>IUnitOfWork</code> e le query <code>IReadDbContext</code></td>
+</tr>
+<tr>
+<td><strong><code>domain-modeling</code></strong></td>
+<td>Modellare una regola di business: che cosa è un aggregato, dove vive una regola, quando serve un value object, un domain service, un evento o una specification. Vedi <a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></td>
 </tr>
 <tr>
 <td><strong><code>db-entity</code></strong></td>
-<td>Una nuova entità EF Core: classe POCO, mappatura in <code>AppDbContext</code>, indici, relazioni e la <strong>doppia migration</strong> SQL Server + Postgres</td>
+<td>Una nuova entità: l'aggregato in <code>Domain/</code>, la sua <code>IEntityTypeConfiguration</code>, il repository e la <strong>doppia migration</strong> SQL Server + Postgres</td>
 </tr>
 <tr>
 <td><strong><code>audit-log</code></strong></td>
-<td>Ogni operazione di scrittura: come si registra l'audit con <code>AuditTrail</code> e gli snapshot <code>ToAuditJson()</code></td>
+<td>Come funziona l'audit automatico via <code>AuditLogInterceptor</code> e che cosa deve fare un repository perché lo snapshot <em>prima</em> sia corretto. Un handler non scrive mai l'audit a mano</td>
 </tr>
 <tr>
 <td><strong><code>permissions</code></strong></td>
@@ -207,7 +220,7 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 </table>
 </div>
 <h2 id="i-comandi">I comandi</h2>
-<p>Oltre alle skill, sei comandi per le operazioni ricorrenti:</p>
+<p>Oltre alle skill, cinque comandi per le operazioni ricorrenti:</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -237,21 +250,17 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 <td><code>/fix</code></td>
 <td>Interviene su un problema descritto a parole</td>
 </tr>
-<tr>
-<td><code>/migrate-endpoints</code></td>
-<td><em>Legacy, una tantum</em>: sposta gli endpoint dalle <code>_Shared/Extensions/</code> alle cartelle delle slice. Serve solo su progetti generati prima di quella convenzione</td>
-</tr>
 </tbody>
 </table>
 </div>
 <h2 id="le-combinazioni-che-ricorrono">Le combinazioni che ricorrono</h2>
 <p>Le skill sono pensate per comporsi, e le richieste reali ne toccano quasi sempre più d'una:</p>
-<pre><code>Una nuova entità di dominio, dal database alla pagina
-   db-entity  →  vertical-slice-backend  →  audit-log  →  permissions
-                                                              │
-                                          vue-feature  ←──────┘
-                                                │
-                                     vuetify-dialog-form  ·  detail-page
+<pre><code>Una nuova entità di dominio, dal modello alla pagina
+   domain-modeling  →  db-entity  →  vertical-slice-backend  →  audit-log  →  permissions
+                                                                                   │
+                                                             vue-feature  ←─────────┘
+                                                                   │
+                                                  vuetify-dialog-form  ·  detail-page
 </code></pre>
 <p>Una lista che deve crescere: <code>pagination</code> e <code>search-filter</code> insieme, perché il filtro va applicato
 prima della paginazione e non dopo.</p>

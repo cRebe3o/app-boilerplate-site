@@ -1,8 +1,8 @@
 # Documentazione app-boilerplate
 
 **app-boilerplate** è un template [Copier](https://copier.readthedocs.io) da cui nascono
-applicazioni gestionali già impiantate: un monorepo con **API .NET 10** organizzata a vertical
-slice e **frontend Vue 3 + Vuetify**, che gira indifferentemente su **SQL Server o PostgreSQL**
+applicazioni gestionali già impiantate: un monorepo con **API .NET 10** in **Clean Architecture**
+e **frontend Vue 3 + Vuetify**, che gira indifferentemente su **SQL Server o PostgreSQL**
 (via Entity Framework Core) e autentica gli utenti con credenziali locali, con **Azure AD** o con
 l'**identità Windows**.
 

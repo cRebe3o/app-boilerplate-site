@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -142,11 +151,38 @@ l'applicazione.</p>
 </table>
 </div>
 <p>Il backend <strong>non interpreta</strong> il contenuto: fa un confronto esatto sul valore normalizzato. La
-normalizzazione è centralizzata in un unico helper, <code>Username.Normalize</code>, applicato sia in scrittura
-(creazione/modifica utente, seed) sia in lettura (ogni handler di login):</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Features/_Shared/Helpers/Username.cs</span>
-<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-built_in">string</span> <span class="hljs-title">Normalize</span>(<span class="hljs-params"><span class="hljs-built_in">string</span>? <span class="hljs-keyword">value</span></span>)</span> =&gt; (<span class="hljs-keyword">value</span> ?? <span class="hljs-built_in">string</span>.Empty).Trim().ToLowerInvariant();
+normalizzazione non è affidata a un helper da ricordarsi di chiamare — <code>Username</code> è un <strong>value
+object</strong>, e la garanzia è per costruzione:</p>
+<pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Domain/Users/Username.cs</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">sealed</span> <span class="hljs-keyword">record</span> <span class="hljs-title">Username</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">const</span> <span class="hljs-built_in">int</span> MaxLength = <span class="hljs-number">256</span>;
+
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Value { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
+
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-title">Username</span>()</span> { }                       <span class="hljs-comment">// per EF (materializzazione)</span>
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-title">Username</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> <span class="hljs-keyword">value</span></span>)</span> =&gt; Value = <span class="hljs-keyword">value</span>;
+
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Crea l&#x27;username normalizzato. Lancia se vuoto o troppo lungo.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Username <span class="hljs-title">From</span>(<span class="hljs-params"><span class="hljs-built_in">string</span>? <span class="hljs-keyword">value</span></span>)</span>
+    {
+        <span class="hljs-keyword">var</span> normalized = (<span class="hljs-keyword">value</span> ?? <span class="hljs-built_in">string</span>.Empty).Trim().ToLowerInvariant();
+
+        <span class="hljs-keyword">if</span> (normalized.Length == <span class="hljs-number">0</span>)
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">&quot;Username obbligatorio.&quot;</span>);
+        <span class="hljs-keyword">if</span> (normalized.Length &gt; MaxLength)
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">$&quot;Username troppo lungo (max <span class="hljs-subst">{MaxLength}</span> caratteri).&quot;</span>);
+
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> Username(normalized);
+    }
+}
 </code></pre>
+<p>Il commento nel file spiega che cosa si guadagna rispetto a un helper statico:</p>
+<blockquote>
+<p>Come value object, la normalizzazione è garantita PER COSTRUZIONE: non esiste un <code>Username</code> non
+normalizzato, quindi non esiste il bug &quot;ho dimenticato di chiamare <code>Normalize</code>&quot; che con un helper
+statico era sempre possibile.</p>
+</blockquote>
 <p>Regola: <strong>trim + minuscolo</strong>. Serve perché Postgres confronta le stringhe in modo case-sensitive
 (SQL Server no) e perché Windows non distingue il maiuscolo/minuscolo nei nomi account. Domini
 diversi restano identità diverse: <code>AZIENDA\mrossi</code> e <code>NOMEPC\mrossi</code> sono due utenti distinti;
@@ -735,39 +771,59 @@ token di produzione.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>Features/Auth/AuthEndpoints.cs</code></td>
+<td><code>Api/Endpoints/AuthEndpoints.cs</code></td>
 <td>Le rotte, il rate limiting, il cookie, il bypass dev di Windows</td>
 </tr>
 <tr>
-<td><code>Features/Auth/Login/LoginHandler.cs</code></td>
+<td><code>Application/Auth/Login/LoginHandler.cs</code></td>
 <td>Username + password, BCrypt</td>
 </tr>
 <tr>
-<td><code>Features/Auth/MsalLogin/MsalLoginHandler.cs</code></td>
+<td><code>Application/Auth/MsalLogin/MsalLoginHandler.cs</code></td>
 <td>Validazione del token Azure, lookup dell'utente locale</td>
 </tr>
 <tr>
-<td><code>Features/Auth/WindowsLogin/WindowsLoginHandler.cs</code></td>
+<td><code>Application/Auth/WindowsLogin/WindowsLoginHandler.cs</code></td>
 <td>Identità Windows → lookup dell'utente locale per <code>Username</code></td>
 </tr>
 <tr>
-<td><code>Features/Auth/RefreshToken/RefreshTokenHandler.cs</code></td>
+<td><code>Application/Auth/RefreshToken/RefreshTokenHandler.cs</code></td>
 <td>Rotation e ririsoluzione dei permessi</td>
 </tr>
 <tr>
-<td><code>Features/Auth/Logout/LogoutHandler.cs</code></td>
+<td><code>Application/Auth/Logout/LogoutHandler.cs</code></td>
 <td>Revoca</td>
 </tr>
 <tr>
-<td><code>Features/Auth/Shared/JwtTokenHelper.cs</code></td>
+<td><code>Application/Abstractions/Identity/</code></td>
+<td>Le astrazioni: <code>ITokenService</code>, <code>IPasswordHasher</code>, <code>IPermissionResolver</code>, <code>IExternalTokenValidator</code>, <code>ICurrentUser</code></td>
+</tr>
+<tr>
+<td><code>Infrastructure/Identity/JwtTokenService.cs</code></td>
 <td>Generazione del JWT e del refresh token</td>
 </tr>
 <tr>
-<td><code>Features/_Shared/Helpers/Username.cs</code></td>
-<td>Normalizzazione dell'identità di login (trim + minuscolo)</td>
+<td><code>Infrastructure/Identity/BcryptPasswordHasher.cs</code></td>
+<td>Hashing delle password</td>
 </tr>
 <tr>
-<td><code>Features/_Shared/Extensions/AuthExtensions.cs</code></td>
+<td><code>Infrastructure/Identity/AzureAdTokenValidator.cs</code></td>
+<td>Validazione del token Azure</td>
+</tr>
+<tr>
+<td><code>Infrastructure/Identity/PermissionResolver.cs</code></td>
+<td>Ruoli diretti + ereditati dai gruppi → permessi</td>
+</tr>
+<tr>
+<td><code>Infrastructure/Identity/CurrentUser.cs</code></td>
+<td>L'utente della richiesta, letto dai claim: tiene <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> fuori da Application</td>
+</tr>
+<tr>
+<td><code>Domain/Users/Username.cs</code></td>
+<td>L'identità di login come value object (trim + minuscolo per costruzione)</td>
+</tr>
+<tr>
+<td><code>Api/Extensions/AuthExtensions.cs</code></td>
 <td>Registrazione di JwtBearer + Negotiate e delle policy</td>
 </tr>
 <tr>

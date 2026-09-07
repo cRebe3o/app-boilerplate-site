@@ -29,6 +29,15 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -62,7 +71,7 @@
         <ul>
           <li class="lvl-2"><a href="#che-cos-e">Che cos'è</a></li>
           <li class="lvl-2"><a href="#il-monorepo">Il monorepo</a></li>
-          <li class="lvl-2"><a href="#backend-vertical-slice">Backend — vertical slice</a></li>
+          <li class="lvl-2"><a href="#backend-clean-architecture">Backend — Clean Architecture</a></li>
           <li class="lvl-3"><a href="#le-api-incluse">Le API incluse</a></li>
           <li class="lvl-3"><a href="#cosa-c-e-in-programcs">Cosa c'è in <code>Program.cs</code></a></li>
           <li class="lvl-2"><a href="#frontend-vue-3">Frontend — Vue 3</a></li>
@@ -141,7 +150,7 @@ database, modalità di accesso. Il percorso completo è in <a href="generazione.
 generazione (la variabile <code>project_slug</code>):</p>
 <pre><code>&lt;progetto&gt;/
 ├── apps/
-│   ├── backend/&lt;Progetto&gt;.Api/     # ASP.NET Core 10 — Minimal API, vertical slice
+│   ├── backend/                    # .NET 10 — quattro progetti, Clean Architecture
 │   └── frontend/                   # Vue 3 + Vite + TypeScript + Vuetify
 ├── .claude/                        # skill e comandi per lo sviluppo assistito
 ├── docker-compose.yml              # opzionale: il database in locale
@@ -156,46 +165,66 @@ pnpm <span class="hljs-built_in">test</span>:backend       <span class="hljs-com
 <p>Questa documentazione spiega <em>com'è fatto e perché</em>. Le convenzioni operative di scrittura del
 codice — naming, struttura di una slice, regole del frontend — vivono <strong>accanto al codice</strong>, nei
 file <code>CLAUDE.md</code> di <code>apps/backend/</code> e <code>apps/frontend/</code>.</p>
-<h2 id="backend-vertical-slice">Backend — vertical slice</h2>
-<p>Il backend non è diviso per livelli tecnici (controller / service / repository), ma <strong>per
-funzionalità</strong>: ogni operazione vive in una cartella che contiene tutto ciò che le serve.</p>
-<pre><code>Features/
-├── Groups/                        # una feature
-│   ├── CreateGroup/               # una slice: comando + handler + validator + response
+<h2 id="backend-clean-architecture">Backend — Clean Architecture</h2>
+<p>Il backend è diviso in <strong>quattro progetti</strong>, uno per layer, con le dipendenze che puntano tutte
+verso l'interno:</p>
+<pre><code>apps/backend/
+├── &lt;Progetto&gt;.Domain/          # entità, aggregati, value object, domain service, eventi
+├── &lt;Progetto&gt;.Application/     # casi d'uso: command/query + handler + validator + response
+├── &lt;Progetto&gt;.Infrastructure/  # EF Core, repository, JWT, interceptor, servizi esterni
+├── &lt;Progetto&gt;.Api/             # Minimal API: routing, permessi, OpenAPI. Composition root
+└── tests/
+    ├── &lt;Progetto&gt;.Domain.Tests/         # il dominio, senza database né mock
+    ├── &lt;Progetto&gt;.Application.Tests/    # gli handler, con fake delle astrazioni
+    └── &lt;Progetto&gt;.Architecture.Tests/   # le regole dei layer, verificate dalla build
+</code></pre>
+<pre><code>Api  →  Infrastructure  →  Application  →  Domain
+</code></pre>
+<p>Il dominio non ha <strong>nessuna</strong> dipendenza esterna: non conosce EF Core, <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> né MediatR.
+L'Application layer dichiara le astrazioni di cui ha bisogno (<code>IRentalContractRepository</code>,
+<code>ICurrentUser</code>, <code>IDateTimeProvider</code>) e Infrastructure le implementa — mai il contrario.</p>
+<p>Dentro <code>Application</code>, i casi d'uso restano organizzati <strong>per funzionalità</strong>: ogni operazione ha la
+sua cartella con tutto ciò che le serve.</p>
+<pre><code>&lt;Progetto&gt;.Application/
+├── Abstractions/            # le interfacce che Infrastructure implementa
+│   ├── Persistence/         # I*Repository, IReadDbContext, IUnitOfWork, IQueryExecutor
+│   ├── Identity/            # ICurrentUser, ITokenService, IPasswordHasher…
+│   └── Services/            # IDateTimeProvider, IDomainEventDispatcher…
+├── Groups/                  # una feature
+│   ├── CreateGroup/         # una slice: comando + handler + validator + response
 │   │   ├── CreateGroupCommand.cs
 │   │   ├── CreateGroupHandler.cs
 │   │   ├── CreateGroupValidator.cs
 │   │   └── CreateGroupResponse.cs
 │   ├── GetGroups/  GetGroupById/  UpdateGroup/  DeleteGroup/
-│   └── GroupEndpoints.cs          # solo routing, nessuna logica
-└── _Shared/                       # ciò che è davvero comune a tutte le feature
-    ├── Entities/                  # le POCO EF Core (int Id identity)
-    ├── Persistence/               # AppDbContext + derivate per provider, migration
-    ├── DatabaseStats/             # dimensioni DB e readiness, per provider
-    ├── Seed/                      # DataSeeder (solo su DB vuoto)
-    ├── Behaviors/                 # pipeline MediatR
-    ├── Middleware/                # gestione errori
-    ├── Helpers/                   # audit trail, normalizzazione dell'username
-    └── Extensions/                # registrazione servizi ed endpoint
+│   └── Common/              # response e proiezioni condivise fra slice
+├── Behaviors/               # pipeline MediatR (logging, validazione)
+└── Common/                  # paginazione, messaggi
 </code></pre>
-<p>Le feature di dominio del progetto si aggiungono <strong>allo stesso modo</strong>, accanto a quelle già
-presenti. Il percorso completo è in <a href="../guide/nuova-feature.html">Aggiungere una feature</a>.</p>
-<p>Il percorso di una richiesta è sempre lo stesso:</p>
+<p>Gli endpoint vivono in <code>&lt;Progetto&gt;.Api/Endpoints/</code> e contengono <strong>solo routing</strong>.</p>
+<p>Il percorso di una richiesta:</p>
 <pre><code>HTTP  →  Endpoint (routing)  →  IMediator.Send(comando)
                                      │
                                      ├── LoggingBehavior      (durata, esito)
                                      ├── ValidationBehavior   (FluentValidation → 400)
-                                     └── Handler              (la logica, qui e solo qui)
+                                     └── Handler              (orchestrazione)
                                               │
-                                              └── AppDbContext  →  SQL Server | PostgreSQL
+                                              ├── repository / IReadDbContext  (astrazioni)
+                                              ├── aggregato di dominio         (la decisione)
+                                              └── IUnitOfWork.SaveChangesAsync()
+                                                       │
+                                                       └── commit → eventi di dominio
 </code></pre>
 <p>Regole che tengono in piedi l'impianto:</p>
 <ul>
-<li>La logica sta <strong>negli handler</strong>. Gli endpoint instradano e basta; <code>Program.cs</code> non contiene logica.</li>
-<li>Gli handler dipendono <strong>solo da <code>AppDbContext</code></strong>, che è astratto e provider-agnostico: è questo che
-rende possibile il doppio provider. Niente strato repository.</li>
-<li>Ogni scrittura (Create / Update / Delete) registra un <strong>audit log</strong> con attore, entità, azione, IP
-e — per modifiche e cancellazioni — gli snapshot JSON dell'entità.</li>
+<li><strong>Gli handler orchestrano, il dominio decide.</strong> L'handler carica ciò che serve, chiede
+all'aggregato o al domain service di decidere, salva.</li>
+<li><strong>Gli handler non vedono mai <code>AppDbContext</code>.</strong> I comandi usano <code>I{Aggregato}Repository</code> +
+<code>IUnitOfWork</code>; le query usano <code>IReadDbContext</code> + <code>IQueryExecutor</code>.</li>
+<li><strong>Il dominio protegge i propri invarianti</strong>: setter privati, collezioni in sola lettura, factory
+method come unica porta di costruzione.</li>
+<li>Ogni scrittura registra un <strong>audit log</strong> con attore, entità, azione, IP e snapshot prima/dopo.
+Lo fa un interceptor sul <code>DbContext</code>: un handler non lo scrive mai a mano.</li>
 <li>Le eccezioni non si gestiscono negli handler: <code>ExceptionHandlingMiddleware</code> le traduce in
 risposte <strong>ProblemDetails</strong> (RFC 7807).</li>
 </ul>
@@ -229,12 +258,20 @@ risposte <strong>ProblemDetails</strong> (RFC 7807).</li>
 <td>409</td>
 </tr>
 <tr>
+<td><code>InvariantViolationException</code></td>
+<td>422</td>
+</tr>
+<tr>
 <td>qualsiasi altra</td>
 <td>500</td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>Queste regole non sono affidate alla memoria: <code>&lt;Progetto&gt;.Architecture.Tests</code> ispeziona gli assembly
+compilati e <strong>fa fallire la build</strong> se un layer dipende da chi non dovrebbe, o se un'entità espone
+setter pubblici. Il dettaglio completo è nella sezione
+<a href="../architettura/clean-architecture.html">Architettura</a>.</p>
 <h3 id="le-api-incluse">Le API incluse</h3>
 <p>Dieci gruppi di endpoint, tutti sotto <code>/api</code>:</p>
 <div class="table-wrap">
@@ -266,7 +303,7 @@ risposte <strong>ProblemDetails</strong> (RFC 7807).</li>
 </table>
 </div>
 <p>Sono le rotte dell'impianto: quelle del dominio si aggiungono accanto, registrandole in
-<code>_Shared/Extensions/EndpointExtensions.cs</code>.</p>
+<code>&lt;Progetto&gt;.Api/Extensions/EndpointExtensions.cs</code>.</p>
 <p>In esecuzione l'API espone la propria specifica OpenAPI, navigabile con Scalar (<code>/scalar</code>) o con
 Swagger UI (<code>/swagger</code>).</p>
 <h3 id="cosa-c-e-in-programcs">Cosa c'è in <code>Program.cs</code></h3>
@@ -354,6 +391,7 @@ vuoto da personalizzare — e i gruppi <code>Administrators</code> e <code>Viewe
 <ul>
 <li><a href="generazione.html">Generare e aggiornare</a> — le variabili del template, <code>copier copy</code> e <code>copier update</code></li>
 <li><a href="skill.html">Le skill Claude</a> — gli scaffolding inclusi per aggiungere codice nel modo previsto</li>
+<li><a href="../architettura/clean-architecture.html">Clean Architecture</a> — i layer, la regola delle dipendenze, dove mettere la logica</li>
 <li><a href="../infrastructure/panoramica.html">Infrastruttura</a> — perché due provider SQL e come sono tenuti insieme</li>
 <li><a href="../autenticazione/autenticazione.html">Autenticazione</a> — JWT, Azure AD, Windows, permessi</li>
 <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a> — il percorso completo, end to end</li>
