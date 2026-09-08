@@ -659,6 +659,67 @@ Due dettagli:
 - **Ogni rotta dichiara `meta.permission`**: il navigation guard la usa per bloccare l'accesso diretto
   via URL. Nota che la creazione richiede `categories.write` mentre il dettaglio richiede
   `categories.read`, pur essendo lo stesso componente.
+- **Il dettaglio non decide dove tornare**: lo dichiara chi lo apre. Vedi qui sotto.
+
+### Il ritorno dal dettaglio
+
+Il pulsante indietro di una pagina di dettaglio **non** va cablato sulla lista:
+
+```vue
+<!-- no: torna sempre lì, da qualunque punto si sia arrivati -->
+<v-btn icon="mdi-arrow-left" :to="{ name: 'categories' }" />
+```
+
+Finché il dettaglio ha un solo ingresso il difetto non si vede — la destinazione fissa coincide con
+l'unica provenienza possibile. Si manifesta appena ne compare un secondo: una dashboard che linka
+l'elemento, un'altra entità che lo referenzia. Da lì in poi quel pulsante *sembra* un back ma è un
+link, e chi arriva dalla dashboard si ritrova nella lista senza capire perché.
+
+La forma corretta usa `useBackNavigation`, passando la lista come **fallback**:
+
+```vue
+<script setup lang="ts">
+import { useBackNavigation } from '@/composables/useBackNavigation'
+
+const { goBack } = useBackNavigation({ name: 'categories' })
+</script>
+
+<template>
+  <v-btn icon="mdi-arrow-left" @click="goBack" />
+</template>
+```
+
+E chi apre il dettaglio **dichiara da dove arriva**:
+
+```vue
+<!-- nella lista, nella dashboard, ovunque si linki un dettaglio -->
+:to="{ name: 'category-detail', params: { id: item.id }, query: { from: 'categories' } }"
+```
+
+`goBack()` applica tre regole in cascata:
+
+1. **`?from=` esplicito** — si torna lì. Sopravvive al refresh e al link condiviso, e il breadcrumb
+   mostra la stessa provenienza: `useBreadcrumb` legge la medesima origine, quindi briciola e
+   pulsante non possono divergere.
+2. **History del browser** — senza `?from`, se si è arrivati navigando dentro l'app si fa un back
+   reale: la lista si ripresenta con filtri, pagina e scroll intatti, cosa che una push verso la
+   rotta non farebbe.
+3. **Fallback** — link incollato o apertura diretta: si va alla lista.
+
+Le origini ammesse sono un **dizionario chiuso** in `useBackNavigation.ts`, e aggiungendo una feature
+va esteso con una riga per ogni punto da cui si può raggiungere il dettaglio:
+
+```typescript
+const ORIGINS: Record<string, BackOrigin> = {
+  categories: { to: { name: 'categories' }, labelKey: 'nav.categories' },
+}
+```
+
+Chiuso perché `?from=` arriva dall'URL, quindi da un utente: un dizionario aperto lo renderebbe una
+destinazione arbitraria. Un valore sconosciuto viene ignorato e si ricade sul fallback.
+
+Un'ultima accortezza: se dopo la creazione si fa `router.replace` verso il dettaglio appena creato,
+si propaga anche `fromQuery`, altrimenti il nuovo dettaglio perde l'origine.
 
 Infine i testi, in **entrambe** le lingue (`locales/it.ts` e `locales/en.ts`):
 
@@ -698,6 +759,8 @@ errors: {
 - [ ] Le rotte con id usano il constraint `{id:int}`, e gli endpoint sono agganciati in `EndpointExtensions`
 - [ ] Nessun handler scrive un audit log a mano: lo fa l'interceptor
 - [ ] I permessi sono nel seed e assegnati ai ruoli giusti
+- [ ] Il pulsante indietro del dettaglio usa `useBackNavigation`, e i link che aprono il dettaglio
+      dichiarano `query: { from: '...' }`
 - [ ] I testi esistono in italiano **e** in inglese
 - [ ] `dotnet test` passa — i test di architettura sono la rete che intercetta le violazioni dei layer
 

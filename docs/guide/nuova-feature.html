@@ -83,6 +83,7 @@
           <li class="lvl-2"><a href="#10-tipi-service-store">10. Tipi, service, store</a></li>
           <li class="lvl-2"><a href="#11-le-pagine">11. Le pagine</a></li>
           <li class="lvl-2"><a href="#12-rotte-e-testi">12. Rotte e testi</a></li>
+          <li class="lvl-3"><a href="#il-ritorno-dal-dettaglio">Il ritorno dal dettaglio</a></li>
           <li class="lvl-2"><a href="#prima-di-dire-che-e-finita">Prima di dire che è finita</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
@@ -732,7 +733,52 @@ la rotta <code>categories/new</code> non rischia di essere catturata dalla rotta
 <li><strong>Ogni rotta dichiara <code>meta.permission</code></strong>: il navigation guard la usa per bloccare l'accesso diretto
 via URL. Nota che la creazione richiede <code>categories.write</code> mentre il dettaglio richiede
 <code>categories.read</code>, pur essendo lo stesso componente.</li>
+<li><strong>Il dettaglio non decide dove tornare</strong>: lo dichiara chi lo apre. Vedi qui sotto.</li>
 </ul>
+<h3 id="il-ritorno-dal-dettaglio">Il ritorno dal dettaglio</h3>
+<p>Il pulsante indietro di una pagina di dettaglio <strong>non</strong> va cablato sulla lista:</p>
+<pre><code class="language-vue"><span class="hljs-comment">&lt;!-- no: torna sempre lì, da qualunque punto si sia arrivati --&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">v-btn</span> <span class="hljs-attr">icon</span>=<span class="hljs-string">&quot;mdi-arrow-left&quot;</span> <span class="hljs-attr">:to</span>=<span class="hljs-string">&quot;{ name: &#x27;categories&#x27; }&quot;</span> /&gt;</span>
+</code></pre>
+<p>Finché il dettaglio ha un solo ingresso il difetto non si vede — la destinazione fissa coincide con
+l'unica provenienza possibile. Si manifesta appena ne compare un secondo: una dashboard che linka
+l'elemento, un'altra entità che lo referenzia. Da lì in poi quel pulsante <em>sembra</em> un back ma è un
+link, e chi arriva dalla dashboard si ritrova nella lista senza capire perché.</p>
+<p>La forma corretta usa <code>useBackNavigation</code>, passando la lista come <strong>fallback</strong>:</p>
+<pre><code class="language-vue"><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">setup</span> <span class="hljs-attr">lang</span>=<span class="hljs-string">&quot;ts&quot;</span>&gt;</span><span class="language-javascript">
+<span class="hljs-keyword">import</span> { useBackNavigation } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@/composables/useBackNavigation&#x27;</span>
+
+<span class="hljs-keyword">const</span> { goBack } = <span class="hljs-title function_">useBackNavigation</span>({ <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;categories&#x27;</span> })
+</span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
+
+<span class="hljs-tag">&lt;<span class="hljs-name">template</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">v-btn</span> <span class="hljs-attr">icon</span>=<span class="hljs-string">&quot;mdi-arrow-left&quot;</span> @<span class="hljs-attr">click</span>=<span class="hljs-string">&quot;goBack&quot;</span> /&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">template</span>&gt;</span>
+</code></pre>
+<p>E chi apre il dettaglio <strong>dichiara da dove arriva</strong>:</p>
+<pre><code class="language-vue"><span class="hljs-comment">&lt;!-- nella lista, nella dashboard, ovunque si linki un dettaglio --&gt;</span>
+:to=&quot;{ name: &#x27;category-detail&#x27;, params: { id: item.id }, query: { from: &#x27;categories&#x27; } }&quot;
+</code></pre>
+<p><code>goBack()</code> applica tre regole in cascata:</p>
+<ol>
+<li><strong><code>?from=</code> esplicito</strong> — si torna lì. Sopravvive al refresh e al link condiviso, e il breadcrumb
+mostra la stessa provenienza: <code>useBreadcrumb</code> legge la medesima origine, quindi briciola e
+pulsante non possono divergere.</li>
+<li><strong>History del browser</strong> — senza <code>?from</code>, se si è arrivati navigando dentro l'app si fa un back
+reale: la lista si ripresenta con filtri, pagina e scroll intatti, cosa che una push verso la
+rotta non farebbe.</li>
+<li><strong>Fallback</strong> — link incollato o apertura diretta: si va alla lista.</li>
+</ol>
+<p>Le origini ammesse sono un <strong>dizionario chiuso</strong> in <code>useBackNavigation.ts</code>, e aggiungendo una feature
+va esteso con una riga per ogni punto da cui si può raggiungere il dettaglio:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">const</span> <span class="hljs-attr">ORIGINS</span>: <span class="hljs-title class_">Record</span>&lt;<span class="hljs-built_in">string</span>, <span class="hljs-title class_">BackOrigin</span>&gt; = {
+  <span class="hljs-attr">categories</span>: { <span class="hljs-attr">to</span>: { <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;categories&#x27;</span> }, <span class="hljs-attr">labelKey</span>: <span class="hljs-string">&#x27;nav.categories&#x27;</span> },
+}
+</code></pre>
+<p>Chiuso perché <code>?from=</code> arriva dall'URL, quindi da un utente: un dizionario aperto lo renderebbe una
+destinazione arbitraria. Un valore sconosciuto viene ignorato e si ricade sul fallback.</p>
+<p>Un'ultima accortezza: se dopo la creazione si fa <code>router.replace</code> verso il dettaglio appena creato,
+si propaga anche <code>fromQuery</code>, altrimenti il nuovo dettaglio perde l'origine.</p>
 <p>Infine i testi, in <strong>entrambe</strong> le lingue (<code>locales/it.ts</code> e <code>locales/en.ts</code>):</p>
 <pre><code class="language-typescript"><span class="hljs-comment">// locales/it.ts</span>
 <span class="hljs-attr">nav</span>: { <span class="hljs-attr">categories</span>: <span class="hljs-string">&#x27;Categorie&#x27;</span> },
@@ -767,6 +813,8 @@ chiamano <code>tracker.Capture(...)</code></li>
 <li>[ ] Le rotte con id usano il constraint <code>{id:int}</code>, e gli endpoint sono agganciati in <code>EndpointExtensions</code></li>
 <li>[ ] Nessun handler scrive un audit log a mano: lo fa l'interceptor</li>
 <li>[ ] I permessi sono nel seed e assegnati ai ruoli giusti</li>
+<li>[ ] Il pulsante indietro del dettaglio usa <code>useBackNavigation</code>, e i link che aprono il dettaglio
+dichiarano <code>query: { from: '...' }</code></li>
 <li>[ ] I testi esistono in italiano <strong>e</strong> in inglese</li>
 <li>[ ] <code>dotnet test</code> passa — i test di architettura sono la rete che intercetta le violazioni dei layer</li>
 </ul>

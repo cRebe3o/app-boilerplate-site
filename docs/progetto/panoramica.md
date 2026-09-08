@@ -189,7 +189,7 @@ src/
 ├── components/     # layout (AppShell, AppNav, AppTopBar), users/, shared/
 ├── stores/         # Pinia, uno per dominio (composition API)
 ├── services/       # le chiamate HTTP: solo qui si usa axios
-├── composables/    # usePermission, useApiErrors, useTheme, useBreadcrumb…
+├── composables/    # usePermission, useApiErrors, useTheme, useBreadcrumb, useBackNavigation…
 ├── config/         # app.config.ts (modalità di accesso), sections.config.ts
 ├── plugins/        # vuetify, axios (interceptor), i18n, msal
 ├── locales/        # it.ts (predefinito) ed en.ts
