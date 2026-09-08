@@ -348,7 +348,8 @@ incontrato.
 
 `AppDemo.Domain.Tests` non ha database, mock né contesto HTTP: gli oggetti si costruiscono e si
 interrogano. È la verifica pratica che il dominio sia davvero puro — se un test ha bisogno di
-infrastruttura, la regola sotto esame è nel posto sbagliato.
+infrastruttura, la regola sotto esame è nel posto sbagliato. Come sono fatti questi test, e quelli
+degli handler e dell'architettura, è in [Testare il backend](../guide/test-backend.md).
 
 ## Da qui
 

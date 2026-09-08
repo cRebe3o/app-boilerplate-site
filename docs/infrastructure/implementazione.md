@@ -153,7 +153,8 @@ Il ragionamento è lo stesso per tutti e tre, ed è scritto in `ConcurrencyToken
 > senza scrivere una riga in più.
 
 > ⚠️ **Un handler non scrive mai un audit log a mano.** Se stai per aggiungere una riga `AuditLog`
-> in un handler, l'interceptor lo sta già facendo.
+> in un handler, l'interceptor lo sta già facendo. Il funzionamento completo — i tre momenti, gli
+> snapshot, che cosa non viene tracciato — è in [Audit log](audit-log.md).
 
 ### Le M2M: skip navigation unidirezionale
 

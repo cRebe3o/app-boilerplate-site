@@ -25,6 +25,7 @@
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
             <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
             <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
@@ -47,9 +48,10 @@
         <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
-            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
-            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
             <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -61,10 +63,16 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Operatività</p>
           <ul>
             <li><a href="../deploy/render.html">Deploy su Render</a></li>
-            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
           </ul>
         </div>
     </nav>
@@ -361,7 +369,8 @@ anche per i salvataggi che non passano da un handler (seed, hosted service).</p>
 e <code>ConcurrencyToken</code>: sono dati che il dominio non possiede e che l'infrastruttura deve poter
 scrivere.</p>
 <blockquote>
-<p>Un handler non scrive mai un audit log a mano.</p>
+<p>Un handler non scrive mai un audit log a mano. Come funziona l'interceptor, che cosa traccia e
+che cosa deve fare un repository è in <a href="../infrastructure/audit-log.html">Audit log</a>.</p>
 </blockquote>
 <h2 id="riepilogo-che-cosa-iniettare">Riepilogo: che cosa iniettare</h2>
 <div class="table-wrap">

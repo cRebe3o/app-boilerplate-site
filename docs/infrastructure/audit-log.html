@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit log — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html" aria-current="page">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Infrastruttura</p>
+      <article class="prose">
+<h1 id="audit-log">Audit log</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#la-riga">La riga</a></li>
+          <li class="lvl-2"><a href="#come-funziona-in-tre-momenti">Come funziona, in tre momenti</a></li>
+          <li class="lvl-2"><a href="#che-cosa-viene-tracciato-e-che-cosa-no">Che cosa viene tracciato, e che cosa no</a></li>
+          <li class="lvl-2"><a href="#gli-snapshot">Gli snapshot</a></li>
+          <li class="lvl-2"><a href="#che-cosa-deve-fare-chi-aggiunge-un-entita">Che cosa deve fare chi aggiunge un'entità</a></li>
+          <li class="lvl-2"><a href="#consultazione-e-retention">Consultazione e retention</a></li>
+          <li class="lvl-2"><a href="#errori-comuni">Errori comuni</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Ogni scrittura su una radice di aggregato lascia una riga in <code>AuditLogs</code>: <strong>chi</strong> ha fatto <strong>che
+cosa</strong>, su <strong>quale</strong> entità, <strong>quando</strong>, da quale IP, e com'era l'entità <strong>prima e dopo</strong>. Nessun
+handler lo scrive: lo fa un interceptor sul <code>DbContext</code>, e questa pagina spiega come, che cosa
+traccia, che cosa non traccia di proposito e che cosa deve fare chi aggiunge un'entità.</p>
+<pre><code>handler → repository.Add / Remove, o un metodo dell'aggregato
+        → unitOfWork.SaveChangesAsync()
+              ├── TimestampInterceptor          CreatedAt / UpdatedAt
+              ├── ConcurrencyTokenInterceptor   token IVersioned
+              └── AuditLogInterceptor           riga AuditLogs con Before / After
+</code></pre>
+<h2 id="la-riga">La riga</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valore</th>
+<th>Da dove</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ActorId</code> · <code>ActorEmail</code></td>
+<td>l'utente della richiesta</td>
+<td><code>ICurrentUser</code> (claim <code>sub</code> ed <code>email</code> del JWT)</td>
+</tr>
+<tr>
+<td><code>EntityType</code></td>
+<td>il nome del tipo, es. <code>&quot;User&quot;</code></td>
+<td>il change tracker</td>
+</tr>
+<tr>
+<td><code>EntityId</code></td>
+<td>l'id dell'entità toccata</td>
+<td>il change tracker; per le cancellazioni è fissato <strong>prima</strong> del commit</td>
+</tr>
+<tr>
+<td><code>Action</code></td>
+<td><code>Created</code> · <code>Updated</code> · <code>Deleted</code></td>
+<td>costanti in <code>AuditActions</code></td>
+</tr>
+<tr>
+<td><code>Before</code> · <code>After</code></td>
+<td>snapshot JSON camelCase</td>
+<td><code>AuditSnapshotTracker</code> e <code>IAuditSnapshotWriter</code></td>
+</tr>
+<tr>
+<td><code>Timestamp</code></td>
+<td>ora UTC</td>
+<td><code>IDateTimeProvider</code></td>
+</tr>
+<tr>
+<td><code>IpAddress</code></td>
+<td>IP del client</td>
+<td><code>ICurrentUser</code>, già ripristinato da <code>UseForwardedHeaders</code> dietro un proxy</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>ActorId</code> ed <code>EntityId</code> <strong>non sono chiavi esterne</strong>, ed è voluto: lo storico deve sopravvivere alla
+cancellazione di utenti ed entità. Con una FK verso <code>Users</code>, cancellare un utente cancellerebbe (o
+bloccherebbe) le tracce di ciò che ha fatto — l'opposto dello scopo di un audit. <code>EntityId</code> è poi
+polimorfo: punta a tabelle diverse secondo <code>EntityType</code>, e una FK non sarebbe nemmeno esprimibile.</p>
+<p>La riga è <strong>immutabile</strong>: <code>AuditLog</code> estende <code>Entity</code>, ha setter privati e un solo factory
+<code>Record(...)</code>. Non esiste un update.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Azione</th>
+<th><code>Before</code></th>
+<th><code>After</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Created</code></td>
+<td>—</td>
+<td>lo stato creato, con id e timestamp definitivi</td>
+</tr>
+<tr>
+<td><code>Updated</code></td>
+<td>lo stato al caricamento</td>
+<td>lo stato dopo il commit</td>
+</tr>
+<tr>
+<td><code>Deleted</code></td>
+<td>lo stato prima della cancellazione</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="come-funziona-in-tre-momenti">Come funziona, in tre momenti</h2>
+<p><code>AuditLogInterceptor</code> è un <code>SaveChangesInterceptor</code> con stato per richiesta (scoped). Lavora in
+tre momenti, e l'ordine non è arbitrario.</p>
+<p><strong>1. Prima del salvataggio — <code>SavingChanges</code>.</strong> Scorre il change tracker e, per ogni <strong>radice di
+aggregato</strong> aggiunta, modificata o cancellata, registra una modifica &quot;pendente&quot;. È qui che si legge
+l'id di un'entità cancellata: dopo il commit sarebbe staccata dal context. È qui anche che si
+recupera il <code>Before</code>, chiedendolo ad <code>AuditSnapshotTracker</code>.</p>
+<p><strong>2. Dopo il salvataggio — <code>SavedChanges</code>.</strong> Solo ora un'entità appena creata ha l'id identity
+assegnato dal database e i timestamp scritti da <code>TimestampInterceptor</code>: si scatta l'<code>After</code>, si
+costruiscono le righe <code>AuditLog</code> e si fa un secondo <code>SaveChanges</code> interno. Se questo secondo
+salvataggio fallisce, le righe di audit vengono staccate dal context e <strong>l'operazione già
+committata non viene annullata</strong>: un audit perso è meno grave di un'operazione riuscita che
+risulta fallita.</p>
+<p><strong>3. Il <code>Before</code>, in realtà, viene prima di tutto.</strong> Al momento del <code>SaveChanges</code> l'istanza in
+memoria è già quella modificata: serializzarla darebbe un <code>Before</code> identico all'<code>After</code>. I valori
+scalari si potrebbero recuperare da <code>entry.OriginalValues</code>, ma le collezioni many-to-many (ruoli,
+gruppi, permessi) sono navigation e lì non compaiono — e sono proprio ciò che gli update di questa
+applicazione cambiano più spesso. L'unico momento in cui lo stato precedente è integro è <strong>subito
+dopo la lettura dal database</strong>, ed è lì che lo registrano i repository:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;User?&gt; GetByIdAsync(<span class="hljs-built_in">int</span> id, CancellationToken ct = <span class="hljs-literal">default</span>)
+{
+    <span class="hljs-keyword">var</span> user = <span class="hljs-keyword">await</span> db.Users
+        .Include(u =&gt; u.Roles).Include(u =&gt; u.Groups)   <span class="hljs-comment">// le M2M servono nello snapshot</span>
+        .FirstOrDefaultAsync(u =&gt; u.Id == id, ct);
+
+    tracker.Capture(user);          <span class="hljs-comment">// ← lo snapshot &quot;Before&quot;, finché l&#x27;handler non lo modifica</span>
+    <span class="hljs-keyword">return</span> user;
+}
+</code></pre>
+<p><code>AuditSnapshotTracker</code> vive per la durata della richiesta e tiene gli snapshot in una tabella a
+riferimenti deboli: un aggregato caricato e mai salvato non trattiene memoria. Se lo stesso
+aggregato viene catturato due volte, vince il primo snapshot, che è lo stato iniziale.</p>
+<h2 id="che-cosa-viene-tracciato-e-che-cosa-no">Che cosa viene tracciato, e che cosa no</h2>
+<p>Tracciato: <strong>ogni radice di aggregato</strong> (<code>AggregateRoot</code>) creata, modificata o cancellata da un
+utente autenticato, qualunque sia la strada — handler, evento di dominio, operazione futura che
+oggi non esiste. È il vantaggio di un interceptor rispetto a una chiamata negli handler.</p>
+<p>Non tracciato, di proposito:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Caso</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Operazioni di sistema</strong>: seed, hosted service, migration</td>
+<td>Non c'è un utente autenticato: non sono azioni di qualcuno. Il solo seed produrrebbe una trentina di righe &quot;system&quot; a ogni database nuovo, e un audit che si apre con 26 voci di sistema nasconde quelle che contano</td>
+</tr>
+<tr>
+<td><strong>Entità di supporto</strong> che estendono <code>Entity</code> e non <code>AggregateRoot</code>: <code>AuditLog</code>, <code>ErrorLog</code>, <code>RefreshToken</code></td>
+<td>Sarebbe rumore, e un <code>AuditLog</code> che si auto-traccia darebbe una ricorsione infinita</td>
+</tr>
+<tr>
+<td><strong>Il lato passivo di una many-to-many</strong></td>
+<td>Assegnare un ruolo a un utente modifica l'utente, non il ruolo. EF marca la collezione su entrambi i lati; l'interceptor scrive l'audit solo per chi ha uno snapshot registrato, cioè per chi è stato caricato <em>per essere modificato</em>. Senza questo filtro ogni assegnazione produrrebbe un &quot;Role Updated&quot; fantasma, con <code>Before</code> vuoto</td>
+</tr>
+<tr>
+<td><strong>Operazioni bulk</strong> (<code>ExecuteUpdate</code> / <code>ExecuteDelete</code>)</td>
+<td>Non passano dal change tracker. Se serve traccia, va scritta esplicitamente</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Lo snapshot registrato dal repository ha quindi <strong>due ruoli</strong>: fornisce il <code>Before</code>, e distingue
+una modifica vera dal lato passivo di una relazione. Un update che tocca solo le collezioni
+(l'entità resta <code>Unchanged</code> per EF) viene tracciato solo se c'è uno snapshot.</p>
+<h2 id="gli-snapshot">Gli snapshot</h2>
+<p><code>Before</code> e <code>After</code> sono stringhe JSON camelCase — la stessa forma delle risposte API — prodotte da
+<code>AuditSnapshotWriter</code>, con uno <code>switch</code> <strong>esplicito per tipo</strong>:</p>
+<pre><code class="language-csharp">User u =&gt; Serialize(<span class="hljs-keyword">new</span>
+{
+    u.Id,
+    Username = u.Username.Value,
+    u.Email,
+    u.DisplayName,
+    u.IsActive,
+    GroupIds = u.Groups.Select(g =&gt; g.Id),
+    RoleIds = u.Roles.Select(r =&gt; r.Id),
+    Language = u.Language.Code,
+    u.CreatedAt,
+    u.UpdatedAt,
+}),
+</code></pre>
+<p>Niente reflection, niente serializzazione dell'intero grafo: <strong>quali campi</strong> finiscono nello
+snapshot è una decisione, e <code>passwordHash</code> non può finirci per costruzione. Le relazioni compaiono
+come array di id.</p>
+<p>L'interfaccia <code>IAuditSnapshotWriter</code> sta in <code>Application/Abstractions</code>, l'implementazione in
+<code>Infrastructure/Services</code>: la serializzazione è infrastruttura, la scelta dei campi è applicativa.</p>
+<p>Lo snapshot è una colonna testo e non un tipo JSON nativo: è portabile fra SQL Server e
+PostgreSQL senza codice condizionale, e resta interrogabile con <code>JSON_VALUE</code>/<code>OPENJSON</code> da una
+parte e con gli operatori JSON dall'altra.</p>
+<h2 id="che-cosa-deve-fare-chi-aggiunge-un-entita">Che cosa deve fare chi aggiunge un'entità</h2>
+<p>Tre cose, e nessuna sta nell'handler.</p>
+<ol>
+<li><strong>Nel repository</strong>, ogni metodo che carica l'aggregato <em>per modificarlo</em> chiama
+<code>tracker.Capture(...)</code> (o <code>CaptureAll</code> per una lista), dopo aver fatto l'<code>Include</code> delle
+relazioni che compaiono nello snapshot. Dimenticarlo non rompe nulla in modo visibile: l'audit
+avrà solo un <code>Before</code> vuoto, e un update di sole collezioni non verrà tracciato.</li>
+<li><strong>In <code>AuditSnapshotWriter</code></strong>, un <code>case</code> per il nuovo tipo. Senza, l'operazione viene comunque
+registrata ma senza <code>Before</code>/<code>After</code>.</li>
+<li><strong>Nell'handler, niente.</strong> Un solo <code>SaveChangesAsync</code>, nessuna menzione di <code>AuditLog</code>.</li>
+</ol>
+<p>Per un'azione che non è una Created/Updated/Deleted — un'esportazione, un'operazione massiva —
+l'interceptor non può dedurla: si scrive una riga esplicita tramite <code>IAuditLogRepository</code>, e si
+documenta il motivo. È l'eccezione.</p>
+<h2 id="consultazione-e-retention">Consultazione e retention</h2>
+<p>L'audit si consulta dalla pagina <strong>Audit Log</strong> dell'area di sistema (<code>/api/audit-logs</code>, permesso
+<code>audit.read</code>), con filtri per tipo di entità e azione, e con <code>Before</code>/<code>After</code> leggibili riga per
+riga.</p>
+<p>La retention è configurabile dalla pagina <strong>Configurazione</strong> (<code>SystemConfig.AuditLogs</code>): abilitato
+sì/no e numero massimo di record. Il reset (<code>audit.write</code>) cancella i record oltre la soglia
+configurata. I record non si modificano né si cancellano uno per uno.</p>
+<h2 id="errori-comuni">Errori comuni</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Errore</th>
+<th>Conseguenza</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scrivere un <code>AuditLog</code> in un handler</td>
+<td>Doppia riga: l'interceptor la scrive già</td>
+</tr>
+<tr>
+<td>Un secondo <code>SaveChangesAsync</code> &quot;per l'audit&quot;</td>
+<td>Inutile, e prima o poi qualcuno lo toglie dal posto sbagliato</td>
+</tr>
+<tr>
+<td>Iniettare <code>IHttpContextAccessor</code> per sapere chi agisce</td>
+<td>L'attore lo legge l'interceptor da <code>ICurrentUser</code>; i test di architettura lo vietano</td>
+</tr>
+<tr>
+<td>Repository senza <code>tracker.Capture()</code></td>
+<td><code>Before</code> vuoto; gli update di sole M2M non vengono tracciati</td>
+</tr>
+<tr>
+<td>Repository senza <code>Include</code> delle relazioni</td>
+<td>Array di id vuoti nello snapshot</td>
+</tr>
+<tr>
+<td>Nuova entità senza <code>case</code> in <code>AuditSnapshotWriter</code></td>
+<td>Riga scritta, ma senza <code>Before</code>/<code>After</code></td>
+</tr>
+<tr>
+<td>Aspettarsi audit dal seed</td>
+<td>Le operazioni di sistema non sono tracciate</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="../architettura/comandi-e-query.html#dove-finiscono-audit-timestamp-e-concorrenza">Comandi e query</a> — dove stanno i tre interceptor nel flusso di un comando</li>
+<li><a href="implementazione.html">Il codice</a> — la registrazione degli interceptor e il resto dell'impianto EF</li>
+<li><a href="architettura.html#perche-audit-ed-error-log-non-hanno-fk">Modello EF e schema</a> — le tabelle <code>AuditLogs</code> ed <code>ErrorLogs</code></li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

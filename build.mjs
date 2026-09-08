@@ -34,6 +34,11 @@ const SITE = {
           summary: 'Le variabili del template, come nasce un progetto con Copier e come si aggiorna quando il template cambia.',
         },
         {
+          file: 'progetto/configurazione.md',
+          title: 'Configurazione',
+          summary: 'appsettings, appsettings.local.json, variabili d’ambiente e VITE_*: tutte le chiavi, dove si mettono, quali sono obbligatorie.',
+        },
+        {
           file: 'progetto/skill.md',
           title: 'Le skill Claude',
           summary: 'Le skill incluse nel template: che cosa scaffoldano e quando conviene invocarle.',
@@ -85,23 +90,28 @@ const SITE = {
       pages: [
         {
           file: 'infrastructure/panoramica.md',
-          title: 'Panoramica',
-          summary: 'L’impianto tecnico in breve: doppio provider SQL, pipeline delle richieste, che cosa è già pronto.',
+          title: 'Il doppio provider',
+          summary: 'SQL Server o PostgreSQL da configurazione: come funziona, la pipeline delle richieste, che cosa è già pronto.',
         },
         {
           file: 'infrastructure/architettura.md',
-          title: 'Architettura',
+          title: 'Modello EF e schema',
           summary: 'Un solo AppDbContext, il modello EF Core, lo schema relazionale, i due set di migration.',
         },
         {
           file: 'infrastructure/implementazione.md',
-          title: 'Implementazione',
-          summary: 'Il codice: switch in DI, AppDbContext, pipeline MediatR, handler, migration, seed.',
+          title: 'Il codice',
+          summary: 'Switch in DI, AppDbContext, interceptor, pipeline MediatR, handler, migration, seed.',
+        },
+        {
+          file: 'infrastructure/audit-log.md',
+          title: 'Audit log',
+          summary: 'Chi ha fatto cosa, con gli snapshot prima e dopo: come lo scrive l’interceptor, che cosa non traccia, che cosa deve fare un repository.',
         },
         {
           file: 'infrastructure/decisioni.md',
           title: 'Decisioni',
-          summary: 'Perché la chiave primaria è int identity, perché niente repository, che cosa è stato scartato.',
+          summary: 'Perché la chiave primaria è int identity, perché i repository solo sulle scritture, che cosa è stato scartato.',
         },
       ],
     },
@@ -121,17 +131,27 @@ const SITE = {
       ],
     },
     {
+      title: 'Guide',
+      pages: [
+        {
+          file: 'guide/nuova-feature.md',
+          title: 'Aggiungere una feature',
+          summary: 'Il percorso completo backend + frontend, dall’entità EF Core fino alla pagina Vue.',
+        },
+        {
+          file: 'guide/test-backend.md',
+          title: 'Testare il backend',
+          summary: 'Dominio con new, handler con NSubstitute, architettura con la reflection: che cosa si testa dove e come si scrive un test nuovo.',
+        },
+      ],
+    },
+    {
       title: 'Operatività',
       pages: [
         {
           file: 'deploy/render.md',
           title: 'Deploy su Render',
           summary: 'Pubblicare backend e frontend da GitHub: servizi, variabili, CORS, diagnostica.',
-        },
-        {
-          file: 'guide/nuova-feature.md',
-          title: 'Aggiungere una feature',
-          summary: 'Il percorso completo backend + frontend, dall’entità EF Core fino alla pagina Vue.',
         },
       ],
     },

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Testare il backend — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html" aria-current="page">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Guide</p>
+      <article class="prose">
+<h1 id="testare-il-backend">Testare il backend</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#domaintests-il-dominio-si-testa-con-new">Domain.Tests: il dominio si testa con <code>new</code></a></li>
+          <li class="lvl-2"><a href="#applicationtests-gli-handler-con-i-sostituti">Application.Tests: gli handler con i sostituti</a></li>
+          <li class="lvl-3"><a href="#le-query">Le query</a></li>
+          <li class="lvl-2"><a href="#architecturetests-le-regole-che-fanno-fallire-la-build">Architecture.Tests: le regole che fanno fallire la build</a></li>
+          <li class="lvl-2"><a href="#scrivere-i-test-di-una-feature-nuova">Scrivere i test di una feature nuova</a></li>
+          <li class="lvl-2"><a href="#che-cosa-non-testare">Che cosa non testare</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Il backend ha <strong>tre progetti di test</strong>, uno per layer, e ciascuno verifica una cosa diversa con
+strumenti diversi. Questa pagina dice che cosa si testa dove, come sono fatti i test già presenti
+nel template e come se ne scrive uno nuovo per una feature.</p>
+<pre><code class="language-bash">dotnet <span class="hljs-built_in">test</span> apps/backend/&lt;Progetto&gt;.sln      <span class="hljs-comment"># tutti e tre, è anche `pnpm test:backend`</span>
+</code></pre>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Progetto</th>
+<th>Che cosa verifica</th>
+<th>Con che cosa</th>
+<th>Quando fallisce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;Progetto&gt;.Domain.Tests</code></td>
+<td>Invarianti di aggregati e value object</td>
+<td><code>new</code> e basta: nessun mock, nessun database</td>
+<td>Una regola di business è sbagliata o aggirabile</td>
+</tr>
+<tr>
+<td><code>&lt;Progetto&gt;.Application.Tests</code></td>
+<td>Gli handler: orchestrazione, eccezioni, cosa viene salvato</td>
+<td>NSubstitute sulle astrazioni (<code>IUserRepository</code>, <code>IUnitOfWork</code>, …)</td>
+<td>Un handler salva due volte, non lancia il 404, non normalizza l'input</td>
+</tr>
+<tr>
+<td><code>&lt;Progetto&gt;.Architecture.Tests</code></td>
+<td>La direzione delle dipendenze e le convenzioni del modello</td>
+<td>Reflection sugli assembly compilati</td>
+<td>Un <code>using</code> sbagliato, un setter pubblico, una <code>List&lt;T&gt;</code> esposta</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Tutti e tre usano <strong>xUnit</strong>; i nomi dei test sono frasi in italiano con gli underscore
+(<code>Rifiuta_un_username_gia_in_uso</code>), così l'output di <code>dotnet test</code> si legge come una specifica.</p>
+<blockquote>
+<p><strong>Non c'è un progetto di test di integrazione con il database.</strong> È una scelta: il dominio si
+testa senza infrastruttura, gli handler con i sostituti delle astrazioni, e l'infrastruttura EF è
+coperta dalle migration che si applicano all'avvio. <code>Program</code> è comunque <code>public partial</code>, quindi
+<code>WebApplicationFactory&lt;Program&gt;</code> è pronta se un progetto ne avrà bisogno.</p>
+</blockquote>
+<h2 id="domaintests-il-dominio-si-testa-con-new">Domain.Tests: il dominio si testa con <code>new</code></h2>
+<p>Un test di dominio costruisce un oggetto tramite il suo factory, chiama un metodo e controlla lo
+stato o l'eccezione. Nient'altro. Se per scrivere un test serve un mock, la regola sotto esame è
+nel posto sbagliato.</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">UserTests</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> User <span class="hljs-title">CreateUser</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> passwordHash = <span class="hljs-string">&quot;hash-bcrypt&quot;</span></span>)</span> =&gt;
+        User.Create(Username.From(<span class="hljs-string">&quot;mario.rossi&quot;</span>), email: <span class="hljs-string">&quot;Mario.Rossi@Azienda.IT&quot;</span>,
+            displayName: <span class="hljs-string">&quot;Mario Rossi&quot;</span>, passwordHash: passwordHash, language: Language.Italian);
+
+    [<span class="hljs-meta">Fact</span>]
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Create_normalizza_la_email_in_minuscolo</span>()</span>
+    {
+        Assert.Equal(<span class="hljs-string">&quot;mario.rossi@azienda.it&quot;</span>, CreateUser().Email);
+    }
+
+    [<span class="hljs-meta">Fact</span>]
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">ChangePassword_rifiuta_un_utente_senza_password_locale</span>()</span>
+    {
+        <span class="hljs-comment">// Utenti MSAL/Windows: le credenziali stanno nell&#x27;identity provider.</span>
+        <span class="hljs-keyword">var</span> msalUser = CreateUser(passwordHash: <span class="hljs-string">&quot;&quot;</span>);
+
+        <span class="hljs-keyword">var</span> ex = Assert.Throws&lt;InvariantViolationException&gt;(() =&gt; msalUser.ChangePassword(<span class="hljs-string">&quot;nuovo-hash&quot;</span>));
+        Assert.Contains(<span class="hljs-string">&quot;Azure AD&quot;</span>, ex.Message);
+    }
+
+    [<span class="hljs-meta">Fact</span>]
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Le_collezioni_non_sono_modificabili_dall_esterno</span>()</span>
+    {
+        <span class="hljs-keyword">var</span> user = CreateUser();
+        <span class="hljs-keyword">var</span> comeCollection = (ICollection&lt;Role&gt;)user.Roles;
+
+        Assert.True(comeCollection.IsReadOnly);
+        Assert.Throws&lt;NotSupportedException&gt;(() =&gt; comeCollection.Add(Role.Create(<span class="hljs-string">&quot;Intruso&quot;</span>, <span class="hljs-string">&quot;&quot;</span>)));
+    }
+}
+</code></pre>
+<p><strong>Che cosa vale la pena testare</strong> in un aggregato:</p>
+<ul>
+<li>il factory: normalizzazioni (trim, lowercase), valori di default, stato iniziale;</li>
+<li>ogni metodo che cambia stato: il caso ammesso e quello rifiutato, con <strong>l'eccezione giusta</strong>
+(<code>InvariantViolationException</code> per uno stato incompatibile, <code>ConflictException</code> per un
+duplicato, e così via — vedi <a href="../architettura/il-dominio.html#eccezioni-di-dominio">Il dominio</a>);</li>
+<li>le collezioni: che <code>Assign*</code> sostituisca invece di accumulare, e che dall'esterno non si possa
+scrivere;</li>
+<li>i value object: <code>From()</code> che valida e normalizza, uguaglianza strutturale, il caso <code>null</code>
+(<code>UsernameTests</code>, <code>LanguageTests</code>);</li>
+<li>le macchine a stati: ogni transizione ammessa e almeno una vietata per stato.</li>
+</ul>
+<p>Il test <strong>non</strong> verifica: la persistenza, i timestamp (<code>CreatedAt</code>/<code>UpdatedAt</code> li scrive
+l'interceptor), l'audit.</p>
+<h2 id="applicationtests-gli-handler-con-i-sostituti">Application.Tests: gli handler con i sostituti</h2>
+<p>Un handler dipende solo da astrazioni dichiarate in <code>Application/Abstractions</code>. Il test le
+sostituisce con <strong>NSubstitute</strong> e verifica tre cose: che cosa l'handler restituisce, quale
+eccezione lancia, e <strong>che cosa ha chiesto</strong> alle dipendenze.</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateUserHandlerTests</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> IUserRepository _users = Substitute.For&lt;IUserRepository&gt;();
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> IRoleRepository _roles = Substitute.For&lt;IRoleRepository&gt;();
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> IGroupRepository _groups = Substitute.For&lt;IGroupRepository&gt;();
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> IPasswordHasher _hasher = Substitute.For&lt;IPasswordHasher&gt;();
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> IUnitOfWork _unitOfWork = Substitute.For&lt;IUnitOfWork&gt;();
+
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> CreateUserHandler _handler;
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">CreateUserHandlerTests</span>()</span>
+    {
+        <span class="hljs-comment">// Default &quot;neutri&quot; nel costruttore: ogni test sovrascrive solo ciò che gli serve</span>
+        _hasher.Hash(Arg.Any&lt;<span class="hljs-built_in">string</span>&gt;()).Returns(call =&gt; <span class="hljs-string">$&quot;hashed:<span class="hljs-subst">{call.Arg&lt;<span class="hljs-built_in">string</span>&gt;()}</span>&quot;</span>);
+        _roles.GetByIdsAsync(Arg.Any&lt;IEnumerable&lt;<span class="hljs-built_in">int</span>&gt;&gt;(), Arg.Any&lt;CancellationToken&gt;()).Returns([]);
+        _groups.GetByIdsAsync(Arg.Any&lt;IEnumerable&lt;<span class="hljs-built_in">int</span>&gt;&gt;(), Arg.Any&lt;CancellationToken&gt;()).Returns([]);
+
+        _handler = <span class="hljs-keyword">new</span> CreateUserHandler(_users, _roles, _groups, _hasher, _unitOfWork);
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> CreateUserCommand <span class="hljs-title">Command</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> username = <span class="hljs-string">&quot;Mario.Rossi&quot;</span></span>)</span> =&gt;
+        <span class="hljs-keyword">new</span>(username, <span class="hljs-string">&quot;mario@azienda.it&quot;</span>, <span class="hljs-string">&quot;Mario Rossi&quot;</span>, <span class="hljs-string">&quot;Password1&quot;</span>, <span class="hljs-string">&quot;it&quot;</span>, <span class="hljs-literal">null</span>, <span class="hljs-literal">null</span>);
+
+    [<span class="hljs-meta">Fact</span>]
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Rifiuta_un_username_gia_in_uso</span>()</span>
+    {
+        _users.ExistsAsync(Arg.Any&lt;Username&gt;(), Arg.Any&lt;<span class="hljs-built_in">int</span>?&gt;(), Arg.Any&lt;CancellationToken&gt;()).Returns(<span class="hljs-literal">true</span>);
+
+        <span class="hljs-keyword">await</span> Assert.ThrowsAsync&lt;ConflictException&gt;(() =&gt; _handler.Handle(Command(), CancellationToken.None));
+
+        <span class="hljs-comment">// Nulla dev&#x27;essere salvato quando l&#x27;username è duplicato.</span>
+        <span class="hljs-keyword">await</span> _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any&lt;CancellationToken&gt;());
+    }
+
+    [<span class="hljs-meta">Fact</span>]
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Salva_una_sola_volta</span>()</span>
+    {
+        <span class="hljs-comment">// L&#x27;audit lo scrive l&#x27;interceptor: la transazione è una sola.</span>
+        <span class="hljs-keyword">await</span> _handler.Handle(Command(), CancellationToken.None);
+
+        <span class="hljs-keyword">await</span> _unitOfWork.Received(<span class="hljs-number">1</span>).SaveChangesAsync(Arg.Any&lt;CancellationToken&gt;());
+    }
+
+    [<span class="hljs-meta">Fact</span>]
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Crea_l_utente_con_username_normalizzato</span>()</span>
+    {
+        <span class="hljs-comment">// Catturare ciò che l&#x27;handler passa al repository: è l&#x27;entità che verrà salvata</span>
+        User? added = <span class="hljs-literal">null</span>;
+        _users.When(u =&gt; u.Add(Arg.Any&lt;User&gt;())).Do(call =&gt; added = call.Arg&lt;User&gt;());
+
+        <span class="hljs-keyword">var</span> response = <span class="hljs-keyword">await</span> _handler.Handle(Command(<span class="hljs-string">&quot;  Mario.ROSSI  &quot;</span>), CancellationToken.None);
+
+        Assert.Equal(<span class="hljs-string">&quot;mario.rossi&quot;</span>, added!.Username.Value);
+        Assert.Equal(<span class="hljs-string">&quot;mario.rossi&quot;</span>, response.Username);
+    }
+}
+</code></pre>
+<p>I tre schemi che ricorrono in ogni test di handler:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Schema</th>
+<th>Codice</th>
+<th>Serve a</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Preparare una risposta</td>
+<td><code>_users.GetByIdAsync(1, Arg.Any&lt;CancellationToken&gt;()).Returns(user)</code></td>
+<td>far trovare (o non trovare) un'entità</td>
+</tr>
+<tr>
+<td>Catturare un argomento</td>
+<td><code>_users.When(u =&gt; u.Add(Arg.Any&lt;User&gt;())).Do(call =&gt; added = call.Arg&lt;User&gt;())</code></td>
+<td>ispezionare l'entità costruita dall'handler</td>
+</tr>
+<tr>
+<td>Verificare una chiamata</td>
+<td><code>await _unitOfWork.Received(1).SaveChangesAsync(...)</code> · <code>DidNotReceive()</code></td>
+<td>controllare che si salvi una volta sola, o mai in caso di errore</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Il canone di un handler di comando</strong>, in quattro test:</p>
+<ol>
+<li>il caso felice: risposta corretta e <code>SaveChangesAsync</code> chiamato <strong>una</strong> volta;</li>
+<li><code>NotFoundException</code> quando il repository restituisce <code>null</code>;</li>
+<li><code>ConflictException</code> (o l'invariante) quando la regola lo richiede, e <strong>nessun salvataggio</strong>;</li>
+<li>la traduzione input → dominio: username normalizzato, password mai in chiaro, ruoli assegnati.</li>
+</ol>
+<p>Un handler che non si riesce a testare così — perché vuole <code>AppDbContext</code>, <code>IHttpContextAccessor</code>
+o <code>IConfiguration</code> — è un handler scritto male, e i test di architettura lo intercettano prima.</p>
+<h3 id="le-query">Le query</h3>
+<p>Le query usano <code>IReadDbContext</code> e <code>IQueryExecutor</code>, entrambi sostituibili: <code>IReadDbContext</code> con
+un oggetto che espone <code>IQueryable</code> in memoria (<code>new[] { … }.AsQueryable()</code>), <code>IQueryExecutor</code> con
+un'implementazione che chiama <code>ToList()</code> e <code>Count()</code> sincroni. <code>GetDatabaseStatsHandlerTests</code> è
+l'esempio nel template. È il motivo per cui l'handler non chiama <code>ToListAsync</code> direttamente: sul
+<code>IQueryable</code> in memoria fallirebbe.</p>
+<h2 id="architecturetests-le-regole-che-fanno-fallire-la-build">Architecture.Tests: le regole che fanno fallire la build</h2>
+<p>Sono i test che non riguardano una feature ma tutte: leggono gli <strong>assembly compilati</strong> e
+verificano che nessuno abbia rotto le convenzioni. Falliscono per un <code>using</code>, non per un bug.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Che cosa impedisce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Il_dominio_non_dipende_da_nessun_altro_layer</code> · <code>…da_alcun_framework</code></td>
+<td>Un riferimento a EF Core, <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a>, MediatR o FluentValidation dentro <code>Domain</code></td>
+</tr>
+<tr>
+<td><code>L_application_layer_non_dipende_da_infrastructure_ne_dall_api</code> · <code>…da_ASP_NET</code></td>
+<td>L'inversione delle dipendenze rovesciata; <code>HttpContext</code> in un handler</td>
+</tr>
+<tr>
+<td><code>L_application_layer_non_dipende_da_un_provider_di_database_specifico</code></td>
+<td><code>Microsoft.EntityFrameworkCore.SqlServer</code> o <code>Npgsql</code> in <code>Application</code> (l'assembly base di EF è ammesso)</td>
+</tr>
+<tr>
+<td><code>Infrastructure_non_dipende_dall_api</code></td>
+<td>Il composition root usato come libreria</td>
+</tr>
+<tr>
+<td><code>Le_entita_non_espongono_setter_pubblici</code></td>
+<td>Un setter pubblico su un'entità: le uniche eccezioni sono <code>CreatedAt</code>, <code>UpdatedAt</code> e <code>ConcurrencyToken</code>, che scrive l'infrastruttura</td>
+</tr>
+<tr>
+<td><code>Le_entita_non_espongono_collezioni_mutabili</code></td>
+<td><code>List&lt;T&gt;</code>, <code>ICollection&lt;T&gt;</code>, <code>IList&lt;T&gt;</code>, <code>HashSet&lt;T&gt;</code> esposte da un'entità: devono essere <code>IReadOnlyList&lt;T&gt;</code></td>
+</tr>
+<tr>
+<td><code>Le_entita_hanno_un_costruttore_senza_parametri_per_EF</code></td>
+<td>Un'entità che EF non può materializzare</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Non si modificano quando si aggiunge una feature: si modificano quando si cambia <strong>una regola del
+progetto</strong>, ed è raro. Se un test di architettura fallisce, la risposta giusta è quasi sempre
+spostare il codice, non allargare l'eccezione.</p>
+<h2 id="scrivere-i-test-di-una-feature-nuova">Scrivere i test di una feature nuova</h2>
+<p>Per un'entità <code>Category</code> con le sue slice, i test da aggiungere sono:</p>
+<pre><code>tests/
+├── &lt;Progetto&gt;.Domain.Tests/Catalog/CategoryTests.cs            # factory, Update, invarianti
+└── &lt;Progetto&gt;.Application.Tests/Categories/
+    ├── CreateCategoryHandlerTests.cs                             # felice, duplicato, salva una volta
+    ├── UpdateCategoryHandlerTests.cs                             # felice, 404
+    └── DeleteCategoryHandlerTests.cs                             # felice, 404, 409 se referenziata
+</code></pre>
+<p>Le cartelle rispecchiano quelle del codice (<code>Domain/Catalog</code> → <code>Domain.Tests/Catalog</code>). Non serve
+registrare nulla: xUnit scopre le classi da solo.</p>
+<p>Un handler di dominio con un domain service si testa allo stesso modo — il domain service è
+statico e puro, quindi il test dell'handler verifica che venga chiamato con i dati caricati, e il
+domain service ha i <strong>suoi</strong> test nel progetto Domain, senza mock.</p>
+<h2 id="che-cosa-non-testare">Che cosa non testare</h2>
+<ul>
+<li><strong>Il mapping EF</strong> (configuration, migration): lo verifica l'avvio dell'applicazione, e un test
+con un database in memoria non replicherebbe le differenze fra i due provider.</li>
+<li><strong>Gli interceptor</strong> in isolamento: audit e timestamp sono già coperti dal fatto che ogni
+salvataggio li attraversa; se serve un test, va fatto con un database vero.</li>
+<li><strong>I validator FluentValidation</strong> riga per riga: un test per regola non banale (formato, range)
+basta; <code>NotEmpty()</code> non ha bisogno di un test.</li>
+<li><strong>Gli endpoint</strong>: contengono solo routing. Se contengono altro, quello è il problema.</li>
+</ul>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="../architettura/clean-architecture.html">Clean Architecture</a> — perché i layer sono testabili in isolamento</li>
+<li><a href="../architettura/il-dominio.html">Il dominio</a> — gli invarianti che i test di dominio fissano</li>
+<li><a href="../architettura/comandi-e-query.html">Comandi e query</a> — le astrazioni che i test di handler sostituiscono</li>
+<li><a href="../frontend/convenzioni.html#test">Convenzioni e flussi del frontend</a> — i test dall'altra parte</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

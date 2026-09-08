@@ -31,7 +31,8 @@ Render la rileva automaticamente.
 ### Variabili d'ambiente
 
 In .NET il **doppio underscore** sostituisce i due punti della gerarchia: `Auth__Jwt__Secret`
-corrisponde a `Auth:Jwt:Secret` in `appsettings.json`.
+corrisponde a `Auth:Jwt:Secret` in `appsettings.json`. L'elenco completo delle chiavi, con
+default e obbligatorietà, è in [Configurazione](../progetto/configurazione.md).
 
 | Variabile | Valore | Note |
 |---|---|---|

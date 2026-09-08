@@ -156,5 +156,6 @@ tag", e senza tag non ha una versione a cui puntare.
 ## Da qui
 
 - [Panoramica](panoramica.md) — che cosa contiene il progetto che hai appena generato
+- [Configurazione](configurazione.md) — le chiavi da valorizzare in `appsettings.local.json` e `.env.local`
 - [Le skill Claude](skill.md) — come aggiungere codice seguendo le convenzioni del template
 - [Aggiungere una feature](../guide/nuova-feature.md) — la prima feature di dominio, end to end

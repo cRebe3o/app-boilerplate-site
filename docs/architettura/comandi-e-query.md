@@ -265,7 +265,8 @@ anche per i salvataggi che non passano da un handler (seed, hosted service).
 e `ConcurrencyToken`: sono dati che il dominio non possiede e che l'infrastruttura deve poter
 scrivere.
 
-> Un handler non scrive mai un audit log a mano.
+> Un handler non scrive mai un audit log a mano. Come funziona l'interceptor, che cosa traccia e
+> che cosa deve fare un repository è in [Audit log](../infrastructure/audit-log.md).
 
 ## Riepilogo: che cosa iniettare
 

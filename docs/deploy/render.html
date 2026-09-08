@@ -25,6 +25,7 @@
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
             <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
             <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
@@ -47,9 +48,10 @@
         <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
-            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
-            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
             <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -61,10 +63,16 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Operatività</p>
           <ul>
             <li><a href="../deploy/render.html" aria-current="page">Deploy su Render</a></li>
-            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
           </ul>
         </div>
     </nav>
@@ -152,7 +160,8 @@ identici su qualunque altro hosting.</p>
 Render la rileva automaticamente.</p>
 <h3 id="variabili-d-ambiente">Variabili d'ambiente</h3>
 <p>In .NET il <strong>doppio underscore</strong> sostituisce i due punti della gerarchia: <code>Auth__Jwt__Secret</code>
-corrisponde a <code>Auth:Jwt:Secret</code> in <code>appsettings.json</code>.</p>
+corrisponde a <code>Auth:Jwt:Secret</code> in <code>appsettings.json</code>. L'elenco completo delle chiavi, con
+default e obbligatorietà, è in <a href="../progetto/configurazione.html">Configurazione</a>.</p>
 <div class="table-wrap">
 <table>
 <thead>

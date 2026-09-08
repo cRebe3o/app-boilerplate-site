@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configurazione — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html" aria-current="page">Configurazione</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Progetto</p>
+      <article class="prose">
+<h1 id="configurazione">Configurazione</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#backend-la-gerarchia">Backend: la gerarchia</a></li>
+          <li class="lvl-2"><a href="#backend-le-chiavi">Backend: le chiavi</a></li>
+          <li class="lvl-3"><a href="#database-e-connectionstrings"><code>Database</code> e <code>ConnectionStrings</code></a></li>
+          <li class="lvl-3"><a href="#auth"><code>Auth</code></a></li>
+          <li class="lvl-3"><a href="#seed"><code>Seed</code></a></li>
+          <li class="lvl-3"><a href="#cors-e-logging"><code>Cors</code> e <code>Logging</code></a></li>
+          <li class="lvl-3"><a href="#come-arrivano-agli-handler">Come arrivano agli handler</a></li>
+          <li class="lvl-2"><a href="#frontend-le-variabili-vite">Frontend: le variabili <code>VITE_*</code></a></li>
+          <li class="lvl-2"><a href="#le-variabili-copier">Le variabili Copier</a></li>
+          <li class="lvl-2"><a href="#i-tre-ambienti-in-pratica">I tre ambienti, in pratica</a></li>
+          <li class="lvl-2"><a href="#checklist-non-parte">Checklist &quot;non parte&quot;</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Tutto ciò che un progetto generato legge da fuori: le chiavi del backend, le variabili del
+frontend, dove si mettono in sviluppo e in produzione, e quali sono obbligatorie. È la pagina da
+aprire quando l'applicazione non parte o parte con il database sbagliato.</p>
+<h2 id="backend-la-gerarchia">Backend: la gerarchia</h2>
+<p><a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> compone la configurazione da più sorgenti, e <strong>l'ultima vince</strong>. <code>Program.cs</code> le registra
+in quest'ordine:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Sorgente</th>
+<th>Committata?</th>
+<th>A che cosa serve</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>appsettings.json</code></td>
+<td>sì</td>
+<td>I default e la <strong>forma</strong> della configurazione: ogni chiave esiste qui, anche vuota</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>appsettings.{Environment}.json</code></td>
+<td>sì</td>
+<td>Le differenze per ambiente. Nel template solo <code>Development</code> (livelli di log)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>appsettings.local.json</code></td>
+<td><strong>no</strong> (gitignored)</td>
+<td>I segreti e i valori della tua macchina: connection string, secret JWT, admin del seed</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Variabili d'ambiente</td>
+<td>—</td>
+<td>Il deploy. Vincono su tutto</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le variabili d'ambiente usano il <strong>doppio underscore</strong> al posto dei due punti:
+<code>Auth__Jwt__Secret</code> è <code>Auth:Jwt:Secret</code>. Un elemento di array si indicizza: <code>Cors__AllowedOrigins__0</code>.</p>
+<blockquote>
+<p><code>appsettings.local.json</code> <strong>non esiste</strong> in un progetto appena generato: si crea copiando
+<code>appsettings.local.json.example</code>, che è committato e commentato riga per riga. È il primo passo
+dopo la generazione, e senza di esso l'applicazione non parte (manca il secret JWT).</p>
+</blockquote>
+<p><code>ASPNETCORE_ENVIRONMENT</code> decide quale file <code>{Environment}</code> viene letto e cambia alcuni
+comportamenti: in <code>Development</code> il CORS accetta qualsiasi porta su <code>localhost</code>, il rate limiting
+del login è più permissivo, i dettagli delle eccezioni arrivano al client, e l'endpoint di login
+Windows accetta l'header <code>X-Dev-Windows-User</code>. <code>launchSettings.json</code> lo imposta a <code>Development</code> per
+<code>dotnet run</code>; in produzione va impostato esplicitamente a <code>Production</code>.</p>
+<h2 id="backend-le-chiavi">Backend: le chiavi</h2>
+<h3 id="database-e-connectionstrings"><code>Database</code> e <code>ConnectionStrings</code></h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Obbligatoria</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Database:Provider</code></td>
+<td>sì</td>
+<td><code>SqlServer</code> o <code>PostgreSQL</code>. Decide quale <code>DbContext</code>, quale set di migration e quale connection string</td>
+</tr>
+<tr>
+<td><code>ConnectionStrings:SqlServer</code></td>
+<td>se il provider è SqlServer</td>
+<td>es. <code>Server=(localdb)\MSSQLLocalDB;Database=&lt;Progetto&gt;;Trusted_Connection=True;TrustServerCertificate=True</code></td>
+</tr>
+<tr>
+<td><code>ConnectionStrings:PostgreSQL</code></td>
+<td>se il provider è PostgreSQL</td>
+<td>es. <code>Host=localhost;Database=&lt;progetto&gt;;Username=postgres;Password=…</code></td>
+</tr>
+<tr>
+<td><code>Database:SizeLimitMb</code></td>
+<td>no</td>
+<td>Tetto di spazio del piano di hosting, per la pagina Monitoraggio. Il motore non lo conosce; senza, la pagina usa un riferimento indicativo e lo segnala</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le due connection string possono restare entrambe valorizzate: viene letta solo quella del
+provider attivo. Cambiare database è cambiare <code>Database:Provider</code>, niente altro.</p>
+<h3 id="auth"><code>Auth</code></h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Obbligatoria</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Auth:Jwt:Secret</code></td>
+<td><strong>sì, sempre</strong></td>
+<td>Almeno 32 caratteri. Firma i JWT interni; senza, l'app lancia <code>InvalidOperationException</code> all'avvio</td>
+</tr>
+<tr>
+<td><code>Auth:Jwt:ExpiresInMinutes</code></td>
+<td>no (60)</td>
+<td>Durata dell'access token</td>
+</tr>
+<tr>
+<td><code>Auth:Jwt:RefreshExpiresInDays</code></td>
+<td>no (7)</td>
+<td>Durata del refresh token (cookie HttpOnly)</td>
+</tr>
+<tr>
+<td><code>Auth:Jwt:Issuer</code> · <code>Audience</code></td>
+<td>no (<code>&lt;Progetto&gt;</code> / <code>&lt;Progetto&gt;Clients</code>)</td>
+<td>Claim di validazione del token</td>
+</tr>
+<tr>
+<td><code>Auth:Msal:TenantId</code> · <code>ClientId</code></td>
+<td>solo con login Microsoft</td>
+<td>Tenant Entra ID e client id dell'<strong>app API</strong>, contro cui viene validato il token Azure — vedi <a href="../autenticazione/azure-app-registration.html">App registration Azure</a></td>
+</tr>
+<tr>
+<td><code>Auth:Msal:Instance</code></td>
+<td>no</td>
+<td><code>https://login.microsoftonline.com/</code></td>
+</tr>
+<tr>
+<td><code>Auth:Strategy</code></td>
+<td>no</td>
+<td><strong>Solo documentazione</strong>: il backend accetta sempre tutti e tre i login. La schermata la sceglie il frontend con <code>VITE_AUTH_STRATEGY</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il login Windows integrato non ha chiavi: usa Negotiate, e su Windows funziona anche fuori
+dominio.</p>
+<h3 id="seed"><code>Seed</code></h3>
+<p>Letti <strong>solo al primo avvio su un database vuoto</strong>: se esiste già anche un solo ruolo, il seed
+esce senza fare nulla. Cambiarli dopo non ha effetto.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Default</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Seed:AdminUsername</code></td>
+<td><code>admin</code></td>
+<td>Username dell'amministratore iniziale. Con il login Microsoft dev'essere l'email aziendale con cui si entra (<code>preferred_username</code> del token)</td>
+</tr>
+<tr>
+<td><code>Seed:AdminEmail</code></td>
+<td>vuoto</td>
+<td>Email dell'admin. Vuoto = si riusa lo username, se ha la forma di un'email</td>
+</tr>
+<tr>
+<td><code>Seed:AdminDisplayName</code></td>
+<td><code>Administrator</code></td>
+<td>Nome visualizzato</td>
+</tr>
+<tr>
+<td><code>Seed:AdminPassword</code></td>
+<td>vuoto</td>
+<td>Password dell'admin. Vuota = ne viene generata una casuale, <strong>non stampata</strong>: di fatto va impostata</td>
+</tr>
+<tr>
+<td><code>Seed:WindowsUsername</code></td>
+<td>vuoto</td>
+<td>Account per il login Windows, nella forma <code>DOMINIO\utente</code>. Vuoto = l'account del processo corrente, che in sviluppo è quasi sempre quello giusto</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il seed crea anche permessi, ruoli (<code>SuperAdmin</code>, <code>Admin</code>, <code>Viewer</code>, <code>Custom</code>) e gruppi
+(<code>Administrators</code>, <code>Viewers</code>): l'elenco è in <code>DataSeeder.cs</code>. I permessi di una feature nuova si
+aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.</p>
+<h3 id="cors-e-logging"><code>Cors</code> e <code>Logging</code></h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Cors:AllowedOrigins</code></td>
+<td>Array degli origin del frontend, esatti (<code>https://app.example.com</code>). In <code>Development</code> è ignorato: qualsiasi porta su <code>localhost</code> è ammessa</td>
+</tr>
+<tr>
+<td><code>Logging:LogLevel:*</code></td>
+<td>Standard .NET. Per vedere le query EF: <code>Microsoft.EntityFrameworkCore.Database.Command</code> a <code>Information</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="come-arrivano-agli-handler">Come arrivano agli handler</h3>
+<p>Gli handler <strong>non leggono <code>IConfiguration</code></strong>: i test di architettura vietano <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> in
+<code>Application</code>, e una chiave letta a mano in un handler è una dipendenza nascosta. Le impostazioni
+che servono alla logica applicativa passano da <code>IAppSettings</code>, tipizzata e dichiarata in
+<code>Application/Abstractions</code>, implementata in <code>Infrastructure/Services/AppSettings.cs</code>. Oggi espone
+<code>DatabaseSizeLimitMb</code>; una chiave nuova che serve a un handler si aggiunge lì.</p>
+<p>Tutto il resto (<code>Auth</code>, <code>Cors</code>, <code>Seed</code>) lo legge il composition root — <code>Program.cs</code>,
+<code>AuthExtensions</code>, <code>DataSeeder</code> — che è l'unico posto in cui la configurazione è un dettaglio
+legittimo.</p>
+<h2 id="frontend-le-variabili-vite">Frontend: le variabili <code>VITE_*</code></h2>
+<p>Vite legge i file <code>.env</code> in ordine, e anche qui l'ultimo vince:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Committato?</th>
+<th>Quando viene letto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.env</code></td>
+<td>sì</td>
+<td>Sempre: i default di sviluppo</td>
+</tr>
+<tr>
+<td><code>.env.production</code></td>
+<td>sì</td>
+<td>Con <code>vite build</code>: i segnaposto per il deploy, da sovrascrivere nell'hosting</td>
+</tr>
+<tr>
+<td><code>.env.local</code></td>
+<td><strong>no</strong> (gitignored)</td>
+<td>Sempre, sopra <code>.env</code>: i valori della tua macchina. Si crea da <code>.env.local.example</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le variabili sono <strong>incorporate nel bundle al build</strong>: cambiarle in produzione significa
+ricostruire, oppure impostarle nell'hosting prima della build (su Render, la dashboard vince sul
+file).</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Variabile</th>
+<th>Valore</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VITE_API_BASE_URL</code></td>
+<td><code>http://localhost:&lt;api_port&gt;</code> in sviluppo, l'URL pubblico del <strong>backend</strong> in produzione</td>
+<td>Senza slash finale</td>
+</tr>
+<tr>
+<td><code>VITE_AUTH_STRATEGY</code></td>
+<td><code>jwt</code> · <code>msal</code> · <code>windows</code></td>
+<td>Quale schermata di login mostrare. Il backend accetta sempre tutte e tre</td>
+</tr>
+<tr>
+<td><code>VITE_APP_ACCESS_MODE</code></td>
+<td><code>public</code> · <code>private</code></td>
+<td>Impostata dalla variabile Copier <code>access_mode</code>. <code>private</code> manda al login qualsiasi anonimo</td>
+</tr>
+<tr>
+<td><code>VITE_MSAL_CLIENT_ID</code> · <code>VITE_MSAL_TENANT_ID</code></td>
+<td>dal portale Azure</td>
+<td>Solo con <code>msal</code>: l'app registration della <strong>SPA</strong></td>
+</tr>
+<tr>
+<td><code>VITE_MSAL_API_CLIENT_ID</code></td>
+<td>dal portale Azure</td>
+<td>Solo con <code>msal</code> e due app registration distinte: l'app dell'<strong>API</strong>, per lo scope del token. Vuota = SPA e API condividono la stessa app</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Nel codice nessun file legge <code>import.meta.env</code> direttamente: lo fa solo <code>config/app.config.ts</code>,
+che espone valori già normalizzati. Una variabile nuova si aggiunge in tre posti: <code>.env</code>,
+<code>vite-env.d.ts</code> (il tipo) e <code>app.config.ts</code>.</p>
+<h2 id="le-variabili-copier">Le variabili Copier</h2>
+<p>Alcune chiavi nascono già valorizzate alla generazione, dalle risposte a Copier. Non sono
+configurazione a runtime: sono il punto di partenza.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Variabile Copier</th>
+<th>Dove finisce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_slug</code></td>
+<td>Namespace, <code>.sln</code>, <code>Issuer</code>/<code>Audience</code> del JWT, nome del database nelle connection string d'esempio</td>
+</tr>
+<tr>
+<td><code>api_port</code></td>
+<td><code>launchSettings.json</code>, <code>VITE_API_BASE_URL</code>, <code>scripts/generate-api-types.mjs</code></td>
+</tr>
+<tr>
+<td><code>frontend_port</code></td>
+<td><code>vite.config.ts</code>, <code>Cors:AllowedOrigins</code></td>
+</tr>
+<tr>
+<td><code>db_provider</code></td>
+<td><code>Database:Provider</code>, immagine del <code>docker-compose.yml</code></td>
+</tr>
+<tr>
+<td><code>access_mode</code></td>
+<td><code>VITE_APP_ACCESS_MODE</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Vedi <a href="generazione.html">Generare e aggiornare</a> per il resto.</p>
+<h2 id="i-tre-ambienti-in-pratica">I tre ambienti, in pratica</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Sviluppo locale</th>
+<th>Docker (solo il DB)</th>
+<th>Produzione</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backend</td>
+<td><code>appsettings.local.json</code></td>
+<td>idem, con la connection string del container</td>
+<td>Variabili d'ambiente (<code>Auth__Jwt__Secret</code>, <code>ConnectionStrings__*</code>, <code>Cors__AllowedOrigins__0</code>, <code>Seed__*</code>)</td>
+</tr>
+<tr>
+<td>Frontend</td>
+<td><code>.env.local</code></td>
+<td>idem</td>
+<td>Variabili dell'hosting o <code>.env.production</code> al build</td>
+</tr>
+<tr>
+<td><code>ASPNETCORE_ENVIRONMENT</code></td>
+<td><code>Development</code> (da <code>launchSettings.json</code>)</td>
+<td><code>Development</code></td>
+<td><code>Production</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>La tabella completa per il deploy, con i valori, è in <a href="../deploy/render.html">Deploy su Render</a>.</p>
+<h2 id="checklist-non-parte">Checklist &quot;non parte&quot;</h2>
+<ul>
+<li><strong><code>JWT Secret is missing</code></strong> → manca <code>Auth:Jwt:Secret</code>: <code>appsettings.local.json</code> non esiste o non è
+nella cartella del progetto Api.</li>
+<li><strong>Provider sbagliato</strong> → <code>Database:Provider</code> in <code>appsettings.local.json</code> o in una variabile
+d'ambiente <code>Database__Provider</code> che vince sul file.</li>
+<li><strong><code>database does not exist</code> su Postgres</strong> → <code>MigrateAsync</code> non ha il permesso di creare il
+database (tipico dietro un connection pooler): va creato a monte.</li>
+<li><strong>CORS in produzione</strong> → <code>Cors:AllowedOrigins</code> deve contenere l'origin esatto del frontend,
+schema compreso.</li>
+<li><strong>Login MSAL &quot;utente non trovato&quot;</strong> → <code>Seed:AdminUsername</code> non coincide con l'email dell'account
+Entra ID, oppure il seed è già stato fatto con un altro username.</li>
+<li><strong>Il frontend chiama <code>localhost</code> in produzione</strong> → <code>VITE_API_BASE_URL</code> non è stata impostata
+prima della build.</li>
+</ul>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="generazione.html">Generare e aggiornare</a> — le variabili Copier e i primi passi</li>
+<li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a> — le chiavi <code>Auth</code> nel dettaglio</li>
+<li><a href="../deploy/render.html">Deploy su Render</a> — le variabili d'ambiente di produzione</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

@@ -163,7 +163,8 @@ Il commento in testa a `LayerDependencyTests` spiega perché esistono:
 ## Che cosa si guadagna, concretamente
 
 **Testabilità senza infrastruttura.** Il dominio si testa con `new`: `AppDemo.Domain.Tests` non ha
-database né mock. Gli handler si testano con fake delle astrazioni, senza `HttpContext`.
+database né mock. Gli handler si testano con fake delle astrazioni, senza `HttpContext`. Vedi
+[Testare il backend](../guide/test-backend.md).
 
 **Sostituibilità dei dettagli.** I due provider SQL convivono perché nessun layer interno sa quale
 sia attivo. Lo stesso varrebbe per un cambio di ORM.

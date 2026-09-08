@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Implementazione — app-boilerplate</title>
+  <title>Il codice — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -25,6 +25,7 @@
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
             <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
             <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
@@ -47,9 +48,10 @@
         <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
-            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
-            <li><a href="../infrastructure/implementazione.html" aria-current="page">Implementazione</a></li>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html" aria-current="page">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
             <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -61,10 +63,16 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Operatività</p>
           <ul>
             <li><a href="../deploy/render.html">Deploy su Render</a></li>
-            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
           </ul>
         </div>
     </nav>
@@ -246,7 +254,8 @@ senza scrivere una riga in più.</p>
 </blockquote>
 <blockquote>
 <p>⚠️ <strong>Un handler non scrive mai un audit log a mano.</strong> Se stai per aggiungere una riga <code>AuditLog</code>
-in un handler, l'interceptor lo sta già facendo.</p>
+in un handler, l'interceptor lo sta già facendo. Il funzionamento completo — i tre momenti, gli
+snapshot, che cosa non viene tracciato — è in <a href="audit-log.html">Audit log</a>.</p>
 </blockquote>
 <h3 id="le-m2m-skip-navigation-unidirezionale">Le M2M: skip navigation unidirezionale</h3>
 <p>Il pattern si ripete quattro volte (<code>User.Groups</code>, <code>User.Roles</code>, <code>Group.Roles</code>, <code>Role.Permissions</code>):</p>

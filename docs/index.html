@@ -25,6 +25,7 @@
           <ul>
             <li><a href="progetto/panoramica.html">Panoramica</a></li>
             <li><a href="progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="progetto/configurazione.html">Configurazione</a></li>
             <li><a href="progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
@@ -47,9 +48,10 @@
         <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="infrastructure/panoramica.html">Panoramica</a></li>
-            <li><a href="infrastructure/architettura.html">Architettura</a></li>
-            <li><a href="infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="infrastructure/audit-log.html">Audit log</a></li>
             <li><a href="infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -61,10 +63,16 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Operatività</p>
           <ul>
             <li><a href="deploy/render.html">Deploy su Render</a></li>
-            <li><a href="guide/nuova-feature.html">Aggiungere una feature</a></li>
           </ul>
         </div>
     </nav>
@@ -96,6 +104,10 @@ documentazione del template: la fonte di verità ultima resta il codice del repo
       <a class="card" href="progetto/generazione.html">
         <h3>Generare e aggiornare</h3>
         <p>Le variabili del template, come nasce un progetto con Copier e come si aggiorna quando il template cambia.</p>
+      </a>
+      <a class="card" href="progetto/configurazione.html">
+        <h3>Configurazione</h3>
+        <p>appsettings, appsettings.local.json, variabili d’ambiente e VITE_*: tutte le chiavi, dove si mettono, quali sono obbligatorie.</p>
       </a>
       <a class="card" href="progetto/skill.html">
         <h3>Le skill Claude</h3>
@@ -141,20 +153,24 @@ documentazione del template: la fonte di verità ultima resta il codice del repo
     <h2>Infrastruttura</h2>
     <div class="card-grid">
       <a class="card" href="infrastructure/panoramica.html">
-        <h3>Panoramica</h3>
-        <p>L’impianto tecnico in breve: doppio provider SQL, pipeline delle richieste, che cosa è già pronto.</p>
+        <h3>Il doppio provider</h3>
+        <p>SQL Server o PostgreSQL da configurazione: come funziona, la pipeline delle richieste, che cosa è già pronto.</p>
       </a>
       <a class="card" href="infrastructure/architettura.html">
-        <h3>Architettura</h3>
+        <h3>Modello EF e schema</h3>
         <p>Un solo AppDbContext, il modello EF Core, lo schema relazionale, i due set di migration.</p>
       </a>
       <a class="card" href="infrastructure/implementazione.html">
-        <h3>Implementazione</h3>
-        <p>Il codice: switch in DI, AppDbContext, pipeline MediatR, handler, migration, seed.</p>
+        <h3>Il codice</h3>
+        <p>Switch in DI, AppDbContext, interceptor, pipeline MediatR, handler, migration, seed.</p>
+      </a>
+      <a class="card" href="infrastructure/audit-log.html">
+        <h3>Audit log</h3>
+        <p>Chi ha fatto cosa, con gli snapshot prima e dopo: come lo scrive l’interceptor, che cosa non traccia, che cosa deve fare un repository.</p>
       </a>
       <a class="card" href="infrastructure/decisioni.html">
         <h3>Decisioni</h3>
-        <p>Perché la chiave primaria è int identity, perché niente repository, che cosa è stato scartato.</p>
+        <p>Perché la chiave primaria è int identity, perché i repository solo sulle scritture, che cosa è stato scartato.</p>
       </a>
     </div>
   </section>
@@ -172,15 +188,24 @@ documentazione del template: la fonte di verità ultima resta il codice del repo
     </div>
   </section>
   <section class="home-section">
+    <h2>Guide</h2>
+    <div class="card-grid">
+      <a class="card" href="guide/nuova-feature.html">
+        <h3>Aggiungere una feature</h3>
+        <p>Il percorso completo backend + frontend, dall’entità EF Core fino alla pagina Vue.</p>
+      </a>
+      <a class="card" href="guide/test-backend.html">
+        <h3>Testare il backend</h3>
+        <p>Dominio con new, handler con NSubstitute, architettura con la reflection: che cosa si testa dove e come si scrive un test nuovo.</p>
+      </a>
+    </div>
+  </section>
+  <section class="home-section">
     <h2>Operatività</h2>
     <div class="card-grid">
       <a class="card" href="deploy/render.html">
         <h3>Deploy su Render</h3>
         <p>Pubblicare backend e frontend da GitHub: servizi, variabili, CORS, diagnostica.</p>
-      </a>
-      <a class="card" href="guide/nuova-feature.html">
-        <h3>Aggiungere una feature</h3>
-        <p>Il percorso completo backend + frontend, dall’entità EF Core fino alla pagina Vue.</p>
       </a>
     </div>
   </section>

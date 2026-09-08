@@ -357,7 +357,8 @@ l'entità è il metodo che ne garantisce gli invarianti.
 > **L'audit è automatico.** `AuditLogInterceptor` scrive una riga per ogni radice di aggregato
 > creata, modificata o cancellata, con gli snapshot prima/dopo. Lo snapshot *prima* viene da
 > `AuditSnapshotTracker`, alimentato dal repository al caricamento. Un handler non nomina mai
-> `AuditLog`.
+> `AuditLog`. Per la nuova entità va aggiunto il `case` in `AuditSnapshotWriter` — vedi
+> [Audit log](../infrastructure/audit-log.md).
 
 | Azione | `Before` | `After` |
 |---|---|---|
@@ -782,6 +783,7 @@ errors: {
 - [ ] Lo store usa `useAsyncAction`: letture con `run`, scritture con `runOrThrow`
 - [ ] La rotta è figlia di AppShell con `title` e `section`, e la voce di menu è in `sections.config.ts`
 - [ ] I testi esistono in italiano **e** in inglese
+- [ ] I test ci sono: l'aggregato in `Domain.Tests`, gli handler in `Application.Tests` (vedi [Testare il backend](test-backend.md))
 - [ ] `dotnet test` passa — i test di architettura sono la rete che intercetta le violazioni dei layer
 - [ ] `pnpm vue-tsc --noEmit`, `pnpm eslint .` e `pnpm vitest run` sono puliti
 

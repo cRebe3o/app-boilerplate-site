@@ -25,6 +25,7 @@
           <ul>
             <li><a href="../progetto/panoramica.html">Panoramica</a></li>
             <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
             <li><a href="../progetto/skill.html">Le skill Claude</a></li>
           </ul>
         </div>
@@ -47,9 +48,10 @@
         <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
-            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
-            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
-            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
             <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -61,16 +63,22 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html" aria-current="page">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Operatività</p>
           <ul>
             <li><a href="../deploy/render.html">Deploy su Render</a></li>
-            <li><a href="../guide/nuova-feature.html" aria-current="page">Aggiungere una feature</a></li>
           </ul>
         </div>
     </nav>
 
     <main>
-      <p class="eyebrow">Operatività</p>
+      <p class="eyebrow">Guide</p>
       <article class="prose">
 <h1 id="aggiungere-una-feature">Aggiungere una feature</h1>
 <nav class="toc" aria-label="Indice della pagina">
@@ -452,7 +460,8 @@ l'entità è il metodo che ne garantisce gli invarianti.</p>
 <p><strong>L'audit è automatico.</strong> <code>AuditLogInterceptor</code> scrive una riga per ogni radice di aggregato
 creata, modificata o cancellata, con gli snapshot prima/dopo. Lo snapshot <em>prima</em> viene da
 <code>AuditSnapshotTracker</code>, alimentato dal repository al caricamento. Un handler non nomina mai
-<code>AuditLog</code>.</p>
+<code>AuditLog</code>. Per la nuova entità va aggiunto il <code>case</code> in <code>AuditSnapshotWriter</code> — vedi
+<a href="../infrastructure/audit-log.html">Audit log</a>.</p>
 </blockquote>
 <div class="table-wrap">
 <table>
@@ -836,6 +845,7 @@ dichiarano <code>query: { from: '...' }</code></li>
 <li>[ ] Lo store usa <code>useAsyncAction</code>: letture con <code>run</code>, scritture con <code>runOrThrow</code></li>
 <li>[ ] La rotta è figlia di AppShell con <code>title</code> e <code>section</code>, e la voce di menu è in <code>sections.config.ts</code></li>
 <li>[ ] I testi esistono in italiano <strong>e</strong> in inglese</li>
+<li>[ ] I test ci sono: l'aggregato in <code>Domain.Tests</code>, gli handler in <code>Application.Tests</code> (vedi <a href="test-backend.html">Testare il backend</a>)</li>
 <li>[ ] <code>dotnet test</code> passa — i test di architettura sono la rete che intercetta le violazioni dei layer</li>
 <li>[ ] <code>pnpm vue-tsc --noEmit</code>, <code>pnpm eslint .</code> e <code>pnpm vitest run</code> sono puliti</li>
 </ul>

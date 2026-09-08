@@ -35,14 +35,14 @@ build.mjs               il generatore + la struttura del sito
 docs/
 ├── index.md            la home (le schede le genera build.mjs)
 ├── assets/style.css    l'unico foglio di stile
-├── progetto/           panoramica, generazione con Copier, skill Claude
+├── progetto/           panoramica, generazione con Copier, configurazione, skill Claude
 ├── architettura/       Clean Architecture, dominio, comandi e query
 ├── frontend/           struttura del progetto Vue, convenzioni e flussi
-├── infrastructure/     doppio provider SQL e impianto: panoramica, architettura,
-│                       implementazione, decisioni
+├── infrastructure/     doppio provider SQL e impianto: modello EF, codice, audit log,
+│                       decisioni
 ├── autenticazione/     JWT, MSAL e Windows; app registration Azure
-├── deploy/             Render
-└── guide/              come si aggiunge una feature
+├── guide/              aggiungere una feature, testare il backend
+└── deploy/             Render
 ```
 
 ## Tenerlo allineato al template

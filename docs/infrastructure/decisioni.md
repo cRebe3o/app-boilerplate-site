@@ -19,7 +19,7 @@ nasce, e cambiarla dopo significa cambiarla in tutti.
 | **Snapshot audit come `string` JSON** | Colonna JSON nativa (`json`/`jsonb`) | Una colonna testo è portabile fra i due provider senza codice condizionale e resta interrogabile con `JSON_VALUE`/`OPENJSON` (SQL Server) e con gli operatori JSON (Postgres) |
 | **Concurrency token `Guid` applicativo** | `rowversion` (SQL Server) / `xmin` (Postgres) | I token nativi hanno tipi e semantiche diverse sui due provider: un `Guid` rigenerato da un interceptor si comporta identico su entrambi |
 | **Enum come stringa** | Enum come int | Valore leggibile nel DB e stabile se cambia l'ordine dei membri |
-| **Nessuna migration nel template** | Un `InitialCreate` già pronto | Una migration committata nel template vincolerebbe ogni progetto generato. La prima è il primo file di storia del progetto |
+| **`InitialCreate` inclusa nel template** | Cartelle `Migrations` vuote, prima migration generata nel progetto | Lo schema dell'impianto è identico per ogni progetto: rigenerarlo produce lo stesso file. Le migration del dominio restano del progetto |
 
 ## Perché due provider SQL
 
@@ -166,23 +166,26 @@ parte delle API a un pubblico non autenticato — la strada non sarebbe cambiare
 una colonna **chiave pubblica** (`Guid` o slug, unique) accanto alla PK intera, lasciando le FK
 interne su `int`.
 
-## Perché il template non contiene migration
+## Perché il template contiene `InitialCreate`
 
-Le cartelle `Migrations/SqlServer` e `Migrations/Postgres` nascono **vuote**, e il primo comando che
-si esegue in un progetto nuovo genera l'`InitialCreate`.
+Le cartelle `Migrations/SqlServer` e `Migrations/Postgres` contengono una migration sola,
+`InitialCreate`, che descrive lo schema dell'**impianto**: utenti, gruppi, ruoli, permessi, audit
+log, error log, configurazione, refresh token.
 
-È deliberato. Una migration committata nel template sarebbe **immutabile per sempre** in ogni
-progetto generato: il primo file di storia dello schema, scritto da qualcun altro, in un momento in
-cui il modello del template poteva essere diverso da quello che il progetto riceve. Peggio, un
-`copier update` che modificasse le entità dovrebbe poi riconciliare migration già applicate su
-database reali.
+La prima versione del template le lasciava vuote, per non vincolare i progetti generati a una
+migration scritta da qualcun altro. In pratica il costo era maggiore del beneficio: ogni progetto
+doveva ricordarsi di generarla, e chi lo dimenticava vedeva l'applicazione partire su un database
+senza schema. E il file generato era lo stesso in ogni progetto, con un timestamp diverso — lo
+schema dell'impianto non dipende dalle risposte a Copier.
 
-Generandola nel progetto, invece, la prima migration riflette esattamente il modello ricevuto ed è
-il primo commit di una storia che appartiene al progetto.
+Il compromesso: `InitialCreate` è del template, **tutto ciò che viene dopo è del progetto**. Le
+migration del dominio si generano nel progetto, una per provider, e sono la sua storia. Se un
+`copier update` porta una modifica al modello dell'impianto, arriva come migration nuova, non come
+riscrittura di `InitialCreate`.
 
-**Il prezzo**: è un passaggio in più da ricordare dopo la generazione, e se lo si dimentica
-l'applicazione parte con un database senza schema. Per questo compare nei task post-generazione,
-nel README del progetto e in [Generare e aggiornare](../progetto/generazione.md).
+**Il prezzo**: le entità dell'impianto non si possono rinominare o rimodellare nel template senza
+una migration aggiuntiva che i progetti generati riceveranno all'update — che è comunque il
+comportamento corretto per uno schema già applicato su database reali.
 
 ## Perché le slice per caso d'uso
 

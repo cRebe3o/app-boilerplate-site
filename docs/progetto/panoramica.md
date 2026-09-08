@@ -263,10 +263,12 @@ Nascondere il pulsante è cortesia verso l'utente; a **negare** l'operazione è 
 ## Da qui
 
 - [Generare e aggiornare](generazione.md) — le variabili del template, `copier copy` e `copier update`
+- [Configurazione](configurazione.md) — tutte le chiavi del backend e le variabili del frontend, dove si mettono
 - [Le skill Claude](skill.md) — gli scaffolding inclusi per aggiungere codice nel modo previsto
 - [Clean Architecture](../architettura/clean-architecture.md) — i layer, la regola delle dipendenze, dove mettere la logica
 - [Frontend](../frontend/struttura.md) — la struttura del progetto Vue e le convenzioni con cui si scrive una feature
 - [Infrastruttura](../infrastructure/panoramica.md) — perché due provider SQL e come sono tenuti insieme
 - [Autenticazione](../autenticazione/autenticazione.md) — JWT, Azure AD, Windows, permessi
 - [Aggiungere una feature](../guide/nuova-feature.md) — il percorso completo, end to end
+- [Testare il backend](../guide/test-backend.md) — dominio, handler e architettura: che cosa si testa dove
 - [Deploy su Render](../deploy/render.md) — come va in produzione
