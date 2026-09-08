@@ -36,6 +36,8 @@ docs/
 ├── index.md            la home (le schede le genera build.mjs)
 ├── assets/style.css    l'unico foglio di stile
 ├── progetto/           panoramica, generazione con Copier, skill Claude
+├── architettura/       Clean Architecture, dominio, comandi e query
+├── frontend/           struttura del progetto Vue, convenzioni e flussi
 ├── infrastructure/     doppio provider SQL e impianto: panoramica, architettura,
 │                       implementazione, decisioni
 ├── autenticazione/     JWT, MSAL e Windows; app registration Azure

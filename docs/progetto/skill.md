@@ -1,6 +1,6 @@
 # Le skill Claude
 
-Un progetto generato porta con sé una cartella `.claude/` con **21 skill** e **6 comandi**. Sono
+Un progetto generato porta con sé una cartella `.claude/` con **21 skill** e **5 comandi**. Sono
 istruzioni scritte, versionate insieme al codice, che Claude Code carica quando il compito
 corrisponde: descrivono come si scrive *in questo progetto* una slice, un'entità, una pagina, un
 test.
@@ -17,7 +17,7 @@ logica o perché ogni entità richiede due migration.
 
 Nella maggior parte dei casi non serve invocarle: ogni skill dichiara i propri *trigger*, e Claude
 Code la carica quando la richiesta li tocca. Chiedere "aggiungi l'endpoint per creare le categorie"
-attiva `vertical-slice-backend`; parlare di paginazione attiva `pagination`.
+attiva `backend-slice`; parlare di paginazione attiva `pagination`.
 
 Si possono comunque richiamare per nome quando si vuole essere espliciti sul pattern da seguire.
 
@@ -25,7 +25,7 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 
 | Skill | Quando si attiva |
 |---|---|
-| **`vertical-slice-backend`** | Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + `IUnitOfWork` e le query `IReadDbContext` |
+| **`backend-slice`** | Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + `IUnitOfWork` e le query `IReadDbContext`, e che ogni endpoint con body dichiara `.Produces<T>()` perché il frontend ne generi il tipo |
 | **`domain-modeling`** | Modellare una regola di business: che cosa è un aggregato, dove vive una regola, quando serve un value object, un domain service, un evento o una specification. Vedi [Dove mettere la logica](../architettura/dove-mettere-la-logica.md) |
 | **`db-entity`** | Una nuova entità: l'aggregato in `Domain/`, la sua `IEntityTypeConfiguration`, il repository e la **doppia migration** SQL Server + Postgres |
 | **`audit-log`** | Come funziona l'audit automatico via `AuditLogInterceptor` e che cosa deve fare un repository perché lo snapshot *prima* sia corretto. Un handler non scrive mai l'audit a mano |
@@ -41,21 +41,21 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 
 | Skill | Quando si attiva |
 |---|---|
-| **`vue-feature`** | Una nuova feature di frontend completa: service, store Pinia, pagina e rotta, nell'ordine previsto dalle convenzioni |
-| **`detail-page`** | Una pagina di dettaglio su rotta `:id`, con breadcrumb, caricamento del singolo elemento ed eventuali tab |
-| **`vuetify-dialog-form`** | Un dialog di creazione o modifica: validazione, stato di caricamento, gestione errori, reset e componente condiviso fra create ed edit |
+| **`vue-feature`** | Una nuova feature di frontend completa: tipi da `pnpm gen:api`, service, store con `useAsyncAction`, pagina, rotta figlia di AppShell, voce di menu in `sections.config.ts`, traduzioni. Vedi [Convenzioni e flussi](../frontend/convenzioni.md) |
+| **`detail-page`** | Una pagina di dettaglio su rotta `:id(\\d+)`, che serve creazione e modifica, con `useBackNavigation` per il ritorno e `useApiErrors` per gli errori per campo |
+| **`vuetify-dialog-form`** | Un dialog di creazione o modifica in `components/<dominio>/`: validazione, `attempt()` per chiudersi solo se il salvataggio riesce, reset alla chiusura, un solo componente per create ed edit |
 
 ## Test
 
 | Skill | Quando si attiva |
 |---|---|
-| **`vitest-setup`** | Configurazione di Vitest per i componenti Vue 3 |
+| **`vitest-setup`** | Configurazione di Vitest: jsdom, `vitest.setup.ts`, soglie di coverage, che cosa mockare globalmente |
 | **`vue-component-test`** | Test unitari di componente con `@vue/test-utils`: props, eventi, slot |
-| **`pinia-store-test`** | Test di uno store: stato, getter, azioni |
-| **`api-mock-test`** | Test con chiamate HTTP mockate e gestione degli errori |
+| **`pinia-store-test`** | Test di uno store con il service mockato: stato iniziale, `run` che non rilancia, `runOrThrow` che rilancia, `reload` con l'ultima query, `loading` |
+| **`api-mock-test`** | Test di service e store con `api` o il service mockati: URL e payload, ProblemDetails 4xx, errore di rete |
 | **`crud-operations-test`** | Test del giro completo create / read / update / delete |
 | **`form-validation-test`** | Test di validazione di un form: campi obbligatori, pattern, regole custom |
-| **`page-integration-test`** | Test di integrazione di una pagina intera: interazioni, store e chiamate insieme |
+| **`page-integration-test`** | Test di una pagina montata con router in memoria, service mockato e store reale: caricamento, interazioni, errori visibili, ricarica |
 
 ## I comandi
 
@@ -75,7 +75,7 @@ Le skill sono pensate per comporsi, e le richieste reali ne toccano quasi sempre
 
 ```
 Una nuova entità di dominio, dal modello alla pagina
-   domain-modeling  →  db-entity  →  vertical-slice-backend  →  audit-log  →  permissions
+   domain-modeling  →  db-entity  →  backend-slice  →  audit-log  →  permissions
                                                                                    │
                                                              vue-feature  ←─────────┘
                                                                    │

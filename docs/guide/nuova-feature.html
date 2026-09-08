@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -98,7 +105,7 @@ tipo di entità che il tuo progetto aggiungerà per primo. Le feature già prese
 <code>Users</code>) seguono esattamente questa forma e si possono aprire per confronto.</p>
 <blockquote>
 <p><strong>Scorciatoia.</strong> Le <a href="../progetto/skill.html">skill Claude</a> incluse nel progetto scaffoldano tutti i
-passaggi che seguono — <code>db-entity</code> per l'entità e le migration, <code>vertical-slice-backend</code> per le
+passaggi che seguono — <code>db-entity</code> per l'entità e le migration, <code>backend-slice</code> per le
 slice, <code>vue-feature</code> per il frontend, o <code>/new-feature Category</code> per l'intero giro. Questa pagina
 descrive <em>che cosa</em> producono e perché, che è ciò che serve per rivederne l'output.</p>
 </blockquote>
@@ -169,7 +176,7 @@ case-sensitive su PostgreSQL.</p>
 </tr>
 <tr>
 <td>10-12</td>
-<td><code>types/api.types.ts</code> → <code>services/</code> → <code>stores/</code> → <code>pages/</code> → <code>router/</code>, <code>locales/</code></td>
+<td><code>pnpm gen:api</code> → <code>types/api.types.ts</code> → <code>services/</code> → <code>stores/</code> → <code>pages/</code> → <code>router/</code>, <code>sections.config.ts</code>, <code>locales/</code></td>
 <td>Il frontend</td>
 </tr>
 </tbody>
@@ -275,9 +282,10 @@ vincolo del database e quello dell'aggregato non possono divergere.</p>
 </code></pre>
 <p><code>Cascade</code> qui sarebbe pericoloso: cancellare una categoria cancellerebbe tutto ciò che la usa.</p>
 <blockquote>
-<p><strong>I value object</strong> si mappano con <code>OwnsOne</code> (per i tipi composti come <code>RentalPeriod</code> o <code>Money</code>) o
-con una conversione (per quelli che avvolgono un solo valore, come <code>Username</code> o <code>AssetCode</code>).
-Le configuration della sezione Noleggi sono l'esempio da guardare.</p>
+<p><strong>I value object</strong> si mappano con <code>OwnsOne</code> (per i tipi composti come <code>Money</code> o un periodo) o
+con una conversione (per quelli che avvolgono un solo valore, come <code>Username</code>). Nel template
+l'esempio è <code>UserConfiguration</code>; per i tipi composti, le configuration della sezione Noleggi di
+<code>app-demo</code>.</p>
 </blockquote>
 <h2 id="3-le-due-migration">3. Le due migration</h2>
 <pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/&lt;Progetto&gt;.Api
@@ -503,8 +511,8 @@ creata, modificata o cancellata, con gli snapshot prima/dopo. Lo snapshot <em>pr
 comprensibile, la FK <code>Restrict</code> è la stessa regola applicata anche a chi scrivesse sul database da
 fuori.</p>
 <p>Se la regola di cancellabilità dipendesse dallo <strong>stato dell'entità</strong> e non da altre tabelle,
-apparterrebbe al dominio — come <code>RentalContract.EnsureDeletable()</code>, che rifiuta di cancellare un
-contratto già confermato. L'handler si limiterebbe a chiamarla.</p>
+apparterrebbe al dominio — come <code>Role.EnsureDeletable()</code> nel template, che rifiuta di cancellare
+un ruolo di sistema. L'handler si limiterebbe a chiamarla.</p>
 <p>Non serve validare la forma dell'id: il constraint di rotta <code>{id:int}</code> fa sì che un id malformato
 non arrivi nemmeno all'handler (404 dal routing).</p>
 <p>Se l'operazione dovesse toccare più aggregati insieme, un singolo <code>SaveChangesAsync</code> è già atomico:
@@ -522,14 +530,14 @@ non arrivi nemmeno all'handler (404 dal routing).</p>
             .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.read&quot;</span>))
             .WithName(<span class="hljs-string">&quot;GetCategories&quot;</span>)
             .WithSummary(<span class="hljs-string">&quot;Lista categorie&quot;</span>)
-            .Produces(StatusCodes.Status200OK);
+            .Produces&lt;List&lt;CategoryResponse&gt;&gt;(StatusCodes.Status200OK);
 
         <span class="hljs-keyword">group</span>.MapGet(<span class="hljs-string">&quot;/{id:int}&quot;</span>, <span class="hljs-keyword">async</span> (<span class="hljs-built_in">int</span> id, IMediator mediator, CancellationToken ct) =&gt;
             Results.Ok(<span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> GetCategoryByIdQuery(id), ct)))
             .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.read&quot;</span>))
             .WithName(<span class="hljs-string">&quot;GetCategoryById&quot;</span>)
             .WithSummary(<span class="hljs-string">&quot;Dettaglio categoria&quot;</span>)
-            .Produces(StatusCodes.Status200OK)
+            .Produces&lt;CategoryResponse&gt;(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         <span class="hljs-keyword">group</span>.MapPost(<span class="hljs-string">&quot;/&quot;</span>, <span class="hljs-keyword">async</span> (CreateCategoryCommand cmd, IMediator mediator, CancellationToken ct) =&gt;
@@ -540,15 +548,16 @@ non arrivi nemmeno all'handler (404 dal routing).</p>
             .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.write&quot;</span>))
             .WithName(<span class="hljs-string">&quot;CreateCategory&quot;</span>)
             .WithSummary(<span class="hljs-string">&quot;Crea una nuova categoria&quot;</span>)
-            .Produces(StatusCodes.Status201Created)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .Produces&lt;CreateCategoryResponse&gt;(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         <span class="hljs-keyword">group</span>.MapPut(<span class="hljs-string">&quot;/{id:int}&quot;</span>, <span class="hljs-keyword">async</span> (<span class="hljs-built_in">int</span> id, UpdateCategoryRequest body, IMediator mediator, CancellationToken ct) =&gt;
             Results.Ok(<span class="hljs-keyword">await</span> mediator.Send(<span class="hljs-keyword">new</span> UpdateCategoryCommand(id, body), ct)))
             .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;categories.write&quot;</span>))
             .WithName(<span class="hljs-string">&quot;UpdateCategory&quot;</span>)
             .WithSummary(<span class="hljs-string">&quot;Aggiorna una categoria&quot;</span>)
-            .Produces(StatusCodes.Status200OK)
+            .Produces&lt;CategoryResponse&gt;(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         <span class="hljs-keyword">group</span>.MapDelete(<span class="hljs-string">&quot;/{id:int}&quot;</span>, <span class="hljs-keyword">async</span> (<span class="hljs-built_in">int</span> id, IMediator mediator, CancellationToken ct) =&gt;
@@ -573,6 +582,9 @@ che tocchino l'applicazione.</li>
 <li><strong>Ogni rotta dichiara il permesso</strong> che richiede (<code>read</code> / <code>write</code> / <code>delete</code>).</li>
 <li><strong><code>UpdateCategoryRequest</code> è il body</strong>, e l'handler riceve un <code>UpdateCategoryCommand(id, body)</code>: l'id
 viene dalla rotta, non dal corpo della richiesta.</li>
+<li><strong><code>.Produces&lt;T&gt;()</code> con il tipo</strong> su ogni risposta con body: è da lì che lo schema OpenAPI ricava i
+tipi che il frontend genera con <code>pnpm gen:api</code>. Un <code>.Produces(200)</code> senza tipo produce uno schema
+vuoto e il frontend non vede il record.</li>
 </ul>
 <p>Poi va agganciato:</p>
 <pre><code class="language-csharp"><span class="hljs-comment">// &lt;Progetto&gt;.Api/Extensions/EndpointExtensions.cs</span>
@@ -596,25 +608,18 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
 <h1 id="frontend">Frontend</h1>
 <p>La catena è sempre la stessa, e non si salta un anello: <strong>tipi → service → store → pagina</strong>.</p>
 <h2 id="10-tipi-service-store">10. Tipi, service, store</h2>
-<pre><code class="language-typescript"><span class="hljs-comment">// types/api.types.ts</span>
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">Category</span> {
-  <span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span>
-  <span class="hljs-attr">descIt</span>: <span class="hljs-built_in">string</span>
-  <span class="hljs-attr">descEn</span>: <span class="hljs-built_in">string</span>
-  <span class="hljs-attr">order</span>: <span class="hljs-built_in">number</span>
-  <span class="hljs-attr">createdAt</span>: <span class="hljs-built_in">string</span>
-  <span class="hljs-attr">updatedAt</span>: <span class="hljs-built_in">string</span>
-}
-
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> <span class="hljs-title class_">CreateCategoryRequest</span> {
-  <span class="hljs-attr">descIt</span>: <span class="hljs-built_in">string</span>
-  <span class="hljs-attr">descEn</span>: <span class="hljs-built_in">string</span>
-  <span class="hljs-attr">order</span>: <span class="hljs-built_in">number</span>
-}
-
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">UpdateCategoryRequest</span> = <span class="hljs-title class_">CreateCategoryRequest</span>
+<p>I tipi <strong>non si scrivono</strong>: si generano dallo schema OpenAPI del backend, avviato.</p>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/frontend
+pnpm gen:api          <span class="hljs-comment"># rigenera src/types/api.generated.ts da /openapi/v1.json</span>
 </code></pre>
-<p>Gli id sono <strong><code>number</code></strong>, coerenti con gli <code>int</code> del backend.</p>
+<p>Poi gli alias con i nomi brevi, in <code>types/api.types.ts</code>:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">Category</span> = <span class="hljs-title class_">Schemas</span>[<span class="hljs-string">&#x27;CategoryResponse&#x27;</span>]
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">CreateCategoryRequest</span> = <span class="hljs-title class_">Schemas</span>[<span class="hljs-string">&#x27;CreateCategoryCommand&#x27;</span>]
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">UpdateCategoryRequest</span> = <span class="hljs-title class_">Schemas</span>[<span class="hljs-string">&#x27;UpdateCategoryRequest&#x27;</span>]
+</code></pre>
+<p>Gli id sono <strong><code>number</code></strong>, coerenti con gli <code>int</code> del backend. Se un tipo non compare nel file
+generato, l'endpoint non dichiara <code>.Produces&lt;T&gt;()</code>: si corregge lì, non si scrive l'interfaccia a
+mano — un campo rinominato nel record C# deve rompere <code>vue-tsc</code>, non la pagina a runtime.</p>
 <pre><code class="language-typescript"><span class="hljs-comment">// services/categories.service.ts — le uniche righe del progetto in cui si usa axios</span>
 <span class="hljs-keyword">import</span> { api } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@/plugins/axios&#x27;</span>
 <span class="hljs-keyword">import</span> <span class="hljs-keyword">type</span> { <span class="hljs-title class_">Category</span>, <span class="hljs-title class_">CreateCategoryRequest</span>, <span class="hljs-title class_">UpdateCategoryRequest</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@/types/api.types&#x27;</span>
@@ -632,43 +637,36 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
 <span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> useCategoriesStore = <span class="hljs-title function_">defineStore</span>(<span class="hljs-string">&#x27;categories&#x27;</span>, <span class="hljs-function">() =&gt;</span> {
   <span class="hljs-keyword">const</span> items = ref&lt;<span class="hljs-title class_">Category</span>[]&gt;([])
   <span class="hljs-keyword">const</span> selectedItem = ref&lt;<span class="hljs-title class_">Category</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
-  <span class="hljs-keyword">const</span> loading = <span class="hljs-title function_">ref</span>(<span class="hljs-literal">false</span>)
-  <span class="hljs-keyword">const</span> error = ref&lt;<span class="hljs-built_in">string</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
 
-  <span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">fetchAll</span>(<span class="hljs-params"></span>) {
-    loading.<span class="hljs-property">value</span> = <span class="hljs-literal">true</span>
-    error.<span class="hljs-property">value</span> = <span class="hljs-literal">null</span>
-    <span class="hljs-keyword">try</span> {
+  <span class="hljs-comment">// loading ed error condivisi da tutte le azioni: la gestione degli errori sta in un</span>
+  <span class="hljs-comment">// punto solo e il messaggio mostrato è il `detail` del ProblemDetails del backend</span>
+  <span class="hljs-keyword">const</span> { loading, error, run, runOrThrow, clearError } = <span class="hljs-title function_">useAsyncAction</span>()
+
+  <span class="hljs-comment">// LETTURE con `run`: l&#x27;errore finisce in `error`, non viene rilanciato</span>
+  <span class="hljs-keyword">const</span> <span class="hljs-title function_">fetchAll</span> = (<span class="hljs-params"></span>) =&gt;
+    <span class="hljs-title function_">run</span>(<span class="hljs-title function_">async</span> () =&gt; {
       items.<span class="hljs-property">value</span> = <span class="hljs-keyword">await</span> categoriesService.<span class="hljs-title function_">getAll</span>()
-    } <span class="hljs-keyword">catch</span> {
-      error.<span class="hljs-property">value</span> = i18n.<span class="hljs-property">global</span>.<span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;errors.loadCategories&#x27;</span>)   <span class="hljs-comment">// mai una stringa a mano</span>
-    } <span class="hljs-keyword">finally</span> {
-      loading.<span class="hljs-property">value</span> = <span class="hljs-literal">false</span>
-    }
-  }
+    }, <span class="hljs-string">&#x27;errors.loadCategories&#x27;</span>)          <span class="hljs-comment">// solo fallback: rete assente, timeout</span>
 
-  <span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">create</span>(<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateCategoryRequest</span></span>) {
-    loading.<span class="hljs-property">value</span> = <span class="hljs-literal">true</span>
-    error.<span class="hljs-property">value</span> = <span class="hljs-literal">null</span>
-    <span class="hljs-keyword">try</span> {
-      <span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> categoriesService.<span class="hljs-title function_">create</span>(data)
-      <span class="hljs-keyword">await</span> <span class="hljs-title function_">fetchAll</span>()          <span class="hljs-comment">// ricarica: la lista resta allineata al server</span>
-      <span class="hljs-keyword">return</span> result
-    } <span class="hljs-keyword">catch</span> (e) {
-      error.<span class="hljs-property">value</span> = i18n.<span class="hljs-property">global</span>.<span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;errors.createCategory&#x27;</span>)
-      <span class="hljs-keyword">throw</span> e                   <span class="hljs-comment">// rilancia: la pagina deve poter mostrare l&#x27;errore</span>
-    } <span class="hljs-keyword">finally</span> {
-      loading.<span class="hljs-property">value</span> = <span class="hljs-literal">false</span>
-    }
-  }
+  <span class="hljs-comment">// SCRITTURE con `runOrThrow`: l&#x27;errore viene registrato E rilanciato,</span>
+  <span class="hljs-comment">// così il dialog sa se chiudersi</span>
+  <span class="hljs-keyword">const</span> <span class="hljs-title function_">create</span> = (<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateCategoryRequest</span></span>) =&gt;
+    <span class="hljs-title function_">runOrThrow</span>(<span class="hljs-title function_">async</span> () =&gt; {
+      <span class="hljs-keyword">const</span> created = <span class="hljs-keyword">await</span> categoriesService.<span class="hljs-title function_">create</span>(data)
+      <span class="hljs-keyword">await</span> <span class="hljs-title function_">fetchAll</span>()                   <span class="hljs-comment">// ricarica: la lista resta allineata al server</span>
+      <span class="hljs-keyword">return</span> created
+    }, <span class="hljs-string">&#x27;errors.createCategory&#x27;</span>)
 
   <span class="hljs-comment">// fetchById, update, remove: stessa forma</span>
 
-  <span class="hljs-keyword">return</span> { items, selectedItem, loading, error, fetchAll, fetchById, create, update, remove }
+  <span class="hljs-keyword">return</span> { items, selectedItem, loading, error, fetchAll, fetchById, create, update, remove, clearError }
 })
 </code></pre>
-<p>Lo store <strong>rilancia</strong> l'eccezione dopo averla registrata: senza, la pagina chiuderebbe il dialog come
-se l'operazione fosse riuscita.</p>
+<p>Niente <code>try/catch</code> a mano: <code>useAsyncAction</code> imposta <code>loading</code>, registra l'errore e decide se
+rilanciarlo. La regola è <strong>letture con <code>run</code>, scritture con <code>runOrThrow</code></strong>: con <code>run</code> su una
+scrittura il dialog si chiuderebbe anche se il salvataggio è fallito. Se la lista fosse paginata
+lato server, lo store terrebbe l'ultima query e la riuserebbe in <code>reload()</code> — vedi
+<a href="../frontend/convenzioni.html#lo-store-useasyncaction">Convenzioni e flussi</a>.</p>
 <h2 id="11-le-pagine">11. Le pagine</h2>
 <p>Due: la lista (<code>CategoriesPage.vue</code>) e il dettaglio, usato sia per la creazione sia per la modifica
 (<code>CategoryDetailPage.vue</code>).</p>
@@ -677,6 +675,7 @@ se l'operazione fosse riuscita.</p>
 <span class="hljs-keyword">const</span> { mobile } = <span class="hljs-title function_">useDisplay</span>()
 <span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useCategoriesStore</span>()
 <span class="hljs-keyword">const</span> { can } = <span class="hljs-title function_">usePermission</span>()
+<span class="hljs-keyword">const</span> toast = <span class="hljs-title function_">useToastStore</span>()
 
 <span class="hljs-title function_">onMounted</span>(<span class="hljs-function">() =&gt;</span> store.<span class="hljs-title function_">fetchAll</span>())
 </span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
@@ -684,15 +683,19 @@ se l'operazione fosse riuscita.</p>
 <span class="hljs-tag">&lt;<span class="hljs-name">template</span>&gt;</span>
   <span class="hljs-tag">&lt;<span class="hljs-name">h1</span> <span class="hljs-attr">class</span>=<span class="hljs-string">&quot;text-h5&quot;</span>&gt;</span>{{ t(&#x27;categories.title&#x27;) }}<span class="hljs-tag">&lt;/<span class="hljs-name">h1</span>&gt;</span>
 
-  <span class="hljs-comment">&lt;!-- il pulsante non esiste se manca il permesso --&gt;</span>
+  <span class="hljs-comment">&lt;!-- il pulsante non esiste se manca il permesso; ?from= dichiara la provenienza al dettaglio --&gt;</span>
   <span class="hljs-tag">&lt;<span class="hljs-name">v-btn</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;can(&#x27;categories.write&#x27;)&quot;</span> <span class="hljs-attr">color</span>=<span class="hljs-string">&quot;primary&quot;</span> <span class="hljs-attr">prepend-icon</span>=<span class="hljs-string">&quot;mdi-plus&quot;</span>
-         <span class="hljs-attr">:to</span>=<span class="hljs-string">&quot;{ name: &#x27;category-create&#x27; }&quot;</span>&gt;</span>
+         <span class="hljs-attr">:to</span>=<span class="hljs-string">&quot;{ name: &#x27;category-create&#x27;, query: { from: &#x27;categories&#x27; } }&quot;</span>&gt;</span>
     {{ t(&#x27;categories.createButton&#x27;) }}
   <span class="hljs-tag">&lt;/<span class="hljs-name">v-btn</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">v-alert</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;store.error&quot;</span> <span class="hljs-attr">type</span>=<span class="hljs-string">&quot;error&quot;</span>&gt;</span>{{ store.error }}<span class="hljs-tag">&lt;/<span class="hljs-name">v-alert</span>&gt;</span>
 
   <span class="hljs-comment">&lt;!-- tabella su desktop, lista su mobile --&gt;</span>
   <span class="hljs-tag">&lt;<span class="hljs-name">v-data-table</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;!mobile&quot;</span> <span class="hljs-attr">:headers</span>=<span class="hljs-string">&quot;headers&quot;</span> <span class="hljs-attr">:items</span>=<span class="hljs-string">&quot;store.items&quot;</span> <span class="hljs-attr">:loading</span>=<span class="hljs-string">&quot;store.loading&quot;</span> /&gt;</span>
   <span class="hljs-tag">&lt;<span class="hljs-name">v-list</span> <span class="hljs-attr">v-else</span>&gt;</span> … <span class="hljs-tag">&lt;/<span class="hljs-name">v-list</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">confirm-dialog</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;deleteDialog&quot;</span> <span class="hljs-attr">:message</span>=<span class="hljs-string">&quot;t(&#x27;categories.deleteConfirm&#x27;)&quot;</span> @<span class="hljs-attr">confirm</span>=<span class="hljs-string">&quot;confirmDelete&quot;</span> /&gt;</span>
 <span class="hljs-tag">&lt;/<span class="hljs-name">template</span>&gt;</span>
 </code></pre>
 <p>Le convenzioni che si vedono qui:</p>
@@ -701,35 +704,48 @@ se l'operazione fosse riuscita.</p>
 <li><strong><code>can('permesso')</code></strong> per mostrare o nascondere le azioni. È cortesia verso l'utente: a <strong>negare</strong>
 l'operazione è il backend.</li>
 <li><strong>Componenti Vuetify</strong>, colori dal tema (<code>color=&quot;primary&quot;</code>, <code>color=&quot;error&quot;</code>), mai valori esadecimali.</li>
-<li><strong><code>useApiErrors</code></strong> per tradurre i ProblemDetails del backend in messaggi leggibili — è così che il
-<code>409 Conflict</code> del delete handler arriva all'utente come una frase di senso compiuto.</li>
-<li>Un componente oltre le ~150 righe va spezzato.</li>
+<li><strong><code>store.error</code></strong> è già il messaggio del backend: la pagina lo mostra, non lo costruisce.</li>
+<li><strong>La conferma di cancellazione è <code>ConfirmDialog</code></strong> di <code>components/shared/</code>; dopo la cancellazione
+<code>toast.success(t('common.deleted'))</code>.</li>
+<li>Nel dettaglio, <strong><code>useApiErrors</code></strong> separa gli errori per campo (il <code>400</code> di FluentValidation →
+<code>:error-messages</code>) dall'errore generale, e <strong><code>useBackNavigation</code></strong> gestisce il ritorno.</li>
+<li>Una pagina oltre le ~300 righe e un componente oltre le ~200 vanno spezzati: dialog in
+<code>components/&lt;dominio&gt;/</code>, sezioni con stato proprio in card o picker. ESLint lo segnala
+(<code>max-lines</code>).</li>
 </ul>
 <h2 id="12-rotte-e-testi">12. Rotte e testi</h2>
-<pre><code class="language-typescript"><span class="hljs-comment">// router/index.ts</span>
+<pre><code class="language-typescript"><span class="hljs-comment">// router/index.ts — figlie di AppShell, con il prefisso della sezione</span>
 {
-  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;categories&#x27;</span>,
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;system/categories&#x27;</span>,
   <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;categories&#x27;</span>,
   <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/categories/CategoriesPage.vue&#x27;</span>),   <span class="hljs-comment">// lazy load, sempre</span>
-  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.categories&#x27;</span> },
+  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.categories&#x27;</span>, <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;system&#x27;</span> },
 },
 {
-  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;categories/new&#x27;</span>,
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;system/categories/new&#x27;</span>,
   <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;category-create&#x27;</span>,
   <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/categories/CategoryDetailPage.vue&#x27;</span>),
-  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.write&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.newCategory&#x27;</span> },
+  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.write&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.newCategory&#x27;</span>, <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;system&#x27;</span> },
 },
 {
-  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;categories/:id(\\d+)&#x27;</span>,
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;system/categories/:id(\\d+)&#x27;</span>,
   <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;category-detail&#x27;</span>,
   <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/categories/CategoryDetailPage.vue&#x27;</span>),
-  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.categoryDetail&#x27;</span> },
+  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.categoryDetail&#x27;</span>, <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;system&#x27;</span> },
 },
 </code></pre>
-<p>Due dettagli:</p>
+<p>E la voce di menu, che alimenta insieme drawer, tab di sezione e dashboard:</p>
+<pre><code class="language-typescript"><span class="hljs-comment">// config/sections.config.ts — dentro items della sezione &#x27;system&#x27;</span>
+{ <span class="hljs-attr">titleKey</span>: <span class="hljs-string">&#x27;nav.categories&#x27;</span>, <span class="hljs-attr">subtitleKey</span>: <span class="hljs-string">&#x27;categories.subtitle&#x27;</span>, <span class="hljs-attr">icon</span>: <span class="hljs-string">&#x27;mdi-shape&#x27;</span>,
+  <span class="hljs-attr">color</span>: <span class="hljs-string">&#x27;primary&#x27;</span>, <span class="hljs-attr">to</span>: <span class="hljs-string">&#x27;/system/categories&#x27;</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;categories.read&#x27;</span> },
+</code></pre>
+<p>Quattro dettagli:</p>
 <ul>
-<li><strong><code>:id(\d+)</code></strong> è il corrispettivo frontend del constraint <code>{id:int}</code> del backend: con id numerici,
-la rotta <code>categories/new</code> non rischia di essere catturata dalla rotta di dettaglio.</li>
+<li><strong><code>:id(\\d+)</code> con il doppio backslash</strong>: è il corrispettivo frontend del constraint <code>{id:int}</code> del
+backend, e con <code>'\d'</code> la regex diventerebbe <code>d+</code> e la rotta non matcherebbe mai. Con id numerici,
+<code>categories/new</code> non rischia di essere catturata dalla rotta di dettaglio.</li>
+<li><strong><code>title</code> e <code>section</code></strong>: il primo alimenta breadcrumb e titolo del tab, il secondo dice a quale
+sezione appartiene la pagina (tab attiva, voci del drawer).</li>
 <li><strong>Ogni rotta dichiara <code>meta.permission</code></strong>: il navigation guard la usa per bloccare l'accesso diretto
 via URL. Nota che la creazione richiede <code>categories.write</code> mentre il dettaglio richiede
 <code>categories.read</code>, pur essendo lo stesso componente.</li>
@@ -810,19 +826,25 @@ Nessun handler nomina <code>AppDbContext</code></li>
 chiamano <code>tracker.Capture(...)</code></li>
 <li>[ ] Le regole di business stanno nell'aggregato o in un domain service, non in <code>if</code> sparsi negli handler</li>
 <li>[ ] Le query LINQ sono traducibili da entrambi i provider — attenzione a <code>Contains</code> su stringa</li>
-<li>[ ] Le rotte con id usano il constraint <code>{id:int}</code>, e gli endpoint sono agganciati in <code>EndpointExtensions</code></li>
+<li>[ ] Le rotte con id usano il constraint <code>{id:int}</code>, gli endpoint sono agganciati in <code>EndpointExtensions</code>
+e ogni risposta con body dichiara <code>.Produces&lt;T&gt;()</code></li>
 <li>[ ] Nessun handler scrive un audit log a mano: lo fa l'interceptor</li>
 <li>[ ] I permessi sono nel seed e assegnati ai ruoli giusti</li>
 <li>[ ] Il pulsante indietro del dettaglio usa <code>useBackNavigation</code>, e i link che aprono il dettaglio
 dichiarano <code>query: { from: '...' }</code></li>
+<li>[ ] I tipi del frontend vengono da <code>pnpm gen:api</code> + alias in <code>api.types.ts</code>, non da interfacce scritte a mano</li>
+<li>[ ] Lo store usa <code>useAsyncAction</code>: letture con <code>run</code>, scritture con <code>runOrThrow</code></li>
+<li>[ ] La rotta è figlia di AppShell con <code>title</code> e <code>section</code>, e la voce di menu è in <code>sections.config.ts</code></li>
 <li>[ ] I testi esistono in italiano <strong>e</strong> in inglese</li>
 <li>[ ] <code>dotnet test</code> passa — i test di architettura sono la rete che intercetta le violazioni dei layer</li>
+<li>[ ] <code>pnpm vue-tsc --noEmit</code>, <code>pnpm eslint .</code> e <code>pnpm vitest run</code> sono puliti</li>
 </ul>
 <h2 id="da-qui">Da qui</h2>
 <ul>
 <li><strong><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></strong> — quando una regola va nell'aggregato, in un domain service o nell'handler</li>
 <li><strong><a href="../architettura/il-dominio.html">Il dominio</a></strong> — aggregati, value object, eventi, specification</li>
 <li><strong><a href="../architettura/comandi-e-query.html">Comandi e query</a></strong> — repository, unit of work, <code>IReadDbContext</code></li>
+<li><strong><a href="../frontend/struttura.html">Frontend: struttura</a></strong> e <strong><a href="../frontend/convenzioni.html">convenzioni</a></strong> — dove va ogni cosa e come si scrive</li>
 </ul>
 
       </article>

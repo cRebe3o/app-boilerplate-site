@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -161,6 +168,8 @@ pnpm serve:frontend     <span class="hljs-comment"># SPA sulla porta scelta alla
 pnpm build              <span class="hljs-comment"># build di entrambe</span>
 pnpm <span class="hljs-built_in">test</span>:frontend      <span class="hljs-comment"># Vitest</span>
 pnpm <span class="hljs-built_in">test</span>:backend       <span class="hljs-comment"># dotnet test</span>
+pnpm lint:frontend      <span class="hljs-comment"># ESLint</span>
+pnpm typecheck:frontend <span class="hljs-comment"># vue-tsc</span>
 </code></pre>
 <p>Questa documentazione spiega <em>com'è fatto e perché</em>. Le convenzioni operative di scrittura del
 codice — naming, struttura di una slice, regole del frontend — vivono <strong>accanto al codice</strong>, nei
@@ -254,12 +263,20 @@ risposte <strong>ProblemDetails</strong> (RFC 7807).</li>
 <td>404</td>
 </tr>
 <tr>
+<td><code>SystemEntityException</code></td>
+<td>403</td>
+</tr>
+<tr>
 <td><code>ConflictException</code></td>
 <td>409</td>
 </tr>
 <tr>
 <td><code>InvariantViolationException</code></td>
-<td>422</td>
+<td>409</td>
+</tr>
+<tr>
+<td><code>ConcurrencyConflictException</code></td>
+<td>409</td>
 </tr>
 <tr>
 <td>qualsiasi altra</td>
@@ -304,8 +321,9 @@ setter pubblici. Il dettaglio completo è nella sezione
 </div>
 <p>Sono le rotte dell'impianto: quelle del dominio si aggiungono accanto, registrandole in
 <code>&lt;Progetto&gt;.Api/Extensions/EndpointExtensions.cs</code>.</p>
-<p>In esecuzione l'API espone la propria specifica OpenAPI, navigabile con Scalar (<code>/scalar</code>) o con
-Swagger UI (<code>/swagger</code>).</p>
+<p>In esecuzione l'API espone la propria specifica OpenAPI (<code>/openapi/v1.json</code>), navigabile con
+Swagger UI su <code>/swagger</code>. È lo stesso schema da cui il frontend genera i propri tipi con
+<code>pnpm gen:api</code>: perché un tipo compaia, l'endpoint deve dichiarare <code>.Produces&lt;T&gt;()</code>.</p>
 <h3 id="cosa-c-e-in-programcs">Cosa c'è in <code>Program.cs</code></h3>
 <p>Oltre alla registrazione dei servizi, alcune scelte che vale la pena conoscere perché si notano
 solo quando mancano:</p>
@@ -325,19 +343,24 @@ popola <strong>solo uno store vuoto</strong> — mai un wipe, mai un reseed.</li
 <h2 id="frontend-vue-3">Frontend — Vue 3</h2>
 <pre><code>src/
 ├── pages/          # una pagina per rotta (home/, auth/, users/, groups/, roles/, system/…)
-├── components/     # layout (AppShell, AppNav, AppTopBar), users/, shared/
-├── stores/         # Pinia, uno per dominio (composition API)
+├── components/     # layout/ (AppShell, AppNav, AppTopBar, AppBreadcrumb), shared/, &lt;dominio&gt;/
+├── stores/         # Pinia, uno per dominio (composition API) + auth, toast, navigation
 ├── services/       # le chiamate HTTP: solo qui si usa axios
-├── composables/    # usePermission, useApiErrors, useTheme, useBreadcrumb, useBackNavigation…
-├── config/         # app.config.ts (modalità di accesso), sections.config.ts
+├── composables/    # useAsyncAction, useServerTable, useApiErrors, usePermission, useBackNavigation…
+├── config/         # app.config.ts (unico lettore di import.meta.env), sections.config.ts (menu)
 ├── plugins/        # vuetify, axios (interceptor), i18n, msal
 ├── locales/        # it.ts (predefinito) ed en.ts
-└── router/         # rotte con meta.permission
+├── types/          # api.generated.ts (da `pnpm gen:api`) e gli alias in api.types.ts
+└── router/         # rotte figlie di AppShell, con meta.permission, title e section
 </code></pre>
 <p>La catena è sempre <strong>service → store → pagina</strong>: i componenti non chiamano mai <code>axios</code>
-direttamente e non contengono logica di business; i testi passano tutti da <code>t('chiave')</code>.</p>
+direttamente e non contengono logica di business; i testi passano tutti da <code>t('chiave')</code>; i tipi
+dell'API sono generati dallo schema OpenAPI, non scritti a mano.</p>
 <p>L'istanza axios in <code>plugins/axios.ts</code> aggiunge il Bearer token a ogni richiesta, propaga la lingua
-in <code>Accept-Language</code> e su <code>401</code> esegue il logout.</p>
+in <code>Accept-Language</code>, su <code>401</code> tenta il refresh del token e ripete la richiesta (logout solo se il
+refresh fallisce), su <code>5xx</code> invia un log degli errori al backend.</p>
+<p>La sezione <a href="../frontend/struttura.html">Frontend</a> percorre la struttura cartella per cartella e le
+<a href="../frontend/convenzioni.html">convenzioni</a> con cui si scrive una feature.</p>
 <h3 id="modalita-di-accesso-pubblica-o-privata">Modalità di accesso: pubblica o privata</h3>
 <p>Una scelta fatta alla generazione (<code>access_mode</code>), leggibile a runtime in <code>VITE_APP_ACCESS_MODE</code> e
 centralizzata in <code>config/app.config.ts</code>:</p>
@@ -392,6 +415,7 @@ vuoto da personalizzare — e i gruppi <code>Administrators</code> e <code>Viewe
 <li><a href="generazione.html">Generare e aggiornare</a> — le variabili del template, <code>copier copy</code> e <code>copier update</code></li>
 <li><a href="skill.html">Le skill Claude</a> — gli scaffolding inclusi per aggiungere codice nel modo previsto</li>
 <li><a href="../architettura/clean-architecture.html">Clean Architecture</a> — i layer, la regola delle dipendenze, dove mettere la logica</li>
+<li><a href="../frontend/struttura.html">Frontend</a> — la struttura del progetto Vue e le convenzioni con cui si scrive una feature</li>
 <li><a href="../infrastructure/panoramica.html">Infrastruttura</a> — perché due provider SQL e come sono tenuti insieme</li>
 <li><a href="../autenticazione/autenticazione.html">Autenticazione</a> — JWT, Azure AD, Windows, permessi</li>
 <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a> — il percorso completo, end to end</li>

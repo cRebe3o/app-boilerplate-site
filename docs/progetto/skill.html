@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -79,7 +86,7 @@
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
-<p>Un progetto generato porta con sé una cartella <code>.claude/</code> con <strong>21 skill</strong> e <strong>6 comandi</strong>. Sono
+<p>Un progetto generato porta con sé una cartella <code>.claude/</code> con <strong>21 skill</strong> e <strong>5 comandi</strong>. Sono
 istruzioni scritte, versionate insieme al codice, che Claude Code carica quando il compito
 corrisponde: descrivono come si scrive <em>in questo progetto</em> una slice, un'entità, una pagina, un
 test.</p>
@@ -94,7 +101,7 @@ documentazione operativa che l'assistente legge da sé.</p>
 <h2 id="come-si-usano">Come si usano</h2>
 <p>Nella maggior parte dei casi non serve invocarle: ogni skill dichiara i propri <em>trigger</em>, e Claude
 Code la carica quando la richiesta li tocca. Chiedere &quot;aggiungi l'endpoint per creare le categorie&quot;
-attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>pagination</code>.</p>
+attiva <code>backend-slice</code>; parlare di paginazione attiva <code>pagination</code>.</p>
 <p>Si possono comunque richiamare per nome quando si vuole essere espliciti sul pattern da seguire.</p>
 <h2 id="backend">Backend</h2>
 <div class="table-wrap">
@@ -107,8 +114,8 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 </thead>
 <tbody>
 <tr>
-<td><strong><code>vertical-slice-backend</code></strong></td>
-<td>Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + <code>IUnitOfWork</code> e le query <code>IReadDbContext</code></td>
+<td><strong><code>backend-slice</code></strong></td>
+<td>Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + <code>IUnitOfWork</code> e le query <code>IReadDbContext</code>, e che ogni endpoint con body dichiara <code>.Produces&lt;T&gt;()</code> perché il frontend ne generi il tipo</td>
 </tr>
 <tr>
 <td><strong><code>domain-modeling</code></strong></td>
@@ -165,15 +172,15 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 <tbody>
 <tr>
 <td><strong><code>vue-feature</code></strong></td>
-<td>Una nuova feature di frontend completa: service, store Pinia, pagina e rotta, nell'ordine previsto dalle convenzioni</td>
+<td>Una nuova feature di frontend completa: tipi da <code>pnpm gen:api</code>, service, store con <code>useAsyncAction</code>, pagina, rotta figlia di AppShell, voce di menu in <code>sections.config.ts</code>, traduzioni. Vedi <a href="../frontend/convenzioni.html">Convenzioni e flussi</a></td>
 </tr>
 <tr>
 <td><strong><code>detail-page</code></strong></td>
-<td>Una pagina di dettaglio su rotta <code>:id</code>, con breadcrumb, caricamento del singolo elemento ed eventuali tab</td>
+<td>Una pagina di dettaglio su rotta <code>:id(\\d+)</code>, che serve creazione e modifica, con <code>useBackNavigation</code> per il ritorno e <code>useApiErrors</code> per gli errori per campo</td>
 </tr>
 <tr>
 <td><strong><code>vuetify-dialog-form</code></strong></td>
-<td>Un dialog di creazione o modifica: validazione, stato di caricamento, gestione errori, reset e componente condiviso fra create ed edit</td>
+<td>Un dialog di creazione o modifica in <code>components/&lt;dominio&gt;/</code>: validazione, <code>attempt()</code> per chiudersi solo se il salvataggio riesce, reset alla chiusura, un solo componente per create ed edit</td>
 </tr>
 </tbody>
 </table>
@@ -190,7 +197,7 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 <tbody>
 <tr>
 <td><strong><code>vitest-setup</code></strong></td>
-<td>Configurazione di Vitest per i componenti Vue 3</td>
+<td>Configurazione di Vitest: jsdom, <code>vitest.setup.ts</code>, soglie di coverage, che cosa mockare globalmente</td>
 </tr>
 <tr>
 <td><strong><code>vue-component-test</code></strong></td>
@@ -198,11 +205,11 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 </tr>
 <tr>
 <td><strong><code>pinia-store-test</code></strong></td>
-<td>Test di uno store: stato, getter, azioni</td>
+<td>Test di uno store con il service mockato: stato iniziale, <code>run</code> che non rilancia, <code>runOrThrow</code> che rilancia, <code>reload</code> con l'ultima query, <code>loading</code></td>
 </tr>
 <tr>
 <td><strong><code>api-mock-test</code></strong></td>
-<td>Test con chiamate HTTP mockate e gestione degli errori</td>
+<td>Test di service e store con <code>api</code> o il service mockati: URL e payload, ProblemDetails 4xx, errore di rete</td>
 </tr>
 <tr>
 <td><strong><code>crud-operations-test</code></strong></td>
@@ -214,7 +221,7 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 </tr>
 <tr>
 <td><strong><code>page-integration-test</code></strong></td>
-<td>Test di integrazione di una pagina intera: interazioni, store e chiamate insieme</td>
+<td>Test di una pagina montata con router in memoria, service mockato e store reale: caricamento, interazioni, errori visibili, ricarica</td>
 </tr>
 </tbody>
 </table>
@@ -256,7 +263,7 @@ attiva <code>vertical-slice-backend</code>; parlare di paginazione attiva <code>
 <h2 id="le-combinazioni-che-ricorrono">Le combinazioni che ricorrono</h2>
 <p>Le skill sono pensate per comporsi, e le richieste reali ne toccano quasi sempre più d'una:</p>
 <pre><code>Una nuova entità di dominio, dal modello alla pagina
-   domain-modeling  →  db-entity  →  vertical-slice-backend  →  audit-log  →  permissions
+   domain-modeling  →  db-entity  →  backend-slice  →  audit-log  →  permissions
                                                                                    │
                                                              vue-feature  ←─────────┘
                                                                    │

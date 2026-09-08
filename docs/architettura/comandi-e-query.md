@@ -33,6 +33,11 @@ provider no**.
 
 ## I comandi
 
+> **Da dove vengono gli esempi.** Il template non porta un dominio applicativo. Gli esempi con
+> `RentalContract`, `Customer` ed `Equipment` vengono dalla sezione Noleggi di `app-demo`, il
+> progetto dimostrativo generato dal template: la forma è quella da imitare, il codice non è nel
+> template.
+
 ### La forma
 
 ```csharp

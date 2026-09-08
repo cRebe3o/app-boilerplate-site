@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -101,6 +108,12 @@ non deve essere trascinato da nessuna di quelle sostituzioni.</p>
 ha bisogno di leggere dal database, che è un dettaglio infrastrutturale. La soluzione è
 l'<strong>inversione delle dipendenze</strong>: chi ha bisogno del servizio ne dichiara l'interfaccia, chi sa
 fornirlo la implementa.</p>
+<blockquote>
+<p><strong>Da dove vengono gli esempi.</strong> Il template non porta un dominio applicativo. Gli esempi con
+<code>RentalContract</code>, <code>Customer</code> ed <code>Equipment</code> vengono dalla sezione Noleggi di <code>app-demo</code>, il
+progetto dimostrativo generato dal template: la forma è quella da imitare, il codice non è nel
+template.</p>
+</blockquote>
 <pre><code>AppDemo.Application/Abstractions/Persistence/IRentalContractRepository.cs   ← dichiara
 AppDemo.Infrastructure/Persistence/Repositories/RentalContractRepository.cs ← implementa
 </code></pre>

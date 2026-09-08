@@ -149,8 +149,8 @@ services.AddScoped<ConcurrencyTokenInterceptor>();
 Il ragionamento è lo stesso per tutti e tre, ed è scritto in `ConcurrencyTokenInterceptor`:
 
 > Farlo qui invece che negli aggregati significa che nessuno può dimenticarsene: un nuovo metodo su
-> Equipment, un import massivo, una correzione fatta da un hosted service, sono tutti coperti senza
-> scrivere una riga in più.
+> un aggregato, un import massivo, una correzione fatta da un hosted service, sono tutti coperti
+> senza scrivere una riga in più.
 
 > ⚠️ **Un handler non scrive mai un audit log a mano.** Se stai per aggiungere una riga `AuditLog`
 > in un handler, l'interceptor lo sta già facendo.
@@ -320,6 +320,9 @@ EF: invocarle su un `IQueryable` prodotto da un fake in memoria fallirebbe a run
 dall'astrazione, l'handler resta eseguibile nei test unitari.
 
 ### Scrittura: carica l'aggregato, chiedi al dominio, salva
+
+> L'esempio viene dalla sezione Noleggi di `app-demo`, il progetto dimostrativo generato dal
+> template: nel template la forma è la stessa (vedi `CreateUserHandler`), ma senza domain service.
 
 ```csharp
 public class ConfirmRentalContractHandler(
@@ -545,8 +548,11 @@ Tre precauzioni che si spiegano a vicenda:
 Poiché gli id li assegna il database, il seed **non può** usare id costanti: i legami si esprimono
 via navigation property, lasciando che EF risolva le FK al `SaveChanges`.
 
-La password dell'amministratore iniziale arriva da `Seed:AdminPassword`; se non è configurata ne
-viene generata una casuale — che, non essendo stampata in chiaro, di fatto obbliga a impostarla.
+L'amministratore iniziale è configurabile: `Seed:AdminUsername` (default `admin`),
+`Seed:AdminEmail` (vuoto = si riusa lo username, se ha la forma di un'email),
+`Seed:AdminDisplayName` (default `Administrator`) e `Seed:AdminPassword`. Con il login MSAL lo
+username dev'essere l'email aziendale con cui si entra. Se la password non è configurata ne viene
+generata una casuale — che, non essendo stampata in chiaro, di fatto obbliga a impostarla.
 
 > Non esiste un comando di reset. Per ripartire da zero il database si droppa a mano.
 

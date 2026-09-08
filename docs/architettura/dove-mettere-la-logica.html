@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -135,6 +142,12 @@ risolvono con questa tabella:</p>
 </div>
 <p>Il resto di questa pagina è il ragionamento dietro ogni riga, con il codice del progetto.</p>
 <h2 id="l-aggregato-la-regola-che-riguarda-solo-se-stesso">L'aggregato: la regola che riguarda solo sé stesso</h2>
+<blockquote>
+<p><strong>Da dove vengono gli esempi.</strong> Il template non porta un dominio applicativo. Gli esempi con
+<code>RentalContract</code>, <code>Customer</code> ed <code>Equipment</code> vengono dalla sezione Noleggi di <code>app-demo</code>, il
+progetto dimostrativo generato dal template: la forma è quella da imitare, il codice non è nel
+template.</p>
+</blockquote>
 <p>Se per applicare la regola bastano i dati che l'entità già possiede, la regola è sua. Metterla
 altrove significa che qualcuno potrà costruire un oggetto in uno stato che non dovrebbe esistere.</p>
 <p><code>RentalContract.AddLine</code> è tutto logica di dominio, e non tocca nulla fuori da sé:</p>

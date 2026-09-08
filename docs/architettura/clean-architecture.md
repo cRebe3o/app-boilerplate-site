@@ -27,6 +27,11 @@ ha bisogno di leggere dal database, che è un dettaglio infrastrutturale. La sol
 l'**inversione delle dipendenze**: chi ha bisogno del servizio ne dichiara l'interfaccia, chi sa
 fornirlo la implementa.
 
+> **Da dove vengono gli esempi.** Il template non porta un dominio applicativo. Gli esempi con
+> `RentalContract`, `Customer` ed `Equipment` vengono dalla sezione Noleggi di `app-demo`, il
+> progetto dimostrativo generato dal template: la forma è quella da imitare, il codice non è nel
+> template.
+
 ```
 AppDemo.Application/Abstractions/Persistence/IRentalContractRepository.cs   ← dichiara
 AppDemo.Infrastructure/Persistence/Repositories/RentalContractRepository.cs ← implementa

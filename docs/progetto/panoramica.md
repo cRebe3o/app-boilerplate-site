@@ -49,6 +49,8 @@ pnpm serve:frontend     # SPA sulla porta scelta alla generazione
 pnpm build              # build di entrambe
 pnpm test:frontend      # Vitest
 pnpm test:backend       # dotnet test
+pnpm lint:frontend      # ESLint
+pnpm typecheck:frontend # vue-tsc
 ```
 
 Questa documentazione spiega *com'è fatto e perché*. Le convenzioni operative di scrittura del
@@ -138,8 +140,10 @@ Regole che tengono in piedi l'impianto:
 | `UnauthorizedException` | 401 |
 | `ForbiddenException` | 403 |
 | `NotFoundException` | 404 |
+| `SystemEntityException` | 403 |
 | `ConflictException` | 409 |
-| `InvariantViolationException` | 422 |
+| `InvariantViolationException` | 409 |
+| `ConcurrencyConflictException` | 409 |
 | qualsiasi altra | 500 |
 
 Queste regole non sono affidate alla memoria: `<Progetto>.Architecture.Tests` ispeziona gli assembly
@@ -161,8 +165,9 @@ Dieci gruppi di endpoint, tutti sotto `/api`:
 Sono le rotte dell'impianto: quelle del dominio si aggiungono accanto, registrandole in
 `<Progetto>.Api/Extensions/EndpointExtensions.cs`.
 
-In esecuzione l'API espone la propria specifica OpenAPI, navigabile con Scalar (`/scalar`) o con
-Swagger UI (`/swagger`).
+In esecuzione l'API espone la propria specifica OpenAPI (`/openapi/v1.json`), navigabile con
+Swagger UI su `/swagger`. È lo stesso schema da cui il frontend genera i propri tipi con
+`pnpm gen:api`: perché un tipo compaia, l'endpoint deve dichiarare `.Produces<T>()`.
 
 ### Cosa c'è in `Program.cs`
 
@@ -186,21 +191,27 @@ solo quando mancano:
 ```
 src/
 ├── pages/          # una pagina per rotta (home/, auth/, users/, groups/, roles/, system/…)
-├── components/     # layout (AppShell, AppNav, AppTopBar), users/, shared/
-├── stores/         # Pinia, uno per dominio (composition API)
+├── components/     # layout/ (AppShell, AppNav, AppTopBar, AppBreadcrumb), shared/, <dominio>/
+├── stores/         # Pinia, uno per dominio (composition API) + auth, toast, navigation
 ├── services/       # le chiamate HTTP: solo qui si usa axios
-├── composables/    # usePermission, useApiErrors, useTheme, useBreadcrumb, useBackNavigation…
-├── config/         # app.config.ts (modalità di accesso), sections.config.ts
+├── composables/    # useAsyncAction, useServerTable, useApiErrors, usePermission, useBackNavigation…
+├── config/         # app.config.ts (unico lettore di import.meta.env), sections.config.ts (menu)
 ├── plugins/        # vuetify, axios (interceptor), i18n, msal
 ├── locales/        # it.ts (predefinito) ed en.ts
-└── router/         # rotte con meta.permission
+├── types/          # api.generated.ts (da `pnpm gen:api`) e gli alias in api.types.ts
+└── router/         # rotte figlie di AppShell, con meta.permission, title e section
 ```
 
 La catena è sempre **service → store → pagina**: i componenti non chiamano mai `axios`
-direttamente e non contengono logica di business; i testi passano tutti da `t('chiave')`.
+direttamente e non contengono logica di business; i testi passano tutti da `t('chiave')`; i tipi
+dell'API sono generati dallo schema OpenAPI, non scritti a mano.
 
 L'istanza axios in `plugins/axios.ts` aggiunge il Bearer token a ogni richiesta, propaga la lingua
-in `Accept-Language` e su `401` esegue il logout.
+in `Accept-Language`, su `401` tenta il refresh del token e ripete la richiesta (logout solo se il
+refresh fallisce), su `5xx` invia un log degli errori al backend.
+
+La sezione [Frontend](../frontend/struttura.md) percorre la struttura cartella per cartella e le
+[convenzioni](../frontend/convenzioni.md) con cui si scrive una feature.
 
 ### Modalità di accesso: pubblica o privata
 
@@ -254,6 +265,7 @@ Nascondere il pulsante è cortesia verso l'utente; a **negare** l'operazione è 
 - [Generare e aggiornare](generazione.md) — le variabili del template, `copier copy` e `copier update`
 - [Le skill Claude](skill.md) — gli scaffolding inclusi per aggiungere codice nel modo previsto
 - [Clean Architecture](../architettura/clean-architecture.md) — i layer, la regola delle dipendenze, dove mettere la logica
+- [Frontend](../frontend/struttura.md) — la struttura del progetto Vue e le convenzioni con cui si scrive una feature
 - [Infrastruttura](../infrastructure/panoramica.md) — perché due provider SQL e come sono tenuti insieme
 - [Autenticazione](../autenticazione/autenticazione.md) — JWT, Azure AD, Windows, permessi
 - [Aggiungere una feature](../guide/nuova-feature.md) — il percorso completo, end to end

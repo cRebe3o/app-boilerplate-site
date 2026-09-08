@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -138,6 +145,12 @@ repository, diventa o una firma con dodici parametri o un metodo per combinazion
 come scelta consapevole, e i test di architettura verificano il limite: l'assembly base sì, <strong>i
 provider no</strong>.</p>
 <h2 id="i-comandi">I comandi</h2>
+<blockquote>
+<p><strong>Da dove vengono gli esempi.</strong> Il template non porta un dominio applicativo. Gli esempi con
+<code>RentalContract</code>, <code>Customer</code> ed <code>Equipment</code> vengono dalla sezione Noleggi di <code>app-demo</code>, il
+progetto dimostrativo generato dal template: la forma è quella da imitare, il codice non è nel
+template.</p>
+</blockquote>
 <h3 id="la-forma">La forma</h3>
 <pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CreateRentalContractHandler</span>(<span class="hljs-params">
     IRentalContractRepository contracts,

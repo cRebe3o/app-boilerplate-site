@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Struttura del progetto — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html" aria-current="page">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Frontend</p>
+      <article class="prose">
+<h1 id="struttura-del-progetto-vue">Struttura del progetto Vue</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#la-mappa">La mappa</a></li>
+          <li class="lvl-2"><a href="#come-parte-l-applicazione">Come parte l'applicazione</a></li>
+          <li class="lvl-2"><a href="#pages-una-pagina-per-rotta"><code>pages/</code> — una pagina per rotta</a></li>
+          <li class="lvl-2"><a href="#components-layout-condivisi-di-dominio"><code>components/</code> — layout, condivisi, di dominio</a></li>
+          <li class="lvl-3"><a href="#components-layout"><code>components/layout/</code></a></li>
+          <li class="lvl-3"><a href="#components-shared"><code>components/shared/</code></a></li>
+          <li class="lvl-3"><a href="#components-dominio"><code>components/&lt;dominio&gt;/</code></a></li>
+          <li class="lvl-2"><a href="#stores-lo-stato-con-pinia"><code>stores/</code> — lo stato, con Pinia</a></li>
+          <li class="lvl-2"><a href="#services-le-chiamate-http"><code>services/</code> — le chiamate HTTP</a></li>
+          <li class="lvl-2"><a href="#composables-logica-riusabile"><code>composables/</code> — logica riusabile</a></li>
+          <li class="lvl-2"><a href="#config-le-due-configurazioni"><code>config/</code> — le due configurazioni</a></li>
+          <li class="lvl-3"><a href="#appconfigts"><code>app.config.ts</code></a></li>
+          <li class="lvl-3"><a href="#sectionsconfigts"><code>sections.config.ts</code></a></li>
+          <li class="lvl-2"><a href="#router-indexts-le-rotte-e-il-guard"><code>router/index.ts</code> — le rotte e il guard</a></li>
+          <li class="lvl-2"><a href="#plugins-le-istanze-delle-librerie"><code>plugins/</code> — le istanze delle librerie</a></li>
+          <li class="lvl-2"><a href="#locales-i-testi"><code>locales/</code> — i testi</a></li>
+          <li class="lvl-2"><a href="#types-generati-non-scritti"><code>types/</code> — generati, non scritti</a></li>
+          <li class="lvl-2"><a href="#constants"><code>constants/</code></a></li>
+          <li class="lvl-2"><a href="#styles-e-assets"><code>styles/</code> e <code>assets/</code></a></li>
+          <li class="lvl-2"><a href="#i-file-di-configurazione">I file di configurazione</a></li>
+          <li class="lvl-2"><a href="#dove-va-una-cosa-la-tabella-di-decisione">Dove va una cosa: la tabella di decisione</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Il frontend è una SPA <strong>Vue 3 + TypeScript + Vuetify 3</strong>, costruita con Vite. Questa pagina percorre
+<code>apps/frontend/</code> cartella per cartella e risponde, per ciascuna, a tre domande: <strong>che cosa contiene</strong>,
+<strong>quando serve</strong> aggiungerci qualcosa e <strong>quando invece no</strong>. La pagina gemella,
+<a href="convenzioni.html">Convenzioni e flussi</a>, spiega come le parti collaborano quando si scrive una feature.</p>
+<blockquote>
+<p><strong>Dove sta la verità.</strong> Le regole operative vivono accanto al codice, in <code>apps/frontend/CLAUDE.md</code>:
+è il file che Claude Code legge e che le skill applicano. Questa pagina le spiega per esteso; se
+le due dovessero divergere, vince il <code>CLAUDE.md</code> del progetto.</p>
+</blockquote>
+<h2 id="la-mappa">La mappa</h2>
+<pre><code>apps/frontend/
+├── index.html                   # l'unica pagina HTML: monta #app
+├── src/
+│   ├── main.ts                  # bootstrap: Pinia, router, Vuetify, i18n
+│   ├── App.vue                  # radice: v-app, snackbar globale, titolo del tab, tema
+│   ├── router/index.ts          # tutte le rotte + guard (auth, permessi, accessMode)
+│   ├── config/                  # app.config.ts (import.meta.env) · sections.config.ts (menu)
+│   ├── pages/&lt;dominio&gt;/         # una pagina per rotta
+│   ├── components/
+│   │   ├── layout/              # AppShell, AppTopBar, AppNav, AppBreadcrumb, AppFooter
+│   │   ├── shared/              # ConfirmDialog, ServerWakeBanner
+│   │   └── &lt;dominio&gt;/           # dialog, card e picker di una feature
+│   ├── stores/                  # Pinia: uno per dominio + auth, toast, navigation, server-wake
+│   ├── services/                # le chiamate HTTP, un file per dominio
+│   ├── composables/             # logica riusabile senza stato globale
+│   ├── constants/               # valori condivisi (paginazione, stati di dominio)
+│   ├── plugins/                 # axios, i18n, vuetify, msal: le istanze delle librerie
+│   ├── locales/                 # it.ts ed en.ts — entrambi obbligatori
+│   ├── types/                   # api.generated.ts (generato) · api.types.ts (alias) · auth.types.ts
+│   ├── styles/                  # CSS globale, il meno possibile
+│   └── assets/                  # logo e immagini importate dal codice
+├── public/                      # file serviti così come sono (favicon, _redirects)
+├── scripts/generate-api-types.mjs   # `pnpm gen:api`
+├── vite.config.ts · vitest.config.ts · vitest.setup.ts
+├── eslint.config.js · .prettierrc · tsconfig.json
+├── .env · .env.local.example · .env.production
+├── project.json                 # i target Nx: build, serve, test, lint, typecheck
+└── package.json
+</code></pre>
+<p>La regola che ordina tutto è una catena a senso unico:</p>
+<pre><code>pagina  →  store  →  service  →  api (axios)  →  backend
+</code></pre>
+<p>Ogni anello conosce solo quello successivo. Una pagina non chiama mai <code>axios</code>; uno store non sa che
+cosa sia un URL; un service non tiene stato. Quando non si sa dove mettere una cosa, la domanda è:
+<em>a quale anello appartiene?</em></p>
+<h2 id="come-parte-l-applicazione">Come parte l'applicazione</h2>
+<p>Il percorso di avvio spiega perché i file di radice sono così pochi:</p>
+<ol>
+<li><strong><code>index.html</code></strong> contiene solo <code>&lt;div id=&quot;app&quot;&gt;</code> e carica <code>src/main.ts</code>.</li>
+<li><strong><code>main.ts</code></strong> crea l'app e registra i quattro plugin: Pinia, router, Vuetify, i18n. Non fa altro.</li>
+<li><strong><code>App.vue</code></strong> monta <code>&lt;v-app&gt;</code>, l'unico <code>&lt;v-snackbar&gt;</code> dell'applicazione (alimentato da
+<code>toast.store</code>), il banner &quot;server in riattivazione&quot; e il <code>&lt;router-view&gt;</code>. Al mount ripristina il
+tema salvato e da lì in poi aggiorna il titolo del tab a ogni cambio di rotta.</li>
+<li><strong>Il router</strong> carica <code>AppShell</code> per la rotta <code>/</code>, e dentro AppShell si aprono tutte le pagine
+applicative come rotte figlie. Solo <code>/login</code> sta fuori dallo shell.</li>
+</ol>
+<p>Non c'è nient'altro da &quot;inizializzare&quot;: lo stato di sessione lo ricostruisce <code>auth.store</code> da
+<code>localStorage</code> al primo accesso, la lingua la ripristina <code>plugins/i18n.ts</code>.</p>
+<h2 id="pages-una-pagina-per-rotta"><code>pages/</code> — una pagina per rotta</h2>
+<p><strong>Che cosa contiene.</strong> Un componente per ogni rotta, raggruppato per dominio: <code>users/UsersPage.vue</code>
+(lista), <code>users/UserDetailPage.vue</code> (dettaglio), <code>system/MonitoringPage.vue</code>, <code>auth/LoginPage.vue</code>,
+<code>home/HomePage.vue</code>, <code>NotFoundPage.vue</code>.</p>
+<p><strong>Che cosa fa una pagina.</strong> Compone: prende lo store, chiede i dati, mette insieme tabella, filtri e
+dialog. La logica di business non sta qui, e nemmeno le chiamate HTTP. Una pagina lista tipica ha
+tre righe di &quot;impianto&quot;:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useUsersStore</span>()
+<span class="hljs-keyword">const</span> { can } = <span class="hljs-title function_">usePermission</span>()
+<span class="hljs-keyword">const</span> { search, page, itemsPerPage, onOptionsUpdate, reload } =
+  <span class="hljs-title function_">useServerTable</span>(<span class="hljs-function"><span class="hljs-params">query</span> =&gt;</span> store.<span class="hljs-title function_">fetchUsers</span>(query))
+</code></pre>
+<p><strong>Le due forme.</strong> Ogni dominio ha di norma <strong>due pagine</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Pagina</th>
+<th>Rotta</th>
+<th>Ruolo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>XxxPage.vue</code></td>
+<td><code>system/users</code></td>
+<td>lista: ricerca, tabella server-side, azioni di riga, dialog di conferma</td>
+</tr>
+<tr>
+<td><code>XxxDetailPage.vue</code></td>
+<td><code>system/users/new</code> · <code>system/users/:id(\d+)</code></td>
+<td>dettaglio: <strong>la stessa pagina</strong> serve creazione e modifica, distinte dalla presenza di <code>:id</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Quando serve una pagina nuova.</strong> Quando serve una rotta nuova. Se il contenuto è una porzione di
+una pagina esistente (una card, un dialog, un pannello), non è una pagina: va in <code>components/</code>.</p>
+<p><strong>Quando NON serve.</strong> Una pagina che supera le ~300 righe sta facendo il lavoro di due o tre
+componenti: ESLint lo segnala (<code>max-lines</code>, avviso). Il rimedio non è una seconda pagina ma lo
+spezzettamento in componenti di dominio — vedi <a href="convenzioni.html#dimensioni-quando-spezzare">Convenzioni e flussi</a>.</p>
+<h2 id="components-layout-condivisi-di-dominio"><code>components/</code> — layout, condivisi, di dominio</h2>
+<p>Tre sottocartelle con tre ruoli diversi.</p>
+<h3 id="components-layout"><code>components/layout/</code></h3>
+<p>Il guscio dell'applicazione. Non si tocca aggiungendo una feature: legge la configurazione e si
+adatta da solo.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Che cosa fa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AppShell.vue</code></td>
+<td>Contenitore delle pagine: top bar, drawer laterale (rail su desktop, overlay su mobile), breadcrumb, <code>&lt;router-view&gt;</code></td>
+</tr>
+<tr>
+<td><code>AppTopBar.vue</code></td>
+<td>Le <strong>tab di sezione</strong> (una per voce di <code>SECTIONS</code>), il toggle del tema, il menu utente con logout, il pulsante Login per l'anonimo</td>
+</tr>
+<tr>
+<td><code>AppNav.vue</code></td>
+<td>Le voci della sezione attiva, già filtrate per permesso da <code>navigation.store</code></td>
+</tr>
+<tr>
+<td><code>AppBreadcrumb.vue</code></td>
+<td>Le briciole generate da <code>useBreadcrumb</code> dai <code>meta.title</code> delle rotte</td>
+</tr>
+<tr>
+<td><code>AppFooter.vue</code></td>
+<td>Logo e versione (letta da <code>package.json</code> via <code>useAppVersion</code>)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Una voce di menu nuova <strong>non</strong> è un <code>v-if</code> in <code>AppNav</code>: è una riga in <code>sections.config.ts</code>.</p>
+<h3 id="components-shared"><code>components/shared/</code></h3>
+<p>Componenti senza dominio, riusati ovunque:</p>
+<ul>
+<li><strong><code>ConfirmDialog.vue</code></strong> — la conferma &quot;sei sicuro?&quot; con <code>v-model</code>, <code>message</code>, <code>loading</code> ed evento
+<code>confirm</code>. Ogni cancellazione nel progetto passa da qui.</li>
+<li><strong><code>ServerWakeBanner.vue</code></strong> — il banner mostrato se la prima richiesta della sessione tarda più di
+tre secondi (cold start di un hosting free tier). Lo pilota <code>server-wake.store</code>, alimentato
+dall'interceptor axios.</li>
+</ul>
+<p><strong>Quando aggiungerne uno.</strong> Quando lo stesso pezzo di interfaccia serve a <strong>più domini</strong> e non
+contiene logica di un dominio specifico.</p>
+<h3 id="components-dominio"><code>components/&lt;dominio&gt;/</code></h3>
+<p>I pezzi in cui si spezza una pagina: dialog, card, picker. Nel template:
+<code>users/ChangePasswordDialog.vue</code>, <code>roles/RolePermissionsPicker.vue</code> (con il suo test accanto).</p>
+<p><strong>Quando serve.</strong> Ogni volta che una pagina ha un dialog (mai inline nel template della pagina), o
+quando una sezione della pagina ha stato e comportamento propri — un picker con selezione multipla,
+una card con le proprie azioni. Il componente riceve i dati per prop, emette eventi o usa
+<code>v-model</code>, e può usare direttamente uno store se è un pezzo &quot;autonomo&quot;.</p>
+<p><strong>Quando NON serve.</strong> Per un blocco di template senza logica: un <code>v-card</code> con tre campi in sola
+lettura resta nella pagina. Si spezza per responsabilità, non per lunghezza.</p>
+<h2 id="stores-lo-stato-con-pinia"><code>stores/</code> — lo stato, con Pinia</h2>
+<p><strong>Che cosa contiene.</strong> Uno store per dominio (<code>users.store.ts</code>, <code>groups.store.ts</code>, …) più quattro
+store trasversali:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Store</th>
+<th>Ruolo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auth.store</code></td>
+<td>Sessione: token, utente, permessi, lingua. Persistita in <code>localStorage</code>. Espone <code>login</code>, <code>loginWithMsal</code>, <code>loginWithWindows</code>, <code>logout</code>, <code>refresh</code></td>
+</tr>
+<tr>
+<td><code>toast.store</code></td>
+<td>La notifica globale: <code>success</code>, <code>error</code>, <code>warning</code>, <code>info</code>. La <code>v-snackbar</code> è una sola, in <code>App.vue</code></td>
+</tr>
+<tr>
+<td><code>navigation.store</code></td>
+<td>Sezione attiva, sezioni e voci visibili (filtrate per permesso a partire da <code>SECTIONS</code>)</td>
+</tr>
+<tr>
+<td><code>server-wake.store</code></td>
+<td>Il timer del banner di riattivazione</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>La forma di uno store di dominio.</strong> Composition API, mai options API. Lo stato (<code>users</code>,
+<code>totalCount</code>, <code>selectedUser</code>), <code>loading</code> ed <code>error</code> presi da <code>useAsyncAction</code>, e un'azione per ogni
+chiamata al service:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> useUsersStore = <span class="hljs-title function_">defineStore</span>(<span class="hljs-string">&#x27;users&#x27;</span>, <span class="hljs-function">() =&gt;</span> {
+  <span class="hljs-keyword">const</span> users = ref&lt;<span class="hljs-title class_">User</span>[]&gt;([])
+  <span class="hljs-keyword">const</span> totalCount = <span class="hljs-title function_">ref</span>(<span class="hljs-number">0</span>)                 <span class="hljs-comment">// dal backend, mai users.length</span>
+  <span class="hljs-keyword">const</span> selectedUser = ref&lt;<span class="hljs-title class_">User</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
+  <span class="hljs-keyword">const</span> { loading, error, run, runOrThrow, clearError } = <span class="hljs-title function_">useAsyncAction</span>()
+
+  <span class="hljs-keyword">let</span> <span class="hljs-attr">lastQuery</span>: <span class="hljs-title class_">UsersQuery</span> | <span class="hljs-literal">undefined</span>
+
+  <span class="hljs-keyword">const</span> <span class="hljs-title function_">fetchUsers</span> = (<span class="hljs-params"><span class="hljs-attr">params</span>?: <span class="hljs-title class_">UsersQuery</span></span>) =&gt;
+    <span class="hljs-title function_">run</span>(<span class="hljs-title function_">async</span> () =&gt; {                        <span class="hljs-comment">// lettura: l&#x27;errore finisce in `error`</span>
+      lastQuery = params
+      <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">await</span> usersService.<span class="hljs-title function_">getAll</span>(params)
+      users.<span class="hljs-property">value</span> = res.<span class="hljs-property">items</span>
+      totalCount.<span class="hljs-property">value</span> = res.<span class="hljs-property">totalCount</span>
+    }, <span class="hljs-string">&#x27;errors.loadUsers&#x27;</span>)
+
+  <span class="hljs-keyword">const</span> <span class="hljs-title function_">createUser</span> = (<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateUserRequest</span></span>) =&gt;
+    <span class="hljs-title function_">runOrThrow</span>(<span class="hljs-title function_">async</span> () =&gt; {                 <span class="hljs-comment">// scrittura: l&#x27;errore viene anche rilanciato</span>
+      <span class="hljs-keyword">const</span> created = <span class="hljs-keyword">await</span> usersService.<span class="hljs-title function_">create</span>(data)
+      <span class="hljs-keyword">await</span> <span class="hljs-title function_">reload</span>()                         <span class="hljs-comment">// la lista è paginata e ordinata dal server</span>
+      <span class="hljs-keyword">return</span> created
+    }, <span class="hljs-string">&#x27;errors.createUser&#x27;</span>)
+
+  <span class="hljs-keyword">return</span> { users, totalCount, selectedUser, loading, error, fetchUsers, createUser, clearError }
+})
+</code></pre>
+<p><strong>Quando serve uno store.</strong> Quando un dominio ha dati che più componenti leggono, o azioni che
+devono esporre <code>loading</code>/<code>error</code> in modo uniforme. In pratica: ogni feature con una lista ne ha uno.</p>
+<p><strong>Quando NON serve.</strong> Per stato locale di un solo componente (un dialog aperto, un form in
+compilazione): resta un <code>ref</code> nel componente. E non si crea uno store per &quot;passare dati&quot; fra due
+componenti vicini: si usano prop ed eventi.</p>
+<h2 id="services-le-chiamate-http"><code>services/</code> — le chiamate HTTP</h2>
+<p><strong>Che cosa contiene.</strong> Un oggetto per dominio con un metodo per endpoint, e nient'altro:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> usersService = {
+  <span class="hljs-attr">getAll</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">params</span>?: <span class="hljs-title class_">UsersQuery</span></span>) =&gt;</span>
+    api.<span class="hljs-property">get</span>&lt;<span class="hljs-title class_">PagedResponse</span>&lt;<span class="hljs-title class_">User</span>&gt;&gt;(<span class="hljs-string">&#x27;/api/users&#x27;</span>, { params }).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
+  <span class="hljs-attr">getById</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span></span>) =&gt;</span> api.<span class="hljs-property">get</span>&lt;<span class="hljs-title class_">User</span>&gt;(<span class="hljs-string">`/api/users/<span class="hljs-subst">${id}</span>`</span>).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
+  <span class="hljs-attr">create</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateUserRequest</span></span>) =&gt;</span> api.<span class="hljs-property">post</span>&lt;<span class="hljs-title class_">User</span>&gt;(<span class="hljs-string">&#x27;/api/users&#x27;</span>, data).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
+  <span class="hljs-attr">update</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span>, <span class="hljs-attr">data</span>: <span class="hljs-title class_">UpdateUserRequest</span></span>) =&gt;</span> api.<span class="hljs-property">put</span>&lt;<span class="hljs-title class_">User</span>&gt;(<span class="hljs-string">`/api/users/<span class="hljs-subst">${id}</span>`</span>, data).<span class="hljs-title function_">then</span>(<span class="hljs-function"><span class="hljs-params">r</span> =&gt;</span> r.<span class="hljs-property">data</span>),
+  <span class="hljs-attr">delete</span>: <span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">id</span>: <span class="hljs-built_in">number</span></span>) =&gt;</span> api.<span class="hljs-title function_">delete</span>(<span class="hljs-string">`/api/users/<span class="hljs-subst">${id}</span>`</span>),
+}
+</code></pre>
+<p>Sono le <strong>uniche righe del progetto</strong> in cui compare l'istanza <code>api</code> di axios. Il service non
+gestisce errori, non traduce, non tiene stato: restituisce <code>r.data</code> tipizzato e lascia che l'errore
+salga allo store.</p>
+<p><strong>Quando serve.</strong> Un file per dominio, un metodo per endpoint. Se il backend espone un endpoint
+nuovo, qui compare un metodo nuovo. Mai un metodo che ne chiama due: la composizione sta nello store.</p>
+<h2 id="composables-logica-riusabile"><code>composables/</code> — logica riusabile</h2>
+<p><strong>Che cosa contiene.</strong> Funzioni <code>useXxx()</code> che incapsulano un comportamento ricorrente. A differenza
+di uno store, un composable <strong>non ha stato globale</strong>: ogni chiamata crea il proprio.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Composable</th>
+<th>Quando lo usi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useAsyncAction</code></td>
+<td>In <strong>ogni store</strong>: <code>loading</code>, <code>error</code>, <code>run</code> (letture), <code>runOrThrow</code> (scritture), <code>attempt</code> (nei dialog, restituisce <code>true</code>/<code>false</code>)</td>
+</tr>
+<tr>
+<td><code>useServerTable</code></td>
+<td>In ogni <strong>pagina lista</strong> con <code>v-data-table-server</code>: pagina, righe per pagina, ordinamento, ricerca con debounce, <code>reload()</code></td>
+</tr>
+<tr>
+<td><code>useApiErrors</code></td>
+<td>Nei <strong>form</strong>: separa gli errori per campo (400 di FluentValidation) dall'errore generale. <code>extractApiError</code> è la funzione di base usata anche da <code>useAsyncAction</code></td>
+</tr>
+<tr>
+<td><code>usePermission</code></td>
+<td><code>can('users.write')</code> e <code>canAny(...)</code> per mostrare o nascondere i pulsanti</td>
+</tr>
+<tr>
+<td><code>useBackNavigation</code></td>
+<td>Nelle <strong>pagine di dettaglio</strong>: il pulsante indietro torna alla provenienza (<code>?from=</code>), alla history o al fallback</td>
+</tr>
+<tr>
+<td><code>useBreadcrumb</code></td>
+<td>Solo in <code>AppBreadcrumb</code>: costruisce le briciole. Non lo chiama una pagina</td>
+</tr>
+<tr>
+<td><code>useFormatters</code></td>
+<td>Valute e date nel formato della lingua corrente (<code>currency</code>, <code>date</code>). Un solo posto, così nessuna pagina hardcoda <code>'it-IT'</code></td>
+</tr>
+<tr>
+<td><code>useTheme</code> (<code>useAppTheme</code>)</td>
+<td>Toggle chiaro/scuro con persistenza. Lo usano <code>App.vue</code> e la top bar</td>
+</tr>
+<tr>
+<td><code>useAppVersion</code></td>
+<td>La versione da <code>package.json</code>, per il footer</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Quando aggiungerne uno.</strong> Quando lo stesso blocco di logica (non di template) compare in due
+componenti: un timer, una trasformazione di dati, la meccanica di un controllo. Se ha bisogno di
+stato condiviso fra componenti lontani, non è un composable: è uno store.</p>
+<p><strong>Quando NON serve.</strong> Per una funzione pura senza <code>ref</code>/<code>computed</code>: una funzione normale in un
+modulo basta.</p>
+<h2 id="config-le-due-configurazioni"><code>config/</code> — le due configurazioni</h2>
+<h3 id="appconfigts"><code>app.config.ts</code></h3>
+<p><strong>L'unico file che legge <code>import.meta.env</code>.</strong> Espone valori già normalizzati:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Da</th>
+<th>Valori</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>apiBaseUrl</code></td>
+<td><code>VITE_API_BASE_URL</code></td>
+<td>URL del backend, senza slash finale</td>
+</tr>
+<tr>
+<td><code>authStrategy</code></td>
+<td><code>VITE_AUTH_STRATEGY</code></td>
+<td><code>jwt</code> · <code>msal</code> · <code>windows</code> — quale schermata di login mostrare</td>
+</tr>
+<tr>
+<td><code>accessMode</code></td>
+<td><code>VITE_APP_ACCESS_MODE</code></td>
+<td><code>public</code> · <code>private</code> — vedi <a href="../progetto/panoramica.html#modalita-di-accesso-pubblica-o-privata">Panoramica</a></td>
+</tr>
+<tr>
+<td><code>msal.*</code></td>
+<td><code>VITE_MSAL_*</code></td>
+<td>client id, tenant id, app registration dell'API</td>
+</tr>
+<tr>
+<td><code>isDev</code></td>
+<td><code>import.meta.env.DEV</code></td>
+<td>abilita gli aiuti di sviluppo (credenziali demo nel login)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Un valore d'ambiente nuovo si aggiunge qui e in <code>vite-env.d.ts</code> (per il tipo), poi si legge da
+<code>appConfig</code>. Nessun altro file nomina <code>import.meta.env</code>: se lo fa, ESLint e la review lo segnalano.</p>
+<h3 id="sectionsconfigts"><code>sections.config.ts</code></h3>
+<p>La struttura di navigazione: un array <code>SECTIONS</code>, dove ogni sezione ha <code>id</code>, <code>labelKey</code>, <code>icon</code>,
+<code>dashboardTo</code> e le sue <code>items</code> — ciascuna con <code>titleKey</code>, <code>icon</code>, <code>to</code> e il <code>permission</code> minimo.</p>
+<p>Da qui derivano <strong>tre cose insieme</strong>: le tab della top bar, le voci del drawer, le card della
+dashboard di sezione. Una pagina nuova è una riga in una sezione; una sezione nuova è un oggetto
+nuovo, e le sue rotte usano lo stesso <code>id</code> in <code>meta.section</code>.</p>
+<h2 id="router-indexts-le-rotte-e-il-guard"><code>router/index.ts</code> — le rotte e il guard</h2>
+<p>Tutte le rotte applicative sono <strong>figlie di <code>/</code> (AppShell)</strong> con path relativo e prefisso della
+sezione:</p>
+<pre><code class="language-typescript">{
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;system/users/:id(\\d+)&#x27;</span>,                    <span class="hljs-comment">// doppio backslash: con &#x27;\d&#x27; la regex diventa &#x27;d+&#x27;</span>
+  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;user-detail&#x27;</span>,
+  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/users/UserDetailPage.vue&#x27;</span>),   <span class="hljs-comment">// lazy load, sempre</span>
+  <span class="hljs-attr">meta</span>: {
+    <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>,
+    <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;users.read&#x27;</span>,      <span class="hljs-comment">// permesso minimo</span>
+    <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.userDetail&#x27;</span>,    <span class="hljs-comment">// chiave i18n: breadcrumb e titolo del tab</span>
+    <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;system&#x27;</span>,             <span class="hljs-comment">// id della sezione in sections.config.ts</span>
+  },
+}
+</code></pre>
+<p>Il guard globale fa tre cose, in ordine: con <code>accessMode = private</code> manda al login qualsiasi
+anonimo; manda al login chi tenta una rotta con <code>requiresAuth</code>; manda alla home con un toast chi
+non ha <code>meta.permission</code>. Dopo il login si va sempre su <code>/home</code> — nessun <code>returnUrl</code>, per avere lo
+stesso comportamento fra le tre strategie di autenticazione.</p>
+<p><strong>Quando si tocca.</strong> Per ogni pagina nuova: una rotta. Il guard non si tocca mai.</p>
+<h2 id="plugins-le-istanze-delle-librerie"><code>plugins/</code> — le istanze delle librerie</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Che cosa configura</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>axios.ts</code></td>
+<td>L'istanza <code>api</code>: <code>baseURL</code>, <code>withCredentials</code> (per il cookie del refresh token), header <code>Authorization</code> e <code>Accept-Language</code> su ogni richiesta; su <strong>401</strong> un tentativo di refresh e la ripetizione della richiesta, poi logout; su <strong>5xx</strong> l'invio di un <code>ErrorLog</code> al backend; il timer del banner di riattivazione</td>
+</tr>
+<tr>
+<td><code>i18n.ts</code></td>
+<td>vue-i18n con <code>it</code> ed <code>en</code>, lingua ripristinata da <code>localStorage</code></td>
+</tr>
+<tr>
+<td><code>vuetify.ts</code></td>
+<td>Tema chiaro e scuro (colori delle barre inclusi), <code>defaults</code> dei componenti: <code>outlined</code> + <code>compact</code> per gli input, <code>rounded: 0</code> ovunque</td>
+</tr>
+<tr>
+<td><code>msal.ts</code></td>
+<td>L'istanza MSAL, creata solo con la strategia <code>msal</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Quando si toccano.</strong> Quasi mai. Un colore del tema nuovo va in <code>vuetify.ts</code>; un header da
+aggiungere a tutte le richieste va in <code>axios.ts</code>. Non contengono logica applicativa.</p>
+<h2 id="locales-i-testi"><code>locales/</code> — i testi</h2>
+<p>Due file, <code>it.ts</code> ed <code>en.ts</code>, <strong>entrambi obbligatori</strong> e sempre aggiornati insieme. Chiavi
+<code>dominio.elemento</code> (<code>users.title</code>, <code>users.deleteConfirm</code>) più le famiglie trasversali:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Famiglia</th>
+<th>Contenuto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>routes.*</code></td>
+<td>i titoli delle rotte (breadcrumb e tab del browser)</td>
+</tr>
+<tr>
+<td><code>nav.*</code></td>
+<td>le voci di menu e le sezioni</td>
+</tr>
+<tr>
+<td><code>common.*</code></td>
+<td>salva, annulla, elimina, cerca, &quot;salvato con successo&quot;…</td>
+</tr>
+<tr>
+<td><code>validation.*</code></td>
+<td>i messaggi delle regole di form</td>
+</tr>
+<tr>
+<td><code>errors.*</code></td>
+<td>i <strong>fallback</strong> degli store, uno per operazione, usati solo se il backend non ha risposto con un ProblemDetails</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Nei template si scrive sempre <code>t('chiave')</code>: nessun testo fisso, nemmeno un'etichetta.</p>
+<h2 id="types-generati-non-scritti"><code>types/</code> — generati, non scritti</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Origine</th>
+<th>Si modifica?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>api.generated.ts</code></td>
+<td><strong>generato</strong> da <code>pnpm gen:api</code> dallo schema OpenAPI del backend (<code>/openapi/v1.json</code>)</td>
+<td>mai a mano</td>
+</tr>
+<tr>
+<td><code>api.types.ts</code></td>
+<td>alias con i nomi brevi (<code>User</code>, <code>Group</code>, <code>PagedResponse&lt;T&gt;</code>, <code>ProblemDetails</code>) verso gli schemi generati</td>
+<td>sì: un alias per ogni tipo nuovo</td>
+</tr>
+<tr>
+<td><code>auth.types.ts</code></td>
+<td>i tipi della sessione (<code>LoginRequest</code>, <code>AuthState</code>)</td>
+<td>raramente</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Un campo rinominato in un record C# rompe <code>vue-tsc</code>, non la pagina a runtime: è il motivo per cui i
+tipi non si scrivono a mano. Perché un tipo compaia nello schema, l'endpoint deve dichiarare
+<code>.Produces&lt;T&gt;()</code> nel backend.</p>
+<p><strong>Gli id sono <code>number</code>.</strong> Il parametro di rotta è una stringa: nelle pagine di dettaglio
+<code>const id = Number(route.params.id)</code>. L'unica eccezione è <code>authStore.userId</code>, che resta <code>string</code>
+perché arriva dal claim <code>sub</code> del JWT.</p>
+<h2 id="constants"><code>constants/</code></h2>
+<p>Valori condivisi che non sono configurazione d'ambiente. Nel template <code>pagination.ts</code>
+(<code>ITEMS_PER_PAGE_OPTIONS</code>, allineato al tetto <code>Pagination.MaxPageSize</code> del backend). È anche il
+posto per le <strong>costanti di stato di un dominio</strong> — etichette i18n e colori di un <code>EquipmentStatus</code>,
+per esempio — quando liste, dettagli e dialog le condividono.</p>
+<h2 id="styles-e-assets"><code>styles/</code> e <code>assets/</code></h2>
+<p><code>styles/</code> contiene il CSS globale, e ne contiene poco: il template preferisce le classi e i
+<code>defaults</code> di Vuetify. <code>readonly-field.css</code> è l'esempio di ciò che ci va: un overlay che usa la
+variabile di tema <code>--v-theme-on-surface</code>, non un grigio fisso. <code>assets/</code> tiene il logo importato dal
+codice; ciò che deve essere servito tale e quale (favicon, <code>_redirects</code> per l'hosting statico) sta in
+<code>public/</code>.</p>
+<h2 id="i-file-di-configurazione">I file di configurazione</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Ruolo</th>
+<th>Quando si tocca</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vite.config.ts</code></td>
+<td>Plugin Vue e Vuetify (auto-import), alias <code>@</code> → <code>src</code>, porta del dev server (variabile <code>frontend_port</code> del template)</td>
+<td>quasi mai</td>
+</tr>
+<tr>
+<td><code>tsconfig.json</code></td>
+<td><code>strict</code>, <code>noUnusedLocals</code>, <code>noUnusedParameters</code>; alias <code>@/*</code></td>
+<td>quasi mai</td>
+</tr>
+<tr>
+<td><code>eslint.config.js</code></td>
+<td>Flat config: regole JS, TypeScript, Vue, Prettier; globali browser per <code>src/</code>, Node per test e <code>scripts/</code>; <code>max-lines</code> 300 per le pagine e 200 per i componenti, come avviso</td>
+<td>per una regola nuova</td>
+</tr>
+<tr>
+<td><code>.prettierrc</code></td>
+<td>Niente <code>;</code>, virgolette singole, 120 colonne</td>
+<td>mai</td>
+</tr>
+<tr>
+<td><code>vitest.config.ts</code></td>
+<td>jsdom, <code>globals</code>, <code>vitest.setup.ts</code>, soglie di coverage (sotto <code>thresholds</code>, altrimenti vengono ignorate)</td>
+<td>per alzare le soglie</td>
+</tr>
+<tr>
+<td><code>vitest.setup.ts</code></td>
+<td>i18n minimale, Pinia, mock di <code>matchMedia</code> e <code>localStorage</code></td>
+<td>per un mock globale nuovo</td>
+</tr>
+<tr>
+<td><code>.env</code> · <code>.env.local.example</code> · <code>.env.production</code></td>
+<td>Le variabili <code>VITE_*</code>. <code>.env.local</code> è gitignored ed è dove si mettono i valori locali</td>
+<td>per una variabile nuova</td>
+</tr>
+<tr>
+<td><code>project.json</code></td>
+<td>I target Nx: <code>build</code>, <code>serve</code>, <code>test</code>, <code>lint</code>, <code>typecheck</code>. Sono ciò che <code>pnpm build</code>, <code>pnpm lint:frontend</code> e <code>pnpm typecheck:frontend</code> dalla radice invocano</td>
+<td>per un target nuovo</td>
+</tr>
+<tr>
+<td><code>scripts/generate-api-types.mjs</code></td>
+<td><code>pnpm gen:api</code>: legge lo schema dal backend avviato e scrive <code>api.generated.ts</code></td>
+<td>mai</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="dove-va-una-cosa-la-tabella-di-decisione">Dove va una cosa: la tabella di decisione</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Ho bisogno di…</th>
+<th>Va in</th>
+<th>Non va in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>una schermata raggiungibile da URL</td>
+<td><code>pages/&lt;dominio&gt;/</code> + una rotta + una voce in <code>sections.config.ts</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>un dialog di creazione/modifica</td>
+<td><code>components/&lt;dominio&gt;/XxxDialog.vue</code></td>
+<td>il template della pagina</td>
+</tr>
+<tr>
+<td>una card o un pannello con azioni proprie</td>
+<td><code>components/&lt;dominio&gt;/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>una conferma &quot;sei sicuro?&quot;</td>
+<td><code>ConfirmDialog</code> già esistente</td>
+<td>un nuovo dialog</td>
+</tr>
+<tr>
+<td>una chiamata HTTP</td>
+<td><code>services/&lt;dominio&gt;.service.ts</code></td>
+<td>store, pagina, composable</td>
+</tr>
+<tr>
+<td>stato letto da più componenti, <code>loading</code>/<code>error</code></td>
+<td><code>stores/&lt;dominio&gt;.store.ts</code></td>
+<td>componente</td>
+</tr>
+<tr>
+<td>logica riusabile con <code>ref</code>/<code>computed</code></td>
+<td><code>composables/useXxx.ts</code></td>
+<td>store (se non serve stato globale)</td>
+</tr>
+<tr>
+<td>un valore d'ambiente</td>
+<td><code>.env*</code> + <code>vite-env.d.ts</code> + <code>app.config.ts</code></td>
+<td><code>import.meta.env</code> nel codice</td>
+</tr>
+<tr>
+<td>una voce di menu</td>
+<td><code>sections.config.ts</code></td>
+<td><code>AppNav.vue</code></td>
+</tr>
+<tr>
+<td>un testo</td>
+<td><code>locales/it.ts</code> <strong>e</strong> <code>en.ts</code></td>
+<td>il template</td>
+</tr>
+<tr>
+<td>un tipo dell'API</td>
+<td><code>pnpm gen:api</code> + alias in <code>api.types.ts</code></td>
+<td>un'interfaccia scritta a mano</td>
+</tr>
+<tr>
+<td>un formato di data o valuta</td>
+<td><code>useFormatters</code></td>
+<td><code>toLocaleDateString('it-IT')</code> nella pagina</td>
+</tr>
+<tr>
+<td>una notifica all'utente</td>
+<td><code>useToastStore()</code></td>
+<td>una <code>v-snackbar</code> nel componente</td>
+</tr>
+<tr>
+<td>un colore</td>
+<td>il tema in <code>plugins/vuetify.ts</code> (<code>color=&quot;primary&quot;</code>)</td>
+<td>un esadecimale nel template</td>
+</tr>
+<tr>
+<td>un test</td>
+<td>accanto al file (<code>x.test.ts</code>)</td>
+<td>una cartella <code>tests/</code> separata</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="convenzioni.html">Convenzioni e flussi</a> — come si scrive una feature attraversando queste cartelle</li>
+<li><a href="../guide/nuova-feature.html">Aggiungere una feature</a> — il percorso completo, backend compreso</li>
+<li><a href="../progetto/skill.html">Le skill Claude</a> — <code>vue-feature</code>, <code>detail-page</code>, <code>vuetify-dialog-form</code> e le skill di test</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

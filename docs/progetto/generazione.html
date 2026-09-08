@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -188,24 +195,26 @@ qualcosa non torna, si cancella la cartella e si rigenera.</p>
 <ol>
 <li>Copiare <code>apps/backend/&lt;Progetto&gt;.Api/appsettings.local.json.example</code> in
 <code>appsettings.local.json</code> (gitignored) e valorizzarlo: provider, connection string, secret JWT,
-password dell'amministratore iniziale.</li>
+utente amministratore iniziale (<code>Seed:AdminUsername</code>, <code>Seed:AdminEmail</code>,
+<code>Seed:AdminDisplayName</code>, <code>Seed:AdminPassword</code>; i default sono <code>admin</code> / <code>Administrator</code>).</li>
 <li>Copiare <code>apps/frontend/.env.local.example</code> in <code>apps/frontend/.env.local</code> e valorizzarlo.</li>
-<li><strong>Generare la prima migration</strong> — una per provider:</li>
+<li><strong>Avviare il backend.</strong> La migration <code>InitialCreate</code> è già inclusa per entrambi i provider: si
+applica da sola all'avvio (<code>MigrateAsync</code>), crea il database se non esiste e, su un database
+vuoto, parte il seed di permessi, ruoli e utenti.</li>
 </ol>
+<p>Le migration <strong>successive</strong> — quelle del tuo dominio — vanno generate una per provider:</p>
 <pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/&lt;Progetto&gt;.Api
 
-dotnet dotnet-ef migrations add InitialCreate   --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj   --startup-project &lt;Progetto&gt;.Api.csproj   --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+dotnet dotnet-ef migrations add &lt;Nome&gt;   --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj   --startup-project &lt;Progetto&gt;.Api.csproj   --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
 
-dotnet dotnet-ef migrations add InitialCreate   --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj   --startup-project &lt;Progetto&gt;.Api.csproj   --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
+dotnet dotnet-ef migrations add &lt;Nome&gt;   --project ../&lt;Progetto&gt;.Infrastructure/&lt;Progetto&gt;.Infrastructure.csproj   --startup-project &lt;Progetto&gt;.Api.csproj   --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 </code></pre>
 <blockquote>
-<p><strong>Il template non contiene migration</strong>, e non è una dimenticanza: le cartelle
-<code>Migrations/SqlServer</code> e <code>Migrations/Postgres</code> nascono vuote. Una migration committata nel
-template diventerebbe un vincolo per ogni progetto generato — invece il primo <code>InitialCreate</code> è
-il primo file di storia del <em>tuo</em> progetto. Finché non le generi, l'applicazione parte ma il
-database resta senza schema.</p>
+<p><strong>Perché <code>InitialCreate</code> è nel template.</strong> Descrive lo schema dell'impianto (utenti, ruoli,
+permessi, log, configurazione), che è identico per ogni progetto generato: rigenerarla a mano
+in ogni progetto produrrebbe lo stesso file con un timestamp diverso. Le migration del <em>tuo</em>
+dominio vengono dopo, e sono la storia del tuo progetto.</p>
 </blockquote>
-<p>Le migration si applicano poi da sole a ogni avvio (<code>MigrateAsync</code>).</p>
 <h3 id="verificare-che-il-progetto-sia-sano">Verificare che il progetto sia sano</h3>
 <p>Tre controlli, in ordine di costo crescente:</p>
 <div class="table-wrap">
@@ -229,8 +238,8 @@ database resta senza schema.</p>
 <td>lo slug e le porte che hai scelto</td>
 </tr>
 <tr>
-<td><strong>Compila</strong></td>
-<td><code>dotnet build apps/backend/&lt;Progetto&gt;.Api</code> e <code>npx vue-tsc --noEmit</code></td>
+<td><strong>Compila e passa i test</strong></td>
+<td><code>dotnet build apps/backend/&lt;Progetto&gt;.sln</code>, <code>dotnet test apps/backend/&lt;Progetto&gt;.sln</code>; in <code>apps/frontend</code>: <code>pnpm vue-tsc --noEmit</code>, <code>pnpm eslint .</code>, <code>pnpm vitest run</code></td>
 <td>nessun errore</td>
 </tr>
 </tbody>

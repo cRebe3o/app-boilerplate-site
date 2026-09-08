@@ -66,6 +66,21 @@ const SITE = {
       ],
     },
     {
+      title: 'Frontend',
+      pages: [
+        {
+          file: 'frontend/struttura.md',
+          title: 'Struttura del progetto',
+          summary: 'Le cartelle di apps/frontend una per una: che cosa contengono, quando serve aggiungerci qualcosa e quando no.',
+        },
+        {
+          file: 'frontend/convenzioni.md',
+          title: 'Convenzioni e flussi',
+          summary: 'Store con useAsyncAction, liste con useServerTable, errori, dialog, permessi, navigazione e test: come si scrive una feature.',
+        },
+      ],
+    },
+    {
       title: 'Infrastruttura',
       pages: [
         {

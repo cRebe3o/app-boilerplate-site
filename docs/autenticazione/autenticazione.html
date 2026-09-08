@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -557,10 +564,11 @@ non c'è più, non è un errore. L'access token già emesso resta tecnicamente v
 </code></pre>
 <h3 id="il-pacchetto-negotiate-e-la-versione">Il pacchetto Negotiate e la versione</h3>
 <p>L'autenticazione Windows dipende da <code>Microsoft.AspNetCore.Authentication.Negotiate</code>, pinnato nel
-template a <strong>10.0.10</strong>. Le versioni <code>10.0.0</code>–<code>10.0.9</code> sono soggette a due avvisi di sicurezza di
+template a <strong>10.0.11</strong> — la stessa patch di tutti gli altri pacchetti <code>Microsoft.*</code>, che vanno
+aggiornati insieme. Le versioni <code>10.0.0</code>–<code>10.0.9</code> sono soggette a due avvisi di sicurezza di
 gravità alta (<code>GHSA-8prm-248r-h957</code>, <code>GHSA-2p3q-h3hg-jcqq</code>) che riguardano l'uso di Negotiate con
-LDAP per il recupero dei ruoli: <code>dotnet build</code> li segnala come <code>NU1903</code>. La 10.0.10 li chiude — non
-abbassare quella versione.</p>
+LDAP per il recupero dei ruoli: <code>dotnet build</code> li segnala come <code>NU1903</code>. Dalla 10.0.10 sono chiusi —
+non abbassare quella versione.</p>
 <h2 id="simulare-l-autenticazione-windows-in-locale">Simulare l'autenticazione Windows in locale</h2>
 <p>Windows Auth <strong>funziona sulla macchina di sviluppo</strong> anche senza un dominio Active Directory: su
 Windows il pacchetto Negotiate fa il fallback NTLM con l'account locale.</p>

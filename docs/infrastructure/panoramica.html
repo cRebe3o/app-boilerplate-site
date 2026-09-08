@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html" aria-current="page">Panoramica</a></li>
@@ -324,9 +331,10 @@ corrispondente. Il codice generato supporta entrambi in ogni caso.</p>
 Non con gli strumenti inclusi. Lo schema è equivalente sui due provider, quindi un export/import è
 fattibile, ma è un lavoro a sé.</p>
 <p><strong>Serve creare lo schema a mano?</strong>
-No, ma le <strong>migration vanno generate una volta</strong>, alla nascita del progetto: il template non ne
-contiene (vedi <a href="../progetto/generazione.html">Generare e aggiornare</a>). Da lì in poi si applicano da
-sole all'avvio con <code>MigrateAsync()</code>, che crea anche il database se non esiste.</p>
+No. La migration <code>InitialCreate</code> dell'impianto è inclusa nel template per entrambi i provider;
+quelle del tuo dominio le generi tu, una per provider (vedi
+<a href="../progetto/generazione.html">Generare e aggiornare</a>). Tutte si applicano da sole all'avvio con
+<code>MigrateAsync()</code>, che crea anche il database se non esiste.</p>
 <p><strong><code>MigrateAsync</code> crea sempre il database?</strong>
 Solo dove l'utente ha il permesso di farlo. Dietro un connection pooler — Neon, per esempio, che
 espone host <code>*-pooler</code> — la <code>CREATE DATABASE</code> non è consentita e il login viene rifiutato: in quel

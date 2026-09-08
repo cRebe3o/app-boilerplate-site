@@ -326,7 +326,7 @@ Il dominio lancia; il middleware traduce. Nessun handler cattura.
 
 | Eccezione | HTTP | Quando |
 |---|---|---|
-| `InvariantViolationException` | 422 | Una regola dell'aggregato è violata: contratto vuoto, transizione illecita |
+| `InvariantViolationException` | 409 | Una regola dell'aggregato è violata: contratto vuoto, transizione illecita |
 | `ConflictException` | 409 | Lo stato del sistema non permette l'operazione: attrezzatura occupata, fido insufficiente |
 | `NotFoundException` | 404 | L'entità richiesta non esiste |
 | `ValidationException` (FluentValidation) | 400 | La forma dell'input è sbagliata |

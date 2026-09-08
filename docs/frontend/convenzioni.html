@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Convenzioni e flussi — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html" aria-current="page">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
+            <li><a href="../infrastructure/architettura.html">Architettura</a></li>
+            <li><a href="../infrastructure/implementazione.html">Implementazione</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Frontend</p>
+      <article class="prose">
+<h1 id="convenzioni-e-flussi">Convenzioni e flussi</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#il-flusso-di-una-feature">Il flusso di una feature</a></li>
+          <li class="lvl-2"><a href="#tipi-generati-dal-backend">Tipi: generati dal backend</a></li>
+          <li class="lvl-2"><a href="#lo-store-useasyncaction">Lo store: <code>useAsyncAction</code></a></li>
+          <li class="lvl-3"><a href="#liste-paginate-reload-con-l-ultima-query">Liste paginate: <code>reload()</code> con l'ultima query</a></li>
+          <li class="lvl-2"><a href="#la-pagina-lista-useservertable">La pagina lista: <code>useServerTable</code></a></li>
+          <li class="lvl-2"><a href="#la-pagina-di-dettaglio">La pagina di dettaglio</a></li>
+          <li class="lvl-3"><a href="#il-ritorno-usebacknavigation">Il ritorno: <code>useBackNavigation</code></a></li>
+          <li class="lvl-2"><a href="#i-dialog">I dialog</a></li>
+          <li class="lvl-2"><a href="#toast-e-messaggi">Toast e messaggi</a></li>
+          <li class="lvl-2"><a href="#permessi">Permessi</a></li>
+          <li class="lvl-2"><a href="#rotte-sezioni-testi">Rotte, sezioni, testi</a></li>
+          <li class="lvl-2"><a href="#vuetify">Vuetify</a></li>
+          <li class="lvl-2"><a href="#dimensioni-quando-spezzare">Dimensioni: quando spezzare</a></li>
+          <li class="lvl-2"><a href="#formattazione-useformatters">Formattazione: <code>useFormatters</code></a></li>
+          <li class="lvl-2"><a href="#chiamate-api-e-sessione">Chiamate API e sessione</a></li>
+          <li class="lvl-2"><a href="#test">Test</a></li>
+          <li class="lvl-2"><a href="#verifica">Verifica</a></li>
+          <li class="lvl-2"><a href="#gli-errori-che-la-review-cerca">Gli errori che la review cerca</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p><a href="struttura.html">Struttura del progetto</a> dice <em>dove</em> sta ogni cosa. Questa pagina dice <em>come</em> le
+parti collaborano quando si scrive una feature: il giro di una lista paginata, la gestione degli
+errori, i dialog, i permessi, la navigazione, i test. Sono le regole che le skill <code>vue-feature</code>,
+<code>detail-page</code> e <code>vuetify-dialog-form</code> applicano, e che <code>/review</code> verifica.</p>
+<h2 id="il-flusso-di-una-feature">Il flusso di una feature</h2>
+<pre><code>tipi (gen:api)  →  service  →  store  →  pagina  →  rotta + menu + testi
+</code></pre>
+<p>L'ordine è quello delle dipendenze: si parte da ciò che non dipende da nulla (i tipi generati dal
+backend) e si arriva alla rotta, che dipende da tutto.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Passo</th>
+<th>File</th>
+<th>Che cosa produce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Tipi</td>
+<td><code>pnpm gen:api</code>, poi <code>types/api.types.ts</code></td>
+<td>gli alias <code>Supplier</code>, <code>CreateSupplierRequest</code>, …</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Service</td>
+<td><code>services/suppliers.service.ts</code></td>
+<td>un metodo per endpoint</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Store</td>
+<td><code>stores/suppliers.store.ts</code></td>
+<td>stato + azioni con <code>useAsyncAction</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Pagine</td>
+<td><code>pages/suppliers/SuppliersPage.vue</code>, <code>SupplierDetailPage.vue</code></td>
+<td>lista e dettaglio</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Componenti</td>
+<td><code>components/suppliers/</code></td>
+<td>dialog, card, picker</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Rotte</td>
+<td><code>router/index.ts</code></td>
+<td>figlie di AppShell, con <code>title</code> e <code>section</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td>Menu</td>
+<td><code>config/sections.config.ts</code></td>
+<td>la voce con il suo <code>permission</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>Testi</td>
+<td><code>locales/it.ts</code> e <code>en.ts</code></td>
+<td><code>routes.*</code>, <code>nav.*</code>, <code>suppliers.*</code>, <code>errors.*</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>Verifica</td>
+<td><code>pnpm vue-tsc --noEmit</code>, <code>pnpm eslint .</code>, <code>pnpm vitest run</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="tipi-generati-dal-backend">Tipi: generati dal backend</h2>
+<pre><code class="language-bash">pnpm gen:api      <span class="hljs-comment"># con il backend avviato: legge /openapi/v1.json e scrive api.generated.ts</span>
+</code></pre>
+<p>Poi l'alias, in <code>api.types.ts</code>:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">Supplier</span> = <span class="hljs-title class_">Schemas</span>[<span class="hljs-string">&#x27;SupplierResponse&#x27;</span>]
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">CreateSupplierRequest</span> = <span class="hljs-title class_">Schemas</span>[<span class="hljs-string">&#x27;CreateSupplierCommand&#x27;</span>]
+</code></pre>
+<p>Se il tipo <strong>non compare</strong> nel file generato, la causa è quasi sempre nel backend: l'endpoint
+dichiara <code>.Produces(200)</code> senza il tipo. Con <code>.Produces&lt;SupplierResponse&gt;(200)</code> lo schema lo
+descrive e il frontend lo vede. Non si aggira scrivendo l'interfaccia a mano: si corregge l'endpoint.</p>
+<h2 id="lo-store-useasyncaction">Lo store: <code>useAsyncAction</code></h2>
+<p>Ogni azione di uno store passa da <code>useAsyncAction</code>, che tiene <code>loading</code> ed <code>error</code> e gestisce
+l'errore in un punto solo. Tre modi, per tre esigenze:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Funzione</th>
+<th>Per</th>
+<th>Comportamento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run(fn, 'errors.loadX')</code></td>
+<td><strong>letture</strong></td>
+<td>l'errore finisce in <code>error</code>, la promise si risolve con <code>undefined</code>. La pagina mostra <code>store.error</code> se valorizzato, senza try/catch</td>
+</tr>
+<tr>
+<td><code>runOrThrow(fn, 'errors.createX')</code></td>
+<td><strong>scritture</strong></td>
+<td>l'errore finisce in <code>error</code> <strong>e viene rilanciato</strong>: chi chiama sa se chiudere il dialog</td>
+</tr>
+<tr>
+<td><code>attempt(fn, 'errors.confirmX')</code></td>
+<td><strong>dialog e componenti</strong></td>
+<td>come <code>runOrThrow</code>, ma restituisce <code>true</code>/<code>false</code>: &quot;se riesce chiudi&quot; è un <code>if</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-typescript"><span class="hljs-comment">// nel componente di un dialog</span>
+<span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> <span class="hljs-title function_">attempt</span>(<span class="hljs-function">() =&gt;</span> store.<span class="hljs-title function_">confirm</span>(id), <span class="hljs-string">&#x27;errors.confirmOrder&#x27;</span>)) dialog.<span class="hljs-property">value</span> = <span class="hljs-literal">false</span>
+</code></pre>
+<p><strong>Il messaggio mostrato è quello del backend.</strong> <code>extractApiError</code> legge il <code>detail</code> del
+ProblemDetails, già specifico e nella lingua della richiesta — &quot;Username 'mario' già in uso&quot;, &quot;I
+ruoli di sistema non possono essere eliminati&quot;. La chiave i18n passata a <code>run</code>/<code>runOrThrow</code> è solo il
+<strong>fallback</strong> per quando non c'è un ProblemDetails: rete assente, timeout, 502 dal proxy.</p>
+<p>Due errori ricorrenti che la review intercetta:</p>
+<ul>
+<li><strong><code>try/catch</code> scritto a mano</strong> in un'azione: <code>loading</code> ed <code>error</code> finiscono fuori sincrono, e il
+messaggio diventa generico.</li>
+<li><strong><code>run</code> su una scrittura</strong>: il dialog si chiude anche se il salvataggio è fallito, perché la
+promise si risolve comunque.</li>
+</ul>
+<h3 id="liste-paginate-reload-con-l-ultima-query">Liste paginate: <code>reload()</code> con l'ultima query</h3>
+<p>Le liste sono paginate e ordinate dal server, quindi dopo una scrittura <strong>non si appende</strong> alla
+lista: si ricarica. Lo store tiene l'ultima query e la riusa, così l'utente non torna a pagina 1 e
+non perde la ricerca:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">let</span> <span class="hljs-attr">lastQuery</span>: <span class="hljs-title class_">SuppliersQuery</span> | <span class="hljs-literal">undefined</span>
+
+<span class="hljs-keyword">const</span> <span class="hljs-title function_">fetchSuppliers</span> = (<span class="hljs-params"><span class="hljs-attr">params</span>?: <span class="hljs-title class_">SuppliersQuery</span></span>) =&gt;
+  <span class="hljs-title function_">run</span>(<span class="hljs-title function_">async</span> () =&gt; {
+    lastQuery = params
+    <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">await</span> suppliersService.<span class="hljs-title function_">getAll</span>(params)
+    suppliers.<span class="hljs-property">value</span> = res.<span class="hljs-property">items</span>
+    totalCount.<span class="hljs-property">value</span> = res.<span class="hljs-property">totalCount</span>       <span class="hljs-comment">// dal backend: mai items.length</span>
+  }, <span class="hljs-string">&#x27;errors.loadSuppliers&#x27;</span>)
+
+<span class="hljs-keyword">const</span> <span class="hljs-title function_">reload</span> = (<span class="hljs-params"></span>) =&gt; <span class="hljs-title function_">fetchSuppliers</span>(lastQuery)
+</code></pre>
+<h2 id="la-pagina-lista-useservertable">La pagina lista: <code>useServerTable</code></h2>
+<p><code>useServerTable</code> raccoglie la meccanica che ogni lista ripeteva: tradurre le opzioni di
+<code>v-data-table-server</code> in parametri di query, azzerare la pagina quando cambia la ricerca, evitare la
+doppia fetch quando Vuetify emette più eventi per la stessa azione.</p>
+<pre><code class="language-vue"><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">setup</span> <span class="hljs-attr">lang</span>=<span class="hljs-string">&quot;ts&quot;</span>&gt;</span><span class="language-javascript">
+<span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useSuppliersStore</span>()
+<span class="hljs-keyword">const</span> { can } = <span class="hljs-title function_">usePermission</span>()
+<span class="hljs-keyword">const</span> toast = <span class="hljs-title function_">useToastStore</span>()
+
+<span class="hljs-keyword">const</span> { search, page, itemsPerPage, onOptionsUpdate, reload } =
+  <span class="hljs-title function_">useServerTable</span>(<span class="hljs-function"><span class="hljs-params">query</span> =&gt;</span> store.<span class="hljs-title function_">fetchSuppliers</span>(query))
+
+<span class="hljs-keyword">const</span> headers = <span class="hljs-title function_">computed</span>(<span class="hljs-function">() =&gt;</span> [
+  { <span class="hljs-attr">title</span>: <span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;suppliers.name&#x27;</span>), <span class="hljs-attr">key</span>: <span class="hljs-string">&#x27;name&#x27;</span> },
+  { <span class="hljs-attr">title</span>: <span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;common.actions&#x27;</span>), <span class="hljs-attr">key</span>: <span class="hljs-string">&#x27;actions&#x27;</span>, <span class="hljs-attr">sortable</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">align</span>: <span class="hljs-string">&#x27;end&#x27;</span> <span class="hljs-keyword">as</span> <span class="hljs-keyword">const</span> },
+])
+</span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
+
+<span class="hljs-tag">&lt;<span class="hljs-name">template</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">v-text-field</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;search&quot;</span> <span class="hljs-attr">:label</span>=<span class="hljs-string">&quot;t(&#x27;common.search&#x27;)&quot;</span> <span class="hljs-attr">prepend-inner-icon</span>=<span class="hljs-string">&quot;mdi-magnify&quot;</span> <span class="hljs-attr">clearable</span> /&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">v-data-table-server</span>
+    <span class="hljs-attr">:headers</span>=<span class="hljs-string">&quot;headers&quot;</span> <span class="hljs-attr">:items</span>=<span class="hljs-string">&quot;store.suppliers&quot;</span> <span class="hljs-attr">:items-length</span>=<span class="hljs-string">&quot;store.totalCount&quot;</span>
+    <span class="hljs-attr">:loading</span>=<span class="hljs-string">&quot;store.loading&quot;</span> <span class="hljs-attr">:page</span>=<span class="hljs-string">&quot;page&quot;</span> <span class="hljs-attr">:items-per-page</span>=<span class="hljs-string">&quot;itemsPerPage&quot;</span>
+    <span class="hljs-attr">:items-per-page-options</span>=<span class="hljs-string">&quot;ITEMS_PER_PAGE_OPTIONS&quot;</span>
+    @<span class="hljs-attr">update:options</span>=<span class="hljs-string">&quot;onOptionsUpdate&quot;</span>
+  /&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">supplier-dialog</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;showDialog&quot;</span> <span class="hljs-attr">:item</span>=<span class="hljs-string">&quot;editing&quot;</span> @<span class="hljs-attr">saved</span>=<span class="hljs-string">&quot;reload(); toast.success(t(&#x27;common.saved&#x27;))&quot;</span> /&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">template</span>&gt;</span>
+</code></pre>
+<p>Da notare:</p>
+<ul>
+<li>Si ascolta <strong>solo <code>@update:options</code></strong>, non i singoli <code>@update:page</code> / <code>@update:sort-by</code>: un cambio
+di &quot;righe per pagina&quot; fa emettere a Vuetify anche <code>update:page</code>, e con listener separati si
+avrebbero due fetch per un gesto.</li>
+<li>La <strong>ricerca è in debounce</strong> (400 ms) e riporta a pagina 1: con un filtro nuovo, la pagina 5 può
+non esistere più.</li>
+<li><code>:items-per-page-options</code> è <strong>esplicito</strong>: il default di Vuetify include &quot;Tutti&quot; (<code>-1</code>), che con
+migliaia di record è una risposta enorme. Per estrarre tutto c'è l'export CSV.</li>
+<li>Su mobile la tabella lascia il posto a una <code>v-list</code> di card con la propria paginazione: <code>useDisplay().mobile</code>
+decide quale delle due mostrare.</li>
+</ul>
+<h2 id="la-pagina-di-dettaglio">La pagina di dettaglio</h2>
+<p>La stessa pagina serve <strong>creazione e modifica</strong>: la distinzione è la presenza di <code>:id</code>.</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">const</span> isCreate = route.<span class="hljs-property">name</span> === <span class="hljs-string">&#x27;supplier-create&#x27;</span>
+<span class="hljs-keyword">const</span> supplierId = <span class="hljs-title class_">Number</span>(route.<span class="hljs-property">params</span>.<span class="hljs-property">id</span>)          <span class="hljs-comment">// il param è una stringa, l&#x27;id è number</span>
+<span class="hljs-keyword">const</span> { goBack } = <span class="hljs-title function_">useBackNavigation</span>({ <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;suppliers&#x27;</span> })
+<span class="hljs-keyword">const</span> { fieldErrors, generalError, handleError, clearErrors } = <span class="hljs-title function_">useApiErrors</span>()
+</code></pre>
+<p>Il form è sempre un <code>v-form</code> con <code>ref</code> e <code>validate()</code> prima del submit. Gli errori hanno due
+livelli, e <code>useApiErrors</code> li separa:</p>
+<ul>
+<li><strong>per campo</strong> — il <code>400</code> di FluentValidation porta <code>errors: { Name: ['…'] }</code>; <code>fieldErrors.name</code>
+(chiave lowercase) va in <code>:error-messages</code> del campo;</li>
+<li><strong>generale</strong> — il <code>detail</code> del ProblemDetails (404, 409) o il fallback, in un <code>v-alert</code>.</li>
+</ul>
+<pre><code class="language-vue"><span class="hljs-tag">&lt;<span class="hljs-name">v-alert</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;generalError&quot;</span> <span class="hljs-attr">type</span>=<span class="hljs-string">&quot;error&quot;</span> <span class="hljs-attr">class</span>=<span class="hljs-string">&quot;mb-4&quot;</span>&gt;</span>{{ generalError }}<span class="hljs-tag">&lt;/<span class="hljs-name">v-alert</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">v-text-field</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;form.name&quot;</span> <span class="hljs-attr">:rules</span>=<span class="hljs-string">&quot;[rules.required]&quot;</span> <span class="hljs-attr">:error-messages</span>=<span class="hljs-string">&quot;fieldErrors[&#x27;name&#x27;]&quot;</span> /&gt;</span>
+</code></pre>
+<p>Dopo il salvataggio: toast di successo e <code>goBack()</code>. Il breadcrumb non lo costruisce la pagina —
+lo genera <code>AppBreadcrumb</code> dai <code>meta.title</code> delle rotte.</p>
+<h3 id="il-ritorno-usebacknavigation">Il ritorno: <code>useBackNavigation</code></h3>
+<p>Il pulsante indietro <strong>non è un link alla lista</strong>. Una pagina di dettaglio ha più ingressi (la
+lista, una dashboard, un'altra entità che la referenzia) e un back cablato sulla lista riporta
+sempre lì. <code>goBack()</code> applica tre regole in cascata:</p>
+<ol>
+<li><strong><code>?from=&lt;origine&gt;</code></strong> dichiarato da chi apre il dettaglio: si torna lì. Sopravvive al refresh e
+al link condiviso, e il breadcrumb mostra la stessa provenienza.</li>
+<li><strong>History del browser</strong>: senza <code>from</code>, se si è arrivati navigando dentro l'app si fa un back
+reale, che ripresenta la lista con filtri, pagina e scroll intatti.</li>
+<li><strong>Fallback</strong>: link incollato o apertura diretta → la lista.</li>
+</ol>
+<p>Chi apre il dettaglio dichiara da dove arriva:</p>
+<pre><code class="language-vue">:to=&quot;{ name: &#x27;supplier-detail&#x27;, params: { id: item.id }, query: { from: &#x27;suppliers&#x27; } }&quot;
+</code></pre>
+<p>Le origini ammesse sono un <strong>dizionario chiuso</strong> (<code>ORIGINS</code> in <code>useBackNavigation.ts</code>), perché
+<code>from</code> arriva dall'URL e non deve diventare una destinazione arbitraria. Ogni feature con dettaglio
+aggiunge una riga per ogni punto da cui ci si arriva.</p>
+<h2 id="i-dialog">I dialog</h2>
+<p>Un dialog è <strong>sempre un componente separato</strong> in <code>components/&lt;dominio&gt;/</code>, mai inline nel template
+della pagina. Regole:</p>
+<ul>
+<li><code>v-model</code> di tipo <code>ref&lt;boolean&gt;</code>, mai <code>string | null</code>;</li>
+<li>il dialog riceve l'elemento da modificare come prop (<code>item: Supplier | null</code>) e capisce da solo se
+è creazione o modifica;</li>
+<li>al chiudersi resetta il form (<code>watch</code> su <code>modelValue</code>);</li>
+<li><strong>scrive tramite lo store</strong> e usa <code>attempt</code> per decidere se chiudersi;</li>
+<li>emette <code>saved</code>: è la pagina a fare <code>reload()</code> e a mostrare il toast.</li>
+</ul>
+<p>La conferma di cancellazione è <code>ConfirmDialog</code> di <code>components/shared/</code>: <code>v-model</code>, <code>message</code>,
+<code>loading</code>, evento <code>confirm</code>. Non se ne scrive una nuova per dominio.</p>
+<h2 id="toast-e-messaggi">Toast e messaggi</h2>
+<p>Una sola <code>v-snackbar</code>, in <code>App.vue</code>, pilotata da <code>useToastStore()</code>: <code>success</code> (3 s), <code>error</code> (5 s),
+<code>warning</code>, <code>info</code>. Dopo una scrittura riuscita: <code>toast.success(t('common.saved'))</code>. Gli errori
+invece <strong>non</strong> vanno in un toast: restano nel <code>v-alert</code> della pagina o del dialog, dove l'utente può
+leggerli e agire.</p>
+<h2 id="permessi">Permessi</h2>
+<p>Lo stesso permesso <code>risorsa.azione</code> del backend, verificato in tre punti del frontend:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Punto</th>
+<th>Come</th>
+<th>Effetto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rotta</td>
+<td><code>meta.permission: 'suppliers.read'</code></td>
+<td>il guard manda alla home con un toast</td>
+</tr>
+<tr>
+<td>Menu</td>
+<td><code>permission: 'suppliers.read'</code> nella voce di <code>sections.config.ts</code></td>
+<td>la voce non compare; se nessuna voce della sezione è accessibile, sparisce la sezione</td>
+</tr>
+<tr>
+<td>Pulsante</td>
+<td><code>v-if=&quot;can('suppliers.write')&quot;</code></td>
+<td>il pulsante non esiste (<code>v-if</code>, non <code>v-show</code>)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>I permessi arrivano da <code>auth.store</code> (risposta di login e di refresh), non da una decodifica del JWT
+nel browser. E nascondere un pulsante è cortesia: a <strong>negare</strong> è sempre il backend.</p>
+<h2 id="rotte-sezioni-testi">Rotte, sezioni, testi</h2>
+<p>Ogni pagina nuova tocca tre file, sempre gli stessi:</p>
+<pre><code class="language-typescript"><span class="hljs-comment">// router/index.ts — figlia di AppShell, con il prefisso della sezione</span>
+{
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;suppliers&#x27;</span>,
+  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;suppliers&#x27;</span>,
+  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/suppliers/SuppliersPage.vue&#x27;</span>),
+  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;suppliers.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.suppliers&#x27;</span>, <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;system&#x27;</span> },
+},
+{
+  <span class="hljs-attr">path</span>: <span class="hljs-string">&#x27;suppliers/:id(\\d+)&#x27;</span>,       <span class="hljs-comment">// doppio backslash, altrimenti la rotta non matcha mai</span>
+  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;supplier-detail&#x27;</span>,
+  <span class="hljs-attr">component</span>: <span class="hljs-function">() =&gt;</span> <span class="hljs-keyword">import</span>(<span class="hljs-string">&#x27;@/pages/suppliers/SupplierDetailPage.vue&#x27;</span>),
+  <span class="hljs-attr">meta</span>: { <span class="hljs-attr">requiresAuth</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;suppliers.read&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;routes.supplierDetail&#x27;</span>, <span class="hljs-attr">section</span>: <span class="hljs-string">&#x27;system&#x27;</span> },
+},
+</code></pre>
+<pre><code class="language-typescript"><span class="hljs-comment">// config/sections.config.ts — la voce di menu</span>
+{ <span class="hljs-attr">titleKey</span>: <span class="hljs-string">&#x27;nav.suppliers&#x27;</span>, <span class="hljs-attr">subtitleKey</span>: <span class="hljs-string">&#x27;suppliers.subtitle&#x27;</span>, <span class="hljs-attr">icon</span>: <span class="hljs-string">&#x27;mdi-truck&#x27;</span>,
+  <span class="hljs-attr">color</span>: <span class="hljs-string">&#x27;primary&#x27;</span>, <span class="hljs-attr">to</span>: <span class="hljs-string">&#x27;/system/suppliers&#x27;</span>, <span class="hljs-attr">permission</span>: <span class="hljs-string">&#x27;suppliers.read&#x27;</span> },
+</code></pre>
+<pre><code class="language-typescript"><span class="hljs-comment">// locales/it.ts (e en.ts)</span>
+<span class="hljs-attr">routes</span>: { <span class="hljs-attr">suppliers</span>: <span class="hljs-string">&#x27;Fornitori&#x27;</span>, <span class="hljs-attr">supplierDetail</span>: <span class="hljs-string">&#x27;Dettaglio fornitore&#x27;</span> },
+<span class="hljs-attr">nav</span>: { <span class="hljs-attr">suppliers</span>: <span class="hljs-string">&#x27;Fornitori&#x27;</span> },
+<span class="hljs-attr">suppliers</span>: { <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Fornitori&#x27;</span>, <span class="hljs-attr">subtitle</span>: <span class="hljs-string">&#x27;Anagrafica fornitori&#x27;</span>, <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;Ragione sociale&#x27;</span>, … },
+<span class="hljs-attr">errors</span>: { <span class="hljs-attr">loadSuppliers</span>: <span class="hljs-string">&#x27;Errore nel caricamento dei fornitori&#x27;</span>, <span class="hljs-attr">createSupplier</span>: <span class="hljs-string">&#x27;…&#x27;</span> },
+</code></pre>
+<p>Una <strong>sezione nuova</strong> è un oggetto in <code>SECTIONS</code> con <code>id</code>, <code>labelKey</code>, <code>icon</code>, <code>dashboardTo</code> e
+<code>items</code>; le sue rotte usano quell'<code>id</code> in <code>meta.section</code>. Tab, drawer e dashboard di sezione si
+aggiornano da soli.</p>
+<h2 id="vuetify">Vuetify</h2>
+<ul>
+<li>Componenti Vuetify per tutto: niente CSS custom se esiste un componente. Icone <code>mdi-*</code>.</li>
+<li>Colori dal tema (<code>color=&quot;primary&quot;</code>, <code>color=&quot;error&quot;</code>), mai esadecimali nel template.</li>
+<li>Layout <code>v-container</code> → <code>v-row</code> → <code>v-col</code>; su mobile si controlla <code>useDisplay().mobile</code>.</li>
+<li>I <code>defaults</code> in <code>plugins/vuetify.ts</code> fissano <code>outlined</code> + <code>compact</code> per gli input e <code>rounded: 0</code>:
+non si ripetono nei componenti.</li>
+<li>Slot con il punto nel nome (<code>#item.actions</code> di <code>v-data-table</code>) sono ammessi: ESLint è configurato
+per accettarli.</li>
+</ul>
+<h2 id="dimensioni-quando-spezzare">Dimensioni: quando spezzare</h2>
+<p>Una <strong>pagina</strong> sopra le ~300 righe e un <strong>componente</strong> sopra le ~200 stanno facendo più di un
+lavoro. ESLint lo segnala come avviso (<code>max-lines</code>): non blocca la build, ma la review lo legge.</p>
+<p>Il rimedio, in ordine:</p>
+<ol>
+<li>i dialog in <code>components/&lt;dominio&gt;/XxxDialog.vue</code>;</li>
+<li>le sezioni con stato proprio in card o picker (<code>RolePermissionsPicker</code> è l'esempio nel
+template: <code>RoleDetailPage</code> gli delega la scelta dei permessi, con <code>v-model</code> sugli id);</li>
+<li>la logica ripetuta in un composable.</li>
+</ol>
+<p>Si spezza per <strong>responsabilità</strong>, non a metà: un componente estratto deve avere un nome che dice
+che cosa fa.</p>
+<h2 id="formattazione-useformatters">Formattazione: <code>useFormatters</code></h2>
+<p>Date e valute passano da <code>useFormatters()</code>, che usa la lingua corrente (<code>it-IT</code> / <code>en-GB</code>):</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">const</span> { currency, date } = <span class="hljs-title function_">useFormatters</span>()
+<span class="hljs-title function_">currency</span>(<span class="hljs-number">1234.5</span>)               <span class="hljs-comment">// &quot;1.234,50 €&quot;</span>
+<span class="hljs-title function_">currency</span>(total, { <span class="hljs-attr">maximumFractionDigits</span>: <span class="hljs-number">0</span> })   <span class="hljs-comment">// per le dashboard, senza centesimi</span>
+<span class="hljs-title function_">date</span>(item.<span class="hljs-property">createdAt</span>)           <span class="hljs-comment">// &quot;08/09/2026&quot;, oppure &quot;—&quot; se assente</span>
+</code></pre>
+<p>Nessuna pagina chiama <code>toLocaleDateString('it-IT')</code>: un utente in inglese vedrebbe comunque il
+formato italiano.</p>
+<h2 id="chiamate-api-e-sessione">Chiamate API e sessione</h2>
+<p>L'istanza <code>api</code> in <code>plugins/axios.ts</code> fa da sola ciò che un componente non deve nemmeno sapere:</p>
+<ul>
+<li>aggiunge <code>Authorization: Bearer</code> e <code>Accept-Language</code> a ogni richiesta;</li>
+<li>su <strong>401</strong> tenta <strong>una volta</strong> il refresh (<code>POST /api/auth/refresh</code>, cookie HttpOnly) e ripete la
+richiesta; se il refresh fallisce, logout. Con più 401 in parallelo il refresh è uno solo;</li>
+<li>le chiamate <code>/api/auth/*</code> sono escluse dal meccanismo, altrimenti un login sbagliato innescherebbe
+un refresh;</li>
+<li>su <strong>5xx</strong> invia un <code>ErrorLog</code> al backend (fire-and-forget), escluso l'endpoint dei log stessi;</li>
+<li>avvia e ferma il timer del banner &quot;server in riattivazione&quot;.</li>
+</ul>
+<p>Nessuna chiamata <code>axios</code> o <code>fetch</code> fuori dai service.</p>
+<h2 id="test">Test</h2>
+<p>Vitest + jsdom, test <strong>accanto al file</strong> (<code>users.store.test.ts</code>, <code>RolePermissionsPicker.test.ts</code>).
+<code>vitest.setup.ts</code> registra i18n minimale, Pinia e i mock di <code>matchMedia</code> e <code>localStorage</code>.</p>
+<p>La regola: <strong>si mocka il service, mai la rete</strong>. Lo store si testa reale, con risposte controllate:</p>
+<pre><code class="language-typescript">vi.<span class="hljs-title function_">mock</span>(<span class="hljs-string">&#x27;@/services/suppliers.service&#x27;</span>, <span class="hljs-function">() =&gt;</span> ({
+  <span class="hljs-attr">suppliersService</span>: { <span class="hljs-attr">getAll</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">getById</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">create</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">update</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">delete</span>: vi.<span class="hljs-title function_">fn</span>() },
+}))
+<span class="hljs-keyword">const</span> service = vi.<span class="hljs-title function_">mocked</span>(suppliersService)
+
+<span class="hljs-title function_">beforeEach</span>(<span class="hljs-function">() =&gt;</span> { <span class="hljs-title function_">setActivePinia</span>(<span class="hljs-title function_">createPinia</span>()); vi.<span class="hljs-title function_">clearAllMocks</span>() })
+
+<span class="hljs-title function_">it</span>(<span class="hljs-string">&#x27;una scrittura fallita registra l\&#x27;errore E rilancia&#x27;</span>, <span class="hljs-title function_">async</span> () =&gt; {
+  service.<span class="hljs-property">create</span>.<span class="hljs-title function_">mockRejectedValue</span>({ <span class="hljs-attr">response</span>: { <span class="hljs-attr">status</span>: <span class="hljs-number">409</span>, <span class="hljs-attr">data</span>: { <span class="hljs-attr">detail</span>: <span class="hljs-string">&#x27;Partita IVA già presente.&#x27;</span> } } })
+  <span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useSuppliersStore</span>()
+
+  <span class="hljs-keyword">await</span> <span class="hljs-title function_">expect</span>(store.<span class="hljs-title function_">create</span>({ <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;X&#x27;</span>, <span class="hljs-attr">vatNumber</span>: <span class="hljs-string">&#x27;00743110157&#x27;</span> })).<span class="hljs-property">rejects</span>.<span class="hljs-title function_">toBeDefined</span>()
+  <span class="hljs-title function_">expect</span>(store.<span class="hljs-property">error</span>).<span class="hljs-title function_">toBe</span>(<span class="hljs-string">&#x27;Partita IVA già presente.&#x27;</span>)      <span class="hljs-comment">// il detail del backend, non il fallback</span>
+})
+</code></pre>
+<p>Gli errori simulati hanno la forma di un AxiosError, <code>{ response: { status, data } }</code>: è ciò che
+legge <code>extractApiError</code>. Un <code>new Error('x')</code> fa scattare il fallback i18n, ed è un caso da testare a
+parte.</p>
+<p>Che cosa testare, per tipo di file:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Test</th>
+<th>Skill</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>store</td>
+<td>stato iniziale; ogni lettura (dati e parametri); lettura fallita → <code>error</code> senza throw; scrittura fallita → <code>error</code> e promise rigettata; <code>reload</code> con l'ultima query; <code>loading</code> durante</td>
+<td><code>pinia-store-test</code>, <code>crud-operations-test</code></td>
+</tr>
+<tr>
+<td>service</td>
+<td>URL, parametri e payload con <code>toHaveBeenCalledWith</code>; 4xx con ProblemDetails; errore di rete</td>
+<td><code>api-mock-test</code></td>
+</tr>
+<tr>
+<td>componente</td>
+<td>prop, eventi, <code>v-model</code>, slot</td>
+<td><code>vue-component-test</code>, <code>form-validation-test</code></td>
+</tr>
+<tr>
+<td>pagina</td>
+<td>mount con router in memoria, service mockato, store reale; caricamento, un'interazione, l'errore visibile, la ricarica dopo una scrittura. <code>flushPromises()</code>, mai <code>setTimeout</code></td>
+<td><code>page-integration-test</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le soglie di coverage in <code>vitest.config.ts</code> sono il livello raggiunto: impediscono di peggiorare e
+vanno alzate man mano.</p>
+<h2 id="verifica">Verifica</h2>
+<p>Prima di dichiarare finita una feature, da <code>apps/frontend</code>:</p>
+<pre><code class="language-bash">pnpm vue-tsc --noEmit     <span class="hljs-comment"># tipi: un campo rinominato nel backend si vede qui</span>
+pnpm eslint .             <span class="hljs-comment"># lint: 0 errori; gli avvisi max-lines vanno letti</span>
+pnpm vitest run           <span class="hljs-comment"># test</span>
+pnpm build                <span class="hljs-comment"># vue-tsc + vite build, lo stesso target Nx di `pnpm build` in radice</span>
+</code></pre>
+<p>Dalla radice del monorepo gli stessi comandi sono <code>pnpm typecheck:frontend</code>, <code>pnpm lint:frontend</code>,
+<code>pnpm test:frontend</code>, <code>pnpm build</code>.</p>
+<h2 id="gli-errori-che-la-review-cerca">Gli errori che la review cerca</h2>
+<ul>
+<li>Store con <code>try/catch</code> a mano invece di <code>run</code>/<code>runOrThrow</code>.</li>
+<li>Scrittura con <code>run</code>: il dialog si chiude anche se il salvataggio è fallito.</li>
+<li>Lista che dopo una scrittura ricarica da pagina 1 invece di <code>reload()</code>.</li>
+<li>Rotta con <code>'\d+'</code> invece di <code>'\\d+'</code>: non matcha mai.</li>
+<li>Tipo dell'API scritto a mano invece di generato (di solito perché manca <code>.Produces&lt;T&gt;()</code> nel backend).</li>
+<li><code>import.meta.env</code> fuori da <code>app.config.ts</code>; <code>axios</code> fuori dai service.</li>
+<li>Testo fisso nel template, o una chiave presente in <code>it.ts</code> ma non in <code>en.ts</code>.</li>
+<li>Pulsante di scrittura senza <code>v-if=&quot;can(...)&quot;</code>; voce di menu aggiunta in <code>AppNav</code> invece che in <code>sections.config.ts</code>.</li>
+<li>Pulsante indietro cablato sulla lista invece di <code>useBackNavigation</code>.</li>
+</ul>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="struttura.html">Struttura del progetto</a> — le cartelle, una per una</li>
+<li><a href="../guide/nuova-feature.html">Aggiungere una feature</a> — il percorso completo, backend compreso</li>
+<li><a href="../progetto/skill.html">Le skill Claude</a> — le skill frontend e di test che applicano queste regole</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+  </footer>
+</body>
+</html>

@@ -38,6 +38,13 @@
           </ul>
         </div>
         <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
           <p class="nav-title">Infrastruttura</p>
           <ul>
             <li><a href="../infrastructure/panoramica.html">Panoramica</a></li>
@@ -234,8 +241,8 @@ services.AddScoped&lt;ConcurrencyTokenInterceptor&gt;();
 <p>Il ragionamento è lo stesso per tutti e tre, ed è scritto in <code>ConcurrencyTokenInterceptor</code>:</p>
 <blockquote>
 <p>Farlo qui invece che negli aggregati significa che nessuno può dimenticarsene: un nuovo metodo su
-Equipment, un import massivo, una correzione fatta da un hosted service, sono tutti coperti senza
-scrivere una riga in più.</p>
+un aggregato, un import massivo, una correzione fatta da un hosted service, sono tutti coperti
+senza scrivere una riga in più.</p>
 </blockquote>
 <blockquote>
 <p>⚠️ <strong>Un handler non scrive mai un audit log a mano.</strong> Se stai per aggiungere una riga <code>AuditLog</code>
@@ -378,6 +385,10 @@ servono. Il tracking è già disattivato a monte, in <code>IReadDbContext</code>
 EF: invocarle su un <code>IQueryable</code> prodotto da un fake in memoria fallirebbe a runtime. Passando
 dall'astrazione, l'handler resta eseguibile nei test unitari.</p>
 <h3 id="scrittura-carica-l-aggregato-chiedi-al-dominio-salva">Scrittura: carica l'aggregato, chiedi al dominio, salva</h3>
+<blockquote>
+<p>L'esempio viene dalla sezione Noleggi di <code>app-demo</code>, il progetto dimostrativo generato dal
+template: nel template la forma è la stessa (vedi <code>CreateUserHandler</code>), ma senza domain service.</p>
+</blockquote>
 <pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ConfirmRentalContractHandler</span>(<span class="hljs-params">
     IRentalContractRepository contracts,
     ICustomerRepository customers,
@@ -558,8 +569,11 @@ annulla tutto quanto scritto fin lì.</li>
 </ul>
 <p>Poiché gli id li assegna il database, il seed <strong>non può</strong> usare id costanti: i legami si esprimono
 via navigation property, lasciando che EF risolva le FK al <code>SaveChanges</code>.</p>
-<p>La password dell'amministratore iniziale arriva da <code>Seed:AdminPassword</code>; se non è configurata ne
-viene generata una casuale — che, non essendo stampata in chiaro, di fatto obbliga a impostarla.</p>
+<p>L'amministratore iniziale è configurabile: <code>Seed:AdminUsername</code> (default <code>admin</code>),
+<code>Seed:AdminEmail</code> (vuoto = si riusa lo username, se ha la forma di un'email),
+<code>Seed:AdminDisplayName</code> (default <code>Administrator</code>) e <code>Seed:AdminPassword</code>. Con il login MSAL lo
+username dev'essere l'email aziendale con cui si entra. Se la password non è configurata ne viene
+generata una casuale — che, non essendo stampata in chiaro, di fatto obbliga a impostarla.</p>
 <blockquote>
 <p>Non esiste un comando di reset. Per ripartire da zero il database si droppa a mano.</p>
 </blockquote>

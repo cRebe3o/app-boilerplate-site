@@ -227,9 +227,10 @@ Non con gli strumenti inclusi. Lo schema è equivalente sui due provider, quindi
 fattibile, ma è un lavoro a sé.
 
 **Serve creare lo schema a mano?**
-No, ma le **migration vanno generate una volta**, alla nascita del progetto: il template non ne
-contiene (vedi [Generare e aggiornare](../progetto/generazione.md)). Da lì in poi si applicano da
-sole all'avvio con `MigrateAsync()`, che crea anche il database se non esiste.
+No. La migration `InitialCreate` dell'impianto è inclusa nel template per entrambi i provider;
+quelle del tuo dominio le generi tu, una per provider (vedi
+[Generare e aggiornare](../progetto/generazione.md)). Tutte si applicano da sole all'avvio con
+`MigrateAsync()`, che crea anche il database se non esiste.
 
 **`MigrateAsync` crea sempre il database?**
 Solo dove l'utente ha il permesso di farlo. Dietro un connection pooler — Neon, per esempio, che

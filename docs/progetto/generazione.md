@@ -81,25 +81,27 @@ Il template lo dice da sé, in coda ai task, ma vale la pena averlo qui:
 
 1. Copiare `apps/backend/<Progetto>.Api/appsettings.local.json.example` in
    `appsettings.local.json` (gitignored) e valorizzarlo: provider, connection string, secret JWT,
-   password dell'amministratore iniziale.
+   utente amministratore iniziale (`Seed:AdminUsername`, `Seed:AdminEmail`,
+   `Seed:AdminDisplayName`, `Seed:AdminPassword`; i default sono `admin` / `Administrator`).
 2. Copiare `apps/frontend/.env.local.example` in `apps/frontend/.env.local` e valorizzarlo.
-3. **Generare la prima migration** — una per provider:
+3. **Avviare il backend.** La migration `InitialCreate` è già inclusa per entrambi i provider: si
+   applica da sola all'avvio (`MigrateAsync`), crea il database se non esiste e, su un database
+   vuoto, parte il seed di permessi, ruoli e utenti.
+
+Le migration **successive** — quelle del tuo dominio — vanno generate una per provider:
 
 ```bash
 cd apps/backend/<Progetto>.Api
 
-dotnet dotnet-ef migrations add InitialCreate   --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj   --startup-project <Progetto>.Api.csproj   --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
+dotnet dotnet-ef migrations add <Nome>   --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj   --startup-project <Progetto>.Api.csproj   --context SqlServerAppDbContext --output-dir Persistence/Migrations/SqlServer
 
-dotnet dotnet-ef migrations add InitialCreate   --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj   --startup-project <Progetto>.Api.csproj   --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
+dotnet dotnet-ef migrations add <Nome>   --project ../<Progetto>.Infrastructure/<Progetto>.Infrastructure.csproj   --startup-project <Progetto>.Api.csproj   --context PostgresAppDbContext  --output-dir Persistence/Migrations/Postgres
 ```
 
-> **Il template non contiene migration**, e non è una dimenticanza: le cartelle
-> `Migrations/SqlServer` e `Migrations/Postgres` nascono vuote. Una migration committata nel
-> template diventerebbe un vincolo per ogni progetto generato — invece il primo `InitialCreate` è
-> il primo file di storia del *tuo* progetto. Finché non le generi, l'applicazione parte ma il
-> database resta senza schema.
-
-Le migration si applicano poi da sole a ogni avvio (`MigrateAsync`).
+> **Perché `InitialCreate` è nel template.** Descrive lo schema dell'impianto (utenti, ruoli,
+> permessi, log, configurazione), che è identico per ogni progetto generato: rigenerarla a mano
+> in ogni progetto produrrebbe lo stesso file con un timestamp diverso. Le migration del *tuo*
+> dominio vengono dopo, e sono la storia del tuo progetto.
 
 ### Verificare che il progetto sia sano
 
@@ -109,7 +111,7 @@ Tre controlli, in ordine di costo crescente:
 |---|---|---|
 | **Residui del template** | ricerca di `[[` o `[%` nei file generati | nessun risultato |
 | **Nomi e porte coerenti** | ispezione di `launchSettings.json`, `vite.config.ts`, `.sln` | lo slug e le porte che hai scelto |
-| **Compila** | `dotnet build apps/backend/<Progetto>.Api` e `npx vue-tsc --noEmit` | nessun errore |
+| **Compila e passa i test** | `dotnet build apps/backend/<Progetto>.sln`, `dotnet test apps/backend/<Progetto>.sln`; in `apps/frontend`: `pnpm vue-tsc --noEmit`, `pnpm eslint .`, `pnpm vitest run` | nessun errore |
 
 ## Aggiornare un progetto quando il template cambia
 

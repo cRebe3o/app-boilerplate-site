@@ -12,7 +12,7 @@ tipo di entità che il tuo progetto aggiungerà per primo. Le feature già prese
 `Users`) seguono esattamente questa forma e si possono aprire per confronto.
 
 > **Scorciatoia.** Le [skill Claude](../progetto/skill.md) incluse nel progetto scaffoldano tutti i
-> passaggi che seguono — `db-entity` per l'entità e le migration, `vertical-slice-backend` per le
+> passaggi che seguono — `db-entity` per l'entità e le migration, `backend-slice` per le
 > slice, `vue-feature` per il frontend, o `/new-feature Category` per l'intero giro. Questa pagina
 > descrive *che cosa* producono e perché, che è ciò che serve per rivederne l'output.
 
@@ -39,7 +39,7 @@ case-sensitive su PostgreSQL.
 | 7 | `<Progetto>.Application/Categories/UpdateCategory/`, `DeleteCategory/` | Modifica e cancellazione |
 | 8 | `<Progetto>.Api/Endpoints/CategoryEndpoints.cs` + `Extensions/EndpointExtensions.cs` | Le rotte |
 | 9 | `Infrastructure/Persistence/Seed/DataSeeder.cs` | I permessi |
-| 10-12 | `types/api.types.ts` → `services/` → `stores/` → `pages/` → `router/`, `locales/` | Il frontend |
+| 10-12 | `pnpm gen:api` → `types/api.types.ts` → `services/` → `stores/` → `pages/` → `router/`, `sections.config.ts`, `locales/` | Il frontend |
 
 L'ordine non è casuale: si va **dal centro verso l'esterno**, come le dipendenze. Prima il dominio,
 che non dipende da niente; per ultimo il guscio HTTP, che dipende da tutto.
@@ -157,9 +157,10 @@ e.HasOne<Parent>().WithMany().HasForeignKey(x => x.ParentId)
 
 `Cascade` qui sarebbe pericoloso: cancellare una categoria cancellerebbe tutto ciò che la usa.
 
-> **I value object** si mappano con `OwnsOne` (per i tipi composti come `RentalPeriod` o `Money`) o
-> con una conversione (per quelli che avvolgono un solo valore, come `Username` o `AssetCode`).
-> Le configuration della sezione Noleggi sono l'esempio da guardare.
+> **I value object** si mappano con `OwnsOne` (per i tipi composti come `Money` o un periodo) o
+> con una conversione (per quelli che avvolgono un solo valore, come `Username`). Nel template
+> l'esempio è `UserConfiguration`; per i tipi composti, le configuration della sezione Noleggi di
+> `app-demo`.
 
 ## 3. Le due migration
 
@@ -397,8 +398,8 @@ comprensibile, la FK `Restrict` è la stessa regola applicata anche a chi scrive
 fuori.
 
 Se la regola di cancellabilità dipendesse dallo **stato dell'entità** e non da altre tabelle,
-apparterrebbe al dominio — come `RentalContract.EnsureDeletable()`, che rifiuta di cancellare un
-contratto già confermato. L'handler si limiterebbe a chiamarla.
+apparterrebbe al dominio — come `Role.EnsureDeletable()` nel template, che rifiuta di cancellare
+un ruolo di sistema. L'handler si limiterebbe a chiamarla.
 
 Non serve validare la forma dell'id: il constraint di rotta `{id:int}` fa sì che un id malformato
 non arrivi nemmeno all'handler (404 dal routing).
@@ -421,14 +422,14 @@ public static class CategoryEndpoints
             .RequireAuthorization(p => p.RequireClaim("permissions", "categories.read"))
             .WithName("GetCategories")
             .WithSummary("Lista categorie")
-            .Produces(StatusCodes.Status200OK);
+            .Produces<List<CategoryResponse>>(StatusCodes.Status200OK);
 
         group.MapGet("/{id:int}", async (int id, IMediator mediator, CancellationToken ct) =>
             Results.Ok(await mediator.Send(new GetCategoryByIdQuery(id), ct)))
             .RequireAuthorization(p => p.RequireClaim("permissions", "categories.read"))
             .WithName("GetCategoryById")
             .WithSummary("Dettaglio categoria")
-            .Produces(StatusCodes.Status200OK)
+            .Produces<CategoryResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/", async (CreateCategoryCommand cmd, IMediator mediator, CancellationToken ct) =>
@@ -439,15 +440,16 @@ public static class CategoryEndpoints
             .RequireAuthorization(p => p.RequireClaim("permissions", "categories.write"))
             .WithName("CreateCategory")
             .WithSummary("Crea una nuova categoria")
-            .Produces(StatusCodes.Status201Created)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .Produces<CreateCategoryResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPut("/{id:int}", async (int id, UpdateCategoryRequest body, IMediator mediator, CancellationToken ct) =>
             Results.Ok(await mediator.Send(new UpdateCategoryCommand(id, body), ct)))
             .RequireAuthorization(p => p.RequireClaim("permissions", "categories.write"))
             .WithName("UpdateCategory")
             .WithSummary("Aggiorna una categoria")
-            .Produces(StatusCodes.Status200OK)
+            .Produces<CategoryResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/{id:int}", async (int id, IMediator mediator, CancellationToken ct) =>
@@ -473,6 +475,9 @@ L'endpoint **instrada e basta**: nessuna logica, nessun accesso al `DbContext`. 
 - **Ogni rotta dichiara il permesso** che richiede (`read` / `write` / `delete`).
 - **`UpdateCategoryRequest` è il body**, e l'handler riceve un `UpdateCategoryCommand(id, body)`: l'id
   viene dalla rotta, non dal corpo della richiesta.
+- **`.Produces<T>()` con il tipo** su ogni risposta con body: è da lì che lo schema OpenAPI ricava i
+  tipi che il frontend genera con `pnpm gen:api`. Un `.Produces(200)` senza tipo produce uno schema
+  vuoto e il frontend non vede il record.
 
 Poi va agganciato:
 
@@ -507,27 +512,24 @@ La catena è sempre la stessa, e non si salta un anello: **tipi → service → 
 
 ## 10. Tipi, service, store
 
-```typescript
-// types/api.types.ts
-export interface Category {
-  id: number
-  descIt: string
-  descEn: string
-  order: number
-  createdAt: string
-  updatedAt: string
-}
+I tipi **non si scrivono**: si generano dallo schema OpenAPI del backend, avviato.
 
-export interface CreateCategoryRequest {
-  descIt: string
-  descEn: string
-  order: number
-}
-
-export type UpdateCategoryRequest = CreateCategoryRequest
+```bash
+cd apps/frontend
+pnpm gen:api          # rigenera src/types/api.generated.ts da /openapi/v1.json
 ```
 
-Gli id sono **`number`**, coerenti con gli `int` del backend.
+Poi gli alias con i nomi brevi, in `types/api.types.ts`:
+
+```typescript
+export type Category = Schemas['CategoryResponse']
+export type CreateCategoryRequest = Schemas['CreateCategoryCommand']
+export type UpdateCategoryRequest = Schemas['UpdateCategoryRequest']
+```
+
+Gli id sono **`number`**, coerenti con gli `int` del backend. Se un tipo non compare nel file
+generato, l'endpoint non dichiara `.Produces<T>()`: si corregge lì, non si scrive l'interfaccia a
+mano — un campo rinominato nel record C# deve rompere `vue-tsc`, non la pagina a runtime.
 
 ```typescript
 // services/categories.service.ts — le uniche righe del progetto in cui si usa axios
@@ -549,44 +551,37 @@ export const categoriesService = {
 export const useCategoriesStore = defineStore('categories', () => {
   const items = ref<Category[]>([])
   const selectedItem = ref<Category | null>(null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
 
-  async function fetchAll() {
-    loading.value = true
-    error.value = null
-    try {
+  // loading ed error condivisi da tutte le azioni: la gestione degli errori sta in un
+  // punto solo e il messaggio mostrato è il `detail` del ProblemDetails del backend
+  const { loading, error, run, runOrThrow, clearError } = useAsyncAction()
+
+  // LETTURE con `run`: l'errore finisce in `error`, non viene rilanciato
+  const fetchAll = () =>
+    run(async () => {
       items.value = await categoriesService.getAll()
-    } catch {
-      error.value = i18n.global.t('errors.loadCategories')   // mai una stringa a mano
-    } finally {
-      loading.value = false
-    }
-  }
+    }, 'errors.loadCategories')          // solo fallback: rete assente, timeout
 
-  async function create(data: CreateCategoryRequest) {
-    loading.value = true
-    error.value = null
-    try {
-      const result = await categoriesService.create(data)
-      await fetchAll()          // ricarica: la lista resta allineata al server
-      return result
-    } catch (e) {
-      error.value = i18n.global.t('errors.createCategory')
-      throw e                   // rilancia: la pagina deve poter mostrare l'errore
-    } finally {
-      loading.value = false
-    }
-  }
+  // SCRITTURE con `runOrThrow`: l'errore viene registrato E rilanciato,
+  // così il dialog sa se chiudersi
+  const create = (data: CreateCategoryRequest) =>
+    runOrThrow(async () => {
+      const created = await categoriesService.create(data)
+      await fetchAll()                   // ricarica: la lista resta allineata al server
+      return created
+    }, 'errors.createCategory')
 
   // fetchById, update, remove: stessa forma
 
-  return { items, selectedItem, loading, error, fetchAll, fetchById, create, update, remove }
+  return { items, selectedItem, loading, error, fetchAll, fetchById, create, update, remove, clearError }
 })
 ```
 
-Lo store **rilancia** l'eccezione dopo averla registrata: senza, la pagina chiuderebbe il dialog come
-se l'operazione fosse riuscita.
+Niente `try/catch` a mano: `useAsyncAction` imposta `loading`, registra l'errore e decide se
+rilanciarlo. La regola è **letture con `run`, scritture con `runOrThrow`**: con `run` su una
+scrittura il dialog si chiuderebbe anche se il salvataggio è fallito. Se la lista fosse paginata
+lato server, lo store terrebbe l'ultima query e la riuserebbe in `reload()` — vedi
+[Convenzioni e flussi](../frontend/convenzioni.md#lo-store-useasyncaction).
 
 ## 11. Le pagine
 
@@ -599,6 +594,7 @@ const { t } = useI18n()
 const { mobile } = useDisplay()
 const store = useCategoriesStore()
 const { can } = usePermission()
+const toast = useToastStore()
 
 onMounted(() => store.fetchAll())
 </script>
@@ -606,15 +602,19 @@ onMounted(() => store.fetchAll())
 <template>
   <h1 class="text-h5">{{ t('categories.title') }}</h1>
 
-  <!-- il pulsante non esiste se manca il permesso -->
+  <!-- il pulsante non esiste se manca il permesso; ?from= dichiara la provenienza al dettaglio -->
   <v-btn v-if="can('categories.write')" color="primary" prepend-icon="mdi-plus"
-         :to="{ name: 'category-create' }">
+         :to="{ name: 'category-create', query: { from: 'categories' } }">
     {{ t('categories.createButton') }}
   </v-btn>
+
+  <v-alert v-if="store.error" type="error">{{ store.error }}</v-alert>
 
   <!-- tabella su desktop, lista su mobile -->
   <v-data-table v-if="!mobile" :headers="headers" :items="store.items" :loading="store.loading" />
   <v-list v-else> … </v-list>
+
+  <confirm-dialog v-model="deleteDialog" :message="t('categories.deleteConfirm')" @confirm="confirmDelete" />
 </template>
 ```
 
@@ -624,38 +624,54 @@ Le convenzioni che si vedono qui:
 - **`can('permesso')`** per mostrare o nascondere le azioni. È cortesia verso l'utente: a **negare**
   l'operazione è il backend.
 - **Componenti Vuetify**, colori dal tema (`color="primary"`, `color="error"`), mai valori esadecimali.
-- **`useApiErrors`** per tradurre i ProblemDetails del backend in messaggi leggibili — è così che il
-  `409 Conflict` del delete handler arriva all'utente come una frase di senso compiuto.
-- Un componente oltre le ~150 righe va spezzato.
+- **`store.error`** è già il messaggio del backend: la pagina lo mostra, non lo costruisce.
+- **La conferma di cancellazione è `ConfirmDialog`** di `components/shared/`; dopo la cancellazione
+  `toast.success(t('common.deleted'))`.
+- Nel dettaglio, **`useApiErrors`** separa gli errori per campo (il `400` di FluentValidation →
+  `:error-messages`) dall'errore generale, e **`useBackNavigation`** gestisce il ritorno.
+- Una pagina oltre le ~300 righe e un componente oltre le ~200 vanno spezzati: dialog in
+  `components/<dominio>/`, sezioni con stato proprio in card o picker. ESLint lo segnala
+  (`max-lines`).
 
 ## 12. Rotte e testi
 
 ```typescript
-// router/index.ts
+// router/index.ts — figlie di AppShell, con il prefisso della sezione
 {
-  path: 'categories',
+  path: 'system/categories',
   name: 'categories',
   component: () => import('@/pages/categories/CategoriesPage.vue'),   // lazy load, sempre
-  meta: { requiresAuth: true, permission: 'categories.read', title: 'routes.categories' },
+  meta: { requiresAuth: true, permission: 'categories.read', title: 'routes.categories', section: 'system' },
 },
 {
-  path: 'categories/new',
+  path: 'system/categories/new',
   name: 'category-create',
   component: () => import('@/pages/categories/CategoryDetailPage.vue'),
-  meta: { requiresAuth: true, permission: 'categories.write', title: 'routes.newCategory' },
+  meta: { requiresAuth: true, permission: 'categories.write', title: 'routes.newCategory', section: 'system' },
 },
 {
-  path: 'categories/:id(\\d+)',
+  path: 'system/categories/:id(\\d+)',
   name: 'category-detail',
   component: () => import('@/pages/categories/CategoryDetailPage.vue'),
-  meta: { requiresAuth: true, permission: 'categories.read', title: 'routes.categoryDetail' },
+  meta: { requiresAuth: true, permission: 'categories.read', title: 'routes.categoryDetail', section: 'system' },
 },
 ```
 
-Due dettagli:
+E la voce di menu, che alimenta insieme drawer, tab di sezione e dashboard:
 
-- **`:id(\d+)`** è il corrispettivo frontend del constraint `{id:int}` del backend: con id numerici,
-  la rotta `categories/new` non rischia di essere catturata dalla rotta di dettaglio.
+```typescript
+// config/sections.config.ts — dentro items della sezione 'system'
+{ titleKey: 'nav.categories', subtitleKey: 'categories.subtitle', icon: 'mdi-shape',
+  color: 'primary', to: '/system/categories', permission: 'categories.read' },
+```
+
+Quattro dettagli:
+
+- **`:id(\\d+)` con il doppio backslash**: è il corrispettivo frontend del constraint `{id:int}` del
+  backend, e con `'\d'` la regex diventerebbe `d+` e la rotta non matcherebbe mai. Con id numerici,
+  `categories/new` non rischia di essere catturata dalla rotta di dettaglio.
+- **`title` e `section`**: il primo alimenta breadcrumb e titolo del tab, il secondo dice a quale
+  sezione appartiene la pagina (tab attiva, voci del drawer).
 - **Ogni rotta dichiara `meta.permission`**: il navigation guard la usa per bloccare l'accesso diretto
   via URL. Nota che la creazione richiede `categories.write` mentre il dettaglio richiede
   `categories.read`, pur essendo lo stesso componente.
@@ -756,16 +772,22 @@ errors: {
       chiamano `tracker.Capture(...)`
 - [ ] Le regole di business stanno nell'aggregato o in un domain service, non in `if` sparsi negli handler
 - [ ] Le query LINQ sono traducibili da entrambi i provider — attenzione a `Contains` su stringa
-- [ ] Le rotte con id usano il constraint `{id:int}`, e gli endpoint sono agganciati in `EndpointExtensions`
+- [ ] Le rotte con id usano il constraint `{id:int}`, gli endpoint sono agganciati in `EndpointExtensions`
+      e ogni risposta con body dichiara `.Produces<T>()`
 - [ ] Nessun handler scrive un audit log a mano: lo fa l'interceptor
 - [ ] I permessi sono nel seed e assegnati ai ruoli giusti
 - [ ] Il pulsante indietro del dettaglio usa `useBackNavigation`, e i link che aprono il dettaglio
       dichiarano `query: { from: '...' }`
+- [ ] I tipi del frontend vengono da `pnpm gen:api` + alias in `api.types.ts`, non da interfacce scritte a mano
+- [ ] Lo store usa `useAsyncAction`: letture con `run`, scritture con `runOrThrow`
+- [ ] La rotta è figlia di AppShell con `title` e `section`, e la voce di menu è in `sections.config.ts`
 - [ ] I testi esistono in italiano **e** in inglese
 - [ ] `dotnet test` passa — i test di architettura sono la rete che intercetta le violazioni dei layer
+- [ ] `pnpm vue-tsc --noEmit`, `pnpm eslint .` e `pnpm vitest run` sono puliti
 
 ## Da qui
 
 - **[Dove mettere la logica](../architettura/dove-mettere-la-logica.md)** — quando una regola va nell'aggregato, in un domain service o nell'handler
 - **[Il dominio](../architettura/il-dominio.md)** — aggregati, value object, eventi, specification
 - **[Comandi e query](../architettura/comandi-e-query.md)** — repository, unit of work, `IReadDbContext`
+- **[Frontend: struttura](../frontend/struttura.md)** e **[convenzioni](../frontend/convenzioni.md)** — dove va ogni cosa e come si scrive

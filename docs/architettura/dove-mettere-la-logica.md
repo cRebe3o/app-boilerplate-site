@@ -23,6 +23,11 @@ Il resto di questa pagina è il ragionamento dietro ogni riga, con il codice del
 
 ## L'aggregato: la regola che riguarda solo sé stesso
 
+> **Da dove vengono gli esempi.** Il template non porta un dominio applicativo. Gli esempi con
+> `RentalContract`, `Customer` ed `Equipment` vengono dalla sezione Noleggi di `app-demo`, il
+> progetto dimostrativo generato dal template: la forma è quella da imitare, il codice non è nel
+> template.
+
 Se per applicare la regola bastano i dati che l'entità già possiede, la regola è sua. Metterla
 altrove significa che qualcuno potrà costruire un oggetto in uno stato che non dovrebbe esistere.
 
