@@ -184,6 +184,82 @@ main {
   display: none;
 }
 
+/* ── Ricerca ─────────────────────────────────────────────────────────────── */
+
+.search {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.45rem 0.7rem;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.search-results {
+  margin: 0.4rem 0 0;
+  padding: 0.3rem;
+  list-style: none;
+  max-height: 24rem;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.search-results li a {
+  display: block;
+  padding: 0.45rem 0.6rem;
+  border-radius: 5px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.search-results li a:hover,
+.search-results li a:focus {
+  background: var(--accent-soft);
+}
+
+.search-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.search-snippet {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-soft);
+}
+
+.search-results mark {
+  padding: 0;
+  color: var(--mark);
+  background: transparent;
+  font-weight: 600;
+}
+
+.search-empty {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+}
+
 /* ── Testo ───────────────────────────────────────────────────────────────── */
 
 .eyebrow {
@@ -464,6 +540,10 @@ main {
 .footer code {
   font-family: var(--mono);
   font-size: 0.9em;
+}
+
+.footer-version {
+  margin-top: 0.5rem !important;
 }
 
 /* ── Schermi stretti ─────────────────────────────────────────────────────── */

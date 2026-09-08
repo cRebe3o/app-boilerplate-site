@@ -14,7 +14,11 @@ npm run build    # rigenera tutti gli .html
 ```
 
 Poi si committano **sia i `.md` sia gli `.html`**: GitHub Pages serve file statici, non esegue la
-build.
+build. Il workflow `.github/workflows/build.yml` rigenera tutto a ogni push e **fallisce se gli
+HTML committati non corrispondono ai Markdown**: è la rete contro un `.md` modificato senza build.
+
+La build produce anche `docs/assets/search-index.js`, l'indice della ricerca nella barra laterale
+(una voce per sezione di ogni pagina): si committa come gli HTML.
 
 ## Modificare una pagina
 
@@ -25,17 +29,25 @@ Si modifica il `.md`, si esegue `npm run build`, si committa.
 1. Crea il `.md` nella cartella della sezione (o in una nuova).
 2. Aggiungi una voce alla struttura `SITE` in [`build.mjs`](build.mjs), con titolo e sommario.
 
-Da lì la pagina compare **da sola** nella barra laterale, nella home e nell'ordine di lettura:
-`SITE` è l'unica fonte per tutti e tre.
+Da lì la pagina compare **da sola** nella barra laterale, nella home, nell'ordine di lettura e
+nell'indice di ricerca: `SITE` è l'unica fonte per tutti.
+
+## Versione del template
+
+Il piè di pagina dichiara a quale versione di `app-boilerplate` corrispondono le pagine:
+`SITE.templateVersion` in [`build.mjs`](build.mjs). Va aggiornata quando il template riceve un tag
+(vedi il suo `CHANGELOG.md`).
 
 ## Struttura
 
 ```
 build.mjs               il generatore + la struttura del sito
+.github/workflows/      la verifica che gli HTML siano allineati ai Markdown
 docs/
 ├── index.md            la home (le schede le genera build.mjs)
 ├── assets/style.css    l'unico foglio di stile
-├── progetto/           panoramica, generazione con Copier, configurazione, skill Claude
+├── assets/search-index.js   generato: l'indice della ricerca
+├── progetto/           panoramica, generazione, configurazione, skill Claude, contribuire
 ├── architettura/       Clean Architecture, dominio, comandi e query
 ├── frontend/           struttura del progetto Vue, convenzioni e flussi
 ├── infrastructure/     doppio provider SQL e impianto: modello EF, codice, audit log,

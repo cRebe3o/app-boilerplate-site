@@ -6,7 +6,7 @@
   <title>Panoramica — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
-<body>
+<body data-up="../">
   <header class="topbar">
     <a class="brand" href="../index.html">
       <span class="brand-name">app-boilerplate</span>
@@ -20,6 +20,10 @@
 
     <nav class="sidebar" aria-label="Navigazione">
         <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
         <div class="nav-group">
           <p class="nav-title">Progetto</p>
           <ul>
@@ -27,6 +31,7 @@
             <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
             <li><a href="../progetto/configurazione.html">Configurazione</a></li>
             <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
           </ul>
         </div>
         <div class="nav-group">
@@ -298,7 +303,7 @@ compilati e <strong>fa fallire la build</strong> se un layer dipende da chi non 
 setter pubblici. Il dettaglio completo è nella sezione
 <a href="../architettura/clean-architecture.html">Architettura</a>.</p>
 <h3 id="le-api-incluse">Le API incluse</h3>
-<p>Dieci gruppi di endpoint, tutti sotto <code>/api</code>:</p>
+<p>I gruppi di endpoint dell'impianto, tutti sotto <code>/api</code>:</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -400,10 +405,10 @@ I permessi sono raccolti in <strong>ruoli</strong>; i ruoli si assegnano a un ut
 <ul>
 <li>ruoli ereditati dai gruppi → permessi, deduplicati) e la scrive nel JWT come claim ripetuti.</li>
 </ul>
-<p>Il seed iniziale crea <strong>18 permessi</strong>, tutti sull'area di sistema e identità: <code>read</code> / <code>write</code> /
-<code>delete</code> su utenti, gruppi e ruoli, più <code>permissions.read</code> e <code>permissions.manage</code>, <code>audit.*</code>,
-<code>errors.*</code>, <code>config.*</code> e <code>monitoring.read</code>. I permessi del dominio si aggiungono man mano che si
-aggiungono le feature.</p>
+<p>Il seed iniziale crea i permessi dell'area di sistema e identità: <code>read</code> / <code>write</code> / <code>delete</code> su
+utenti, gruppi e ruoli, più <code>permissions.*</code>, <code>audit.*</code>, <code>errors.*</code>, <code>config.*</code> e
+<code>monitoring.read</code> — l'elenco esatto è in <code>DataSeeder.cs</code>. I permessi del dominio si aggiungono man
+mano che si aggiungono le feature.</p>
 <p>Insieme ai permessi il seed crea quattro ruoli — <code>SuperAdmin</code>, <code>Admin</code>, <code>Viewer</code> e un <code>Custom</code>
 vuoto da personalizzare — e i gruppi <code>Administrators</code> e <code>Viewers</code>.</p>
 <p>Lo stesso permesso viene verificato in tre punti:</p>
@@ -438,6 +443,75 @@ vuoto da personalizzare — e i gruppi <code>Administrators</code> e <code>Viewe
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione in preparazione (nessun tag ancora).</p>
   </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
 </body>
 </html>

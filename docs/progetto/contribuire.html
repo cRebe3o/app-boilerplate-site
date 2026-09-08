@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contribuire al template — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+            <li><a href="../progetto/contribuire.html" aria-current="page">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Progetto</p>
+      <article class="prose">
+<h1 id="contribuire-al-template">Contribuire al template</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#app-demo-il-progetto-di-riferimento"><code>app-demo</code>: il progetto di riferimento</a></li>
+          <li class="lvl-2"><a href="#il-giro-da-app-demo-al-template">Il giro: da app-demo al template</a></li>
+          <li class="lvl-3"><a href="#1-lavorare-in-app-demo">1. Lavorare in app-demo</a></li>
+          <li class="lvl-3"><a href="#2-confrontare-normalizzando-lo-slug">2. Confrontare, normalizzando lo slug</a></li>
+          <li class="lvl-3"><a href="#3-riportare-le-modifiche">3. Riportare le modifiche</a></li>
+          <li class="lvl-3"><a href="#4-che-cosa-resta-diverso-sempre">4. Che cosa resta diverso, sempre</a></li>
+          <li class="lvl-3"><a href="#5-verificare-generando-un-progetto">5. Verificare generando un progetto</a></li>
+          <li class="lvl-3"><a href="#6-committare-aggiornare-il-changelog-taggare">6. Committare, aggiornare il changelog, taggare</a></li>
+          <li class="lvl-3"><a href="#7-riportare-anche-su-app-demo">7. Riportare anche su app-demo</a></li>
+          <li class="lvl-2"><a href="#aggiornare-questo-sito">Aggiornare questo sito</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Il template non si sviluppa dentro il template. Si sviluppa in un <strong>progetto generato</strong>, dove il
+codice compila, gira e si prova; poi le modifiche che si rivelano generali si riportano in
+<code>app-boilerplate</code>. Questa pagina descrive quel giro: che cos'è <code>app-demo</code>, come si riportano le
+modifiche, che cosa deve restare diverso, come si rilascia una versione e come si tiene aggiornato
+questo sito.</p>
+<h2 id="app-demo-il-progetto-di-riferimento"><code>app-demo</code>: il progetto di riferimento</h2>
+<p><code>app-demo</code> è un progetto generato dal template e tenuto <strong>allineato</strong> ad esso: stesso codice
+dell'impianto, con lo slug <code>AppDemo</code> al posto di <code>[[ project_slug ]]</code>. In più ha una sezione di
+dominio dimostrativa — <strong>Noleggi</strong>: attrezzature, clienti, contratti — che nel template non
+esiste e che serve a due cose:</p>
+<ul>
+<li><strong>provare l'impianto su un dominio vero</strong>, con aggregati che hanno invarianti, value object,
+domain service, macchine a stati ed eventi fra aggregati;</li>
+<li><strong>fornire gli esempi</strong> di questa documentazione: <code>RentalContract</code>, <code>Equipment</code>, <code>Customer</code>
+sono la reference implementation che le pagine di <a href="../architettura/il-dominio.html">Architettura</a>
+descrivono.</li>
+</ul>
+<p>La regola: <strong>il template porta l'impianto, app-demo porta anche un dominio</strong>. Tutto ciò che è
+impianto va in entrambi; tutto ciò che è Noleggi resta in app-demo.</p>
+<h2 id="il-giro-da-app-demo-al-template">Il giro: da app-demo al template</h2>
+<pre><code>app-demo (branch di lavoro)            app-boilerplate/template
+  modifica → build → test → commit  ──►  diff normalizzato → merge → verifica → commit → tag
+</code></pre>
+<h3 id="1-lavorare-in-app-demo">1. Lavorare in app-demo</h3>
+<p>Si sviluppa e si committa in <code>app-demo</code> come in qualsiasi progetto. Conviene tenere le modifiche
+dell'impianto in commit separati da quelle del dominio Noleggi: al momento di riportarle, il
+confine è già tracciato.</p>
+<h3 id="2-confrontare-normalizzando-lo-slug">2. Confrontare, normalizzando lo slug</h3>
+<p>I due repository differiscono per lo slug in <strong>percorsi e contenuti</strong>: <code>apps/backend/AppDemo.Api</code>
+contro <code>apps/backend/[[ project_slug ]].Api</code>, <code>namespace AppDemo.Domain</code> contro
+<code>namespace [[ project_slug ]].Domain</code>. Il confronto più affidabile non sostituisce stringhe: <strong>rende
+il template con le stesse risposte di app-demo</strong> e confronta il risultato.</p>
+<pre><code class="language-bash">copier copy --trust --skip-tasks -f \
+  -d project_name=AppDemo -d project_slug=AppDemo \
+  -d api_port=5080 -d frontend_port=5173 \
+  -d db_provider=SqlServer -d access_mode=public -d include_docker=<span class="hljs-literal">false</span> \
+  -r HEAD C:\repos\app-boilerplate C:\tmp\render
+
+diff -rq --strip-trailing-cr \
+  --exclude=node_modules --exclude=.git --exclude=bin --exclude=obj --exclude=.nx \
+  --exclude=coverage --exclude=dist --exclude=.copier-answers.yml \
+  --exclude=appsettings.local.json --exclude=.env.local \
+  C:\tmp\render C:\repos\app-demo
+</code></pre>
+<p>Due dettagli che risparmiano tempo:</p>
+<ul>
+<li><code>-r HEAD</code> su un repository locale con modifiche non committate <strong>le include</strong>: si può
+confrontare il template mentre lo si sta modificando.</li>
+<li><code>--strip-trailing-cr</code>, perché con <code>core.autocrlf</code> alcuni file del working tree sono CRLF e
+senza quell'opzione ogni file risulta diverso.</li>
+</ul>
+<h3 id="3-riportare-le-modifiche">3. Riportare le modifiche</h3>
+<p>Per pochi file si copia a mano, sostituendo <code>AppDemo</code> → <code>[[ project_slug ]]</code>. Per un intervallo di
+commit conviene un <strong>merge a tre vie</strong> per file, che applica al template solo il delta di app-demo
+e lascia intatto ciò che nel template è diverso di proposito:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># base   = app-demo prima delle modifiche, slug normalizzato</span>
+<span class="hljs-comment"># theirs = app-demo dopo,                  slug normalizzato</span>
+<span class="hljs-comment"># ours   = il file del template (dal blob HEAD, per evitare i falsi conflitti CRLF)</span>
+git -C C:\repos\app-demo show &lt;prima&gt;:&lt;file&gt; | sed <span class="hljs-string">&#x27;s/AppDemo/[[ project_slug ]]/g&#x27;</span> &gt; base
+git -C C:\repos\app-demo show &lt;dopo&gt;:&lt;file&gt;  | sed <span class="hljs-string">&#x27;s/AppDemo/[[ project_slug ]]/g&#x27;</span> &gt; theirs
+git show HEAD:template/&lt;file-normalizzato&gt; &gt; template/&lt;file-normalizzato&gt;
+git merge-file -L template -L base -L app-demo template/&lt;file-normalizzato&gt; base theirs
+</code></pre>
+<p>I conflitti restano con i marcatori <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> e si risolvono a mano. Sono quasi sempre nei punti
+elencati qui sotto.</p>
+<h3 id="4-che-cosa-resta-diverso-sempre">4. Che cosa resta diverso, sempre</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Nel template</th>
+<th>In app-demo</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[[ project_slug ]]</code>, <code>[[ api_port ]]</code>, <code>[[ access_mode ]]</code>, <code>[[ db_provider ]]</code>, blocchi <code>[% if include_docker %]</code></td>
+<td>valori concreti</td>
+<td>Sono le variabili Copier: i file di configurazione si modificano <strong>in place</strong>, non si copiano</td>
+</tr>
+<tr>
+<td>Nessuna sezione Noleggi: né entità, né endpoint, né pagine, né permessi, né dati demo, né migration <code>AddRentalsSection</code></td>
+<td>tutta la sezione</td>
+<td>Il template non porta un dominio</td>
+</tr>
+<tr>
+<td>Seed con <code>admin</code> / <code>Administrator</code> e <code>Seed:*</code> vuoti</td>
+<td>identità reali</td>
+<td>Niente account personali nel template</td>
+</tr>
+<tr>
+<td>Migration: solo <code>InitialCreate</code></td>
+<td>anche quelle del dominio</td>
+<td>Le migration del dominio sono del progetto</td>
+</tr>
+<tr>
+<td>Esempi nelle skill e nei <code>CLAUDE.md</code> con nomi neutri (<code>Supplier</code>, <code>Prenotazione</code>)</td>
+<td>esempi con <code>Equipment</code>, <code>RentalContract</code></td>
+<td>Un progetto generato non deve trovare riferimenti a codice che non ha</td>
+</tr>
+<tr>
+<td><code>appsettings.local.json</code> assente, <code>coverage/</code> ignorata</td>
+<td>presenti in locale</td>
+<td>Sono gitignored da entrambe le parti</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Dopo il merge, una ricerca di <code>Rental</code>, <code>Equipment</code>, <code>Customer</code>, <code>Noleggi</code>, <code>AppDemo</code> nel template
+è il controllo più rapido.</p>
+<h3 id="5-verificare-generando-un-progetto">5. Verificare generando un progetto</h3>
+<p>Il template non compila: lo si verifica <strong>generando</strong> un progetto in una cartella temporanea e
+facendo girare tutto.</p>
+<pre><code class="language-bash">copier copy --trust -f -d project_name=Prova -d project_slug=Prova \
+  -d api_port=5090 -d frontend_port=5174 -d db_provider=SqlServer \
+  -d access_mode=public -d include_docker=<span class="hljs-literal">true</span> -r HEAD C:\repos\app-boilerplate C:\tmp\prova
+
+<span class="hljs-built_in">cd</span> C:\tmp\prova\apps\backend  &amp;&amp; dotnet build Prova.sln &amp;&amp; dotnet <span class="hljs-built_in">test</span> Prova.sln
+<span class="hljs-built_in">cd</span> C:\tmp\prova\apps\frontend &amp;&amp; pnpm vue-tsc --noEmit &amp;&amp; pnpm eslint . &amp;&amp; pnpm vitest run &amp;&amp; pnpm build
+</code></pre>
+<blockquote>
+<p><strong>Percorsi brevi.</strong> Su Windows una cartella temporanea con un percorso lungo fa fallire pnpm in
+modo silenzioso: i link dentro <code>node_modules/.pnpm</code> superano i 260 caratteri e Vitest o Vite non
+trovano più i pacchetti. <code>C:\tmp\prova</code> va bene; una cartella annidata sotto <code>AppData</code> no.</p>
+</blockquote>
+<p>Poi il confronto del punto 2, di nuovo: devono restare <strong>solo</strong> le differenze della tabella sopra.</p>
+<h3 id="6-committare-aggiornare-il-changelog-taggare">6. Committare, aggiornare il changelog, taggare</h3>
+<p>Il commit sul template descrive le modifiche per area (backend, frontend, skill, documentazione).
+Poi:</p>
+<ol>
+<li>Una voce in <code>CHANGELOG.md</code> sotto <em>Non rilasciato</em>.</li>
+<li>Quando si rilascia: si sposta il blocco sotto un numero di versione con la data, e si crea il
+tag — <code>copier update</code> lavora sui tag, e senza tag i progetti generati non hanno una versione a
+cui aggiornarsi.</li>
+</ol>
+<pre><code class="language-bash">git tag -a v1.1.0 -m <span class="hljs-string">&quot;v1.1.0&quot;</span>
+git push --tags
+</code></pre>
+<p><code>major</code> quando un progetto generato deve intervenire a mano per aggiornarsi (rinomine, migration
+dell'impianto, skill rimosse), <code>minor</code> per funzionalità nuove compatibili, <code>patch</code> per correzioni.</p>
+<h3 id="7-riportare-anche-su-app-demo">7. Riportare anche su app-demo</h3>
+<p>Se durante il merge si sono fatte pulizie o correzioni <strong>solo nel template</strong>, vanno riportate in
+app-demo con lo stesso metodo al contrario, altrimenti al giro successivo ricompaiono come
+differenze. Il criterio è sempre lo stesso: i due repository devono differire solo per la tabella
+del punto 4.</p>
+<h2 id="aggiornare-questo-sito">Aggiornare questo sito</h2>
+<p>Il sito vive in <code>app-boilerplate-site</code>: i Markdown in <code>docs/</code> sono la fonte, <code>npm run build</code>
+genera gli HTML, e si committano entrambi (GitHub Pages serve i file statici).</p>
+<p>Quando il template cambia in modo visibile — una convenzione, una chiave di configurazione, una
+skill, un pacchetto pinnato — la pagina corrispondente va aggiornata <strong>nello stesso giro</strong>, non
+dopo. La mappa:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Cambia…</th>
+<th>Pagina</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>una variabile Copier o un passo post-generazione</td>
+<td><a href="generazione.html">Generare e aggiornare</a></td>
+</tr>
+<tr>
+<td>una chiave <code>appsettings</code> o una <code>VITE_*</code></td>
+<td><a href="configurazione.html">Configurazione</a></td>
+</tr>
+<tr>
+<td>una skill o un comando</td>
+<td><a href="skill.html">Le skill Claude</a></td>
+</tr>
+<tr>
+<td>una convenzione del backend</td>
+<td><a href="../architettura/comandi-e-query.html">Comandi e query</a>, <a href="../infrastructure/implementazione.html">Il codice</a></td>
+</tr>
+<tr>
+<td>una convenzione del frontend</td>
+<td><a href="../frontend/struttura.html">Struttura</a>, <a href="../frontend/convenzioni.html">Convenzioni e flussi</a></td>
+</tr>
+<tr>
+<td>il percorso di una feature</td>
+<td><a href="../guide/nuova-feature.html">Aggiungere una feature</a></td>
+</tr>
+<tr>
+<td>una scelta di progetto</td>
+<td><a href="../infrastructure/decisioni.html">Decisioni</a></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Gli esempi presi da app-demo restano tali, con la nota che lo dice: si aggiornano quando cambia
+app-demo, non il template. Un controllo che vale la pena fare a ogni giro è cercare nei Markdown i
+nomi che non esistono più (una skill rinominata, un pacchetto rimosso): un <code>grep</code> sui <code>docs/</code>
+costa un minuto e trova le pagine rimaste indietro.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="generazione.html">Generare e aggiornare</a> — <code>copier copy</code> e <code>copier update</code>, dall'altra parte del giro</li>
+<li><a href="skill.html">Le skill Claude</a> — le skill nascono nei progetti e tornano al template per questa strada</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione in preparazione (nessun tag ancora).</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

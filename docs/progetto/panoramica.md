@@ -153,7 +153,7 @@ setter pubblici. Il dettaglio completo è nella sezione
 
 ### Le API incluse
 
-Dieci gruppi di endpoint, tutti sotto `/api`:
+I gruppi di endpoint dell'impianto, tutti sotto `/api`:
 
 | Area | Rotte |
 |---|---|
@@ -232,10 +232,10 @@ I permessi sono raccolti in **ruoli**; i ruoli si assegnano a un utente **dirett
 **tramite i gruppi** a cui appartiene. Al login il backend risolve la lista completa (ruoli diretti
 + ruoli ereditati dai gruppi → permessi, deduplicati) e la scrive nel JWT come claim ripetuti.
 
-Il seed iniziale crea **18 permessi**, tutti sull'area di sistema e identità: `read` / `write` /
-`delete` su utenti, gruppi e ruoli, più `permissions.read` e `permissions.manage`, `audit.*`,
-`errors.*`, `config.*` e `monitoring.read`. I permessi del dominio si aggiungono man mano che si
-aggiungono le feature.
+Il seed iniziale crea i permessi dell'area di sistema e identità: `read` / `write` / `delete` su
+utenti, gruppi e ruoli, più `permissions.*`, `audit.*`, `errors.*`, `config.*` e
+`monitoring.read` — l'elenco esatto è in `DataSeeder.cs`. I permessi del dominio si aggiungono man
+mano che si aggiungono le feature.
 
 Insieme ai permessi il seed crea quattro ruoli — `SuperAdmin`, `Admin`, `Viewer` e un `Custom`
 vuoto da personalizzare — e i gruppi `Administrators` e `Viewers`.

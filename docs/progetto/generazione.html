@@ -6,7 +6,7 @@
   <title>Generare e aggiornare — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
-<body>
+<body data-up="../">
   <header class="topbar">
     <a class="brand" href="../index.html">
       <span class="brand-name">app-boilerplate</span>
@@ -20,6 +20,10 @@
 
     <nav class="sidebar" aria-label="Navigazione">
         <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
         <div class="nav-group">
           <p class="nav-title">Progetto</p>
           <ul>
@@ -27,6 +31,7 @@
             <li><a href="../progetto/generazione.html" aria-current="page">Generare e aggiornare</a></li>
             <li><a href="../progetto/configurazione.html">Configurazione</a></li>
             <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
           </ul>
         </div>
         <div class="nav-group">
@@ -84,6 +89,7 @@
 <nav class="toc" aria-label="Indice della pagina">
         <p class="toc-title">In questa pagina</p>
         <ul>
+          <li class="lvl-2"><a href="#prerequisiti">Prerequisiti</a></li>
           <li class="lvl-2"><a href="#le-variabili-del-template">Le variabili del template</a></li>
           <li class="lvl-3"><a href="#come-il-template-usa-le-variabili">Come il template usa le variabili</a></li>
           <li class="lvl-2"><a href="#generare-un-progetto-nuovo">Generare un progetto nuovo</a></li>
@@ -103,6 +109,57 @@ migliorie fatte al template dopo.</p>
 PowerShell passo per passo: <code>docs/01-new-project.md</code> e <code>docs/02-update-project.md</code>. Questa pagina
 ne è il riassunto ragionato.</p>
 </blockquote>
+<h2 id="prerequisiti">Prerequisiti</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Strumento</th>
+<th>Versione</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>.NET SDK</strong></td>
+<td>10</td>
+<td><code>dotnet --version</code>. Il tool <code>dotnet-ef</code> non va installato globalmente: è un tool locale del progetto, ripristinato da <code>dotnet tool restore</code> (il manifest è nella cartella del progetto Api)</td>
+</tr>
+<tr>
+<td><strong>Node.js</strong></td>
+<td>22 LTS (minimo 20.19)</td>
+<td>Richiesto da Vite 8</td>
+</tr>
+<tr>
+<td><strong>pnpm</strong></td>
+<td>9</td>
+<td>Il <code>packageManager</code> del progetto è <code>pnpm@9</code>: con <code>corepack enable</code> Node usa da solo la versione giusta</td>
+</tr>
+<tr>
+<td><strong>Python + Copier</strong></td>
+<td>Python 3.10+, Copier 9</td>
+<td>Solo per generare e aggiornare; conviene un ambiente virtuale dedicato (sotto)</td>
+</tr>
+<tr>
+<td><strong>Git</strong></td>
+<td>qualsiasi recente</td>
+<td>Copier lavora sui tag del template e <code>git init</code> fa parte dei task post-generazione</td>
+</tr>
+<tr>
+<td><strong>Database</strong></td>
+<td>SQL Server o PostgreSQL</td>
+<td>In locale: LocalDB (arriva con Visual Studio), un container Docker (<code>include_docker=true</code> genera il <code>docker-compose.yml</code>), o un'installazione nativa di PostgreSQL</td>
+</tr>
+<tr>
+<td><strong>Docker Desktop</strong></td>
+<td>facoltativo</td>
+<td>Solo per il database in container</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le versioni esatte dei pacchetti .NET e npm sono pinnate nei <code>.csproj</code> e nei <code>package.json</code> del
+template: non serve sceglierle.</p>
 <h2 id="le-variabili-del-template">Le variabili del template</h2>
 <p>Alla generazione Copier fa sette domande. Sono definite in <code>copier.yml</code> e determinano com'è fatto
 il progetto che ne esce:</p>
@@ -330,6 +387,75 @@ qualsiasi altra modifica.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione in preparazione (nessun tag ancora).</p>
   </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
 </body>
 </html>

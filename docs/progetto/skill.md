@@ -1,6 +1,7 @@
 # Le skill Claude
 
-Un progetto generato porta con sé una cartella `.claude/` con **21 skill** e **5 comandi**. Sono
+Un progetto generato porta con sé una cartella `.claude/` con le sue **skill** e i suoi
+**comandi**. Sono
 istruzioni scritte, versionate insieme al codice, che Claude Code carica quando il compito
 corrisponde: descrivono come si scrive *in questo progetto* una slice, un'entità, una pagina, un
 test.
@@ -100,3 +101,4 @@ migliorare il template: portate in `app-boilerplate`, arrivano a tutti i progett
 
 - [Aggiungere una feature](../guide/nuova-feature.md) — lo stesso percorso delle skill, spiegato per esteso
 - [Panoramica](panoramica.md) — le convenzioni che le skill applicano
+- [Contribuire al template](contribuire.md) — come una skill nata in un progetto torna al template

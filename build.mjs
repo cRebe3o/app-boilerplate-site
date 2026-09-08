@@ -4,8 +4,9 @@
 //   npm run clean     rimuove gli .html generati
 //
 // I file Markdown in docs/ sono l'unica fonte: l'HTML è sempre derivato e non va
-// modificato a mano. La struttura qui sotto genera la home, la barra laterale e
-// l'ordine di lettura: aggiungere una pagina significa aggiungere una voce a SITE.
+// modificato a mano. La struttura qui sotto genera la home, la barra laterale,
+// l'ordine di lettura e l'indice della ricerca (docs/assets/search-index.js):
+// aggiungere una pagina significa aggiungere una voce a SITE.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -19,6 +20,9 @@ const DOCS = path.join(ROOT, 'docs');
 const SITE = {
   title: 'app-boilerplate',
   subtitle: 'Documentazione tecnica del template',
+  // Versione del template descritta da queste pagine: coincide con l'ultimo tag di
+  // app-boilerplate (vedi il suo CHANGELOG.md). Compare nel piè di pagina.
+  templateVersion: 'in preparazione (nessun tag ancora)',
   sections: [
     {
       title: 'Progetto',
@@ -42,6 +46,11 @@ const SITE = {
           file: 'progetto/skill.md',
           title: 'Le skill Claude',
           summary: 'Le skill incluse nel template: che cosa scaffoldano e quando conviene invocarle.',
+        },
+        {
+          file: 'progetto/contribuire.md',
+          title: 'Contribuire al template',
+          summary: 'Che cos’è app-demo, come si riportano le modifiche nel template, che cosa resta diverso, come si rilascia una versione.',
         },
       ],
     },
@@ -256,8 +265,114 @@ function navHtml(currentFile) {
     .join('\n        ');
 
   return `<a class="nav-home" href="${up}index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
         ${sections}`;
 }
+
+// ─── Ricerca ─────────────────────────────────────────────────────────────────
+//
+// L'indice è un file JS (non JSON) perché così funziona anche aprendo gli .html da
+// disco, dove fetch() di un file locale è bloccato. Ogni voce è una sezione (h2/h3)
+// di una pagina, con il testo ridotto a plain text: la ricerca porta direttamente
+// all'ancora giusta.
+
+const stripHtml = (html) =>
+  html
+    .replace(/<pre[\s\S]*?<\/pre>/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+
+function indexEntries(page, body) {
+  const url = page.file.replace(/\.md$/, '.html');
+  const entries = [];
+  // Spezza sul tag di apertura degli h2/h3: il primo pezzo è l'introduzione.
+  const parts = body.split(/(?=<h[23] id=")/);
+  for (const part of parts) {
+    const m = part.match(/^<h([23]) id="([^"]+)">([\s\S]*?)<\/h\1>/);
+    const id = m ? m[2] : '';
+    const heading = m ? stripHtml(m[3]) : '';
+    const text = stripHtml(m ? part.slice(m[0].length) : part).slice(0, 1500);
+    if (!heading && !text) continue;
+    entries.push({ p: page.title, s: heading, u: id ? `${url}#${id}` : url, x: text });
+  }
+  return entries;
+}
+
+const SEARCH_SCRIPT = `
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+`;
 
 function tocHtml(toc) {
   if (toc.length < 3) return '';
@@ -279,6 +394,10 @@ function layout({ title, section, body, currentFile }) {
   const up = depth === 0 ? '' : '../'.repeat(depth);
   const pageTitle = title === SITE.title ? SITE.title : `${title} — ${SITE.title}`;
 
+  const version = SITE.templateVersion
+    ? `<p class="footer-version">Descrive il template <strong>${esc(SITE.title)}</strong> alla versione ${esc(SITE.templateVersion)}.</p>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="it">
 <head>
@@ -287,7 +406,7 @@ function layout({ title, section, body, currentFile }) {
   <title>${esc(pageTitle)}</title>
   <link rel="stylesheet" href="${up}assets/style.css">
 </head>
-<body>
+<body data-up="${up}">
   <header class="topbar">
     <a class="brand" href="${up}index.html">
       <span class="brand-name">${esc(SITE.title)}</span>
@@ -313,7 +432,11 @@ ${body}
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    ${version}
   </footer>
+
+  <script src="${up}assets/search-index.js"></script>
+  <script>${SEARCH_SCRIPT}</script>
 </body>
 </html>
 `;
@@ -355,11 +478,13 @@ async function clean() {
     await fs.rm(out, { force: true });
     removed++;
   }
+  await fs.rm(path.join(DOCS, 'assets', 'search-index.js'), { force: true });
   console.log(`Rimossi ${removed} file HTML generati.`);
 }
 
 async function build() {
   let missing = 0;
+  const searchIndex = [];
   for (const page of pages) {
     const src = path.join(DOCS, page.file);
     let raw;
@@ -383,6 +508,8 @@ async function build() {
 
     let body = renderer.render(raw);
 
+    if (page.file !== 'index.md') searchIndex.push(...indexEntries(page, body));
+
     if (page.file === 'index.md') {
       body = body.replace('<!--CARDS-->', homeCards());
     } else {
@@ -403,6 +530,11 @@ async function build() {
     await fs.writeFile(out, html, 'utf8');
     console.log(`  ${page.file}  →  ${path.relative(ROOT, out).replace(/\\/g, '/')}`);
   }
+
+  const indexOut = path.join(DOCS, 'assets', 'search-index.js');
+  await fs.writeFile(indexOut, `window.SEARCH_INDEX = ${JSON.stringify(searchIndex)};\n`, 'utf8');
+  console.log(`  indice di ricerca: ${searchIndex.length} sezioni  →  docs/assets/search-index.js`);
+
   console.log(`\n${pages.length - missing} pagine generate${missing ? `, ${missing} saltate (file mancanti)` : ''}.`);
 }
 

@@ -1,0 +1,35 @@
+# Verifica che gli HTML committati in docs/ siano allineati ai Markdown.
+#
+# GitHub Pages serve i file statici di docs/ dal branch main, senza eseguire la build:
+# per questo gli .html sono committati. Questo workflow rigenera tutto e fallisce se
+# il risultato differisce da ciò che è nel repository — cioè se qualcuno ha modificato
+# un .md senza rilanciare `npm run build`, o ha toccato un .html a mano.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Gli HTML devono corrispondere ai Markdown
+        run: |
+          if ! git diff --exit-code --stat -- docs; then
+            echo "::error::docs/ non è allineato: esegui 'npm run build' e committa gli HTML rigenerati."
+            exit 1
+          fi

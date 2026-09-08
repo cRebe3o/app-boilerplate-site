@@ -6,7 +6,7 @@
   <title>Le skill Claude — app-boilerplate</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
-<body>
+<body data-up="../">
   <header class="topbar">
     <a class="brand" href="../index.html">
       <span class="brand-name">app-boilerplate</span>
@@ -20,6 +20,10 @@
 
     <nav class="sidebar" aria-label="Navigazione">
         <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
         <div class="nav-group">
           <p class="nav-title">Progetto</p>
           <ul>
@@ -27,6 +31,7 @@
             <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
             <li><a href="../progetto/configurazione.html">Configurazione</a></li>
             <li><a href="../progetto/skill.html" aria-current="page">Le skill Claude</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
           </ul>
         </div>
         <div class="nav-group">
@@ -94,7 +99,8 @@
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
-<p>Un progetto generato porta con sé una cartella <code>.claude/</code> con <strong>21 skill</strong> e <strong>5 comandi</strong>. Sono
+<p>Un progetto generato porta con sé una cartella <code>.claude/</code> con le sue <strong>skill</strong> e i suoi
+<strong>comandi</strong>. Sono
 istruzioni scritte, versionate insieme al codice, che Claude Code carica quando il compito
 corrisponde: descrivono come si scrive <em>in questo progetto</em> una slice, un'entità, una pagina, un
 test.</p>
@@ -291,6 +297,7 @@ migliorare il template: portate in <code>app-boilerplate</code>, arrivano a tutt
 <ul>
 <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a> — lo stesso percorso delle skill, spiegato per esteso</li>
 <li><a href="panoramica.html">Panoramica</a> — le convenzioni che le skill applicano</li>
+<li><a href="contribuire.html">Contribuire al template</a> — come una skill nata in un progetto torna al template</li>
 </ul>
 
       </article>
@@ -299,6 +306,75 @@ migliorare il template: portate in <code>app-boilerplate</code>, arrivano a tutt
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione in preparazione (nessun tag ancora).</p>
   </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
 </body>
 </html>
