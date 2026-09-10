@@ -95,6 +95,8 @@
           <li class="lvl-2"><a href="#i-pezzi-in-gioco">I pezzi in gioco</a></li>
           <li class="lvl-2"><a href="#in-locale-l-aspire-dashboard">In locale: l'Aspire Dashboard</a></li>
           <li class="lvl-3"><a href="#perche-questo-dashboard">Perché questo dashboard</a></li>
+          <li class="lvl-3"><a href="#le-pagine-del-dashboard">Le pagine del dashboard</a></li>
+          <li class="lvl-3"><a href="#pausa-esportazione-limiti">Pausa, esportazione, limiti</a></li>
           <li class="lvl-3"><a href="#senza-docker">Senza Docker</a></li>
           <li class="lvl-2"><a href="#in-produzione-una-destinazione-persistente">In produzione: una destinazione persistente</a></li>
           <li class="lvl-3"><a href="#grafana-cloud">Grafana Cloud</a></li>
@@ -104,6 +106,12 @@
           <li class="lvl-2"><a href="#configurazione">Configurazione</a></li>
           <li class="lvl-3"><a href="#il-campionamento">Il campionamento</a></li>
           <li class="lvl-2"><a href="#che-cosa-viene-tracciato">Che cosa viene tracciato</a></li>
+          <li class="lvl-2"><a href="#leggere-i-valori">Leggere i valori</a></li>
+          <li class="lvl-3"><a href="#gli-attributi-di-uno-span">Gli attributi di uno span</a></li>
+          <li class="lvl-3"><a href="#le-metriche-disponibili">Le metriche disponibili</a></li>
+          <li class="lvl-3"><a href="#come-si-legge-un-istogramma">Come si legge un istogramma</a></li>
+          <li class="lvl-3"><a href="#un-percorso-completo">Un percorso completo</a></li>
+          <li class="lvl-3"><a href="#quando-manca-qualcosa">Quando manca qualcosa</a></li>
           <li class="lvl-2"><a href="#sicurezza-che-cosa-non-esce">Sicurezza: che cosa non esce</a></li>
           <li class="lvl-2"><a href="#dove-sta-il-codice">Dove sta il codice</a></li>
           <li class="lvl-2"><a href="#il-pacchetto-in-prerelease">Il pacchetto in prerelease</a></li>
@@ -133,13 +141,14 @@ progressivo, crea il contratto, salva — e il tempo è uno solo per tutte. Per 
 lenta bisogna aggiungere log a mano, ridistribuire, riprodurre il caso, poi togliere i log.</p>
 <p>Con la telemetria attiva la stessa richiesta si legge così, senza aver scritto nulla:</p>
 <pre><code>POST /api/rentals                                    1243ms
-├─ Autenticazione JWT                                   4ms
-├─ CreateRentalContractCommand                       1230ms
-│  ├─ SELECT ... FROM Customers WHERE Id = @p0          8ms
-│  ├─ SELECT MAX(Sequence) FROM RentalContracts      1180ms  ←
-│  └─ INSERT INTO RentalContracts                      35ms
-└─ Risposta 201                                         6ms
+└─ CreateRentalContractCommand                       1230ms
+   ├─ rentals   SELECT ... FROM Customers WHERE Id = @p0        8ms
+   ├─ rentals   SELECT MAX(Sequence) FROM RentalContracts    1180ms  ←
+   └─ rentals   INSERT INTO RentalContracts                     35ms
 </code></pre>
+<p>Tre livelli, uno per instrumentation: la richiesta HTTP (<a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> Core), il comando MediatR
+(<code>LoggingBehavior</code>) e le query (EF Core). Autenticazione, CORS e rate limiting non compaiono come
+righe separate: sono middleware, e il loro tempo è dentro lo span HTTP.</p>
 <p>La query del progressivo si prende 1180ms su 1243: manca un indice, o la query scansiona
 l'intera tabella. Questa informazione non è in nessun log e non lo sarebbe mai stata, perché
 nessuno logga le singole query di EF Core con i rispettivi tempi.</p>
@@ -267,6 +276,141 @@ sviluppo è accettabile — anzi desiderabile, perché ogni sessione riparte pul
 esattamente il motivo per cui in produzione serve altro.</p>
 <p>Se il container non è avviato l'applicazione parte lo stesso: l'export fallisce in silenzio e
 viene ritentato, senza alcun impatto sulle richieste.</p>
+<h3 id="le-pagine-del-dashboard">Le pagine del dashboard</h3>
+<p>In alto a destra ci sono le impostazioni (tema chiaro/scuro, lingua, formato dell'ora) e l'icona
+<code>?</code>. <strong>Shift+?</strong> apre l'elenco delle scorciatoie; le più utili sono i tasti singoli che cambiano
+pagina:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Tasto</th>
+<th>Pagina</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>S</strong></td>
+<td>Structured logs</td>
+</tr>
+<tr>
+<td><strong>T</strong></td>
+<td>Traces</td>
+</tr>
+<tr>
+<td><strong>M</strong></td>
+<td>Metrics</td>
+</tr>
+<tr>
+<td><strong>R</strong> / <strong>C</strong></td>
+<td>Resources / Console logs — <em>vuote, vedi sotto</em></td>
+</tr>
+<tr>
+<td><strong>Shift+S</strong></td>
+<td>Impostazioni</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Sui pannelli di dettaglio: <code>+</code> e <code>-</code> ridimensionano, <strong>Shift+T</strong> ruota il pannello da destra a
+sotto, <strong>Shift+X</strong> lo chiude.</p>
+<blockquote>
+<p><strong>Resources e Console logs restano vuote, ed è normale.</strong> Quelle due pagine mostrano i processi
+avviati e governati dall'<em>app host</em> di .NET Aspire — start, stop, restart, stdout. Qui il
+dashboard gira in <strong>standalone</strong>: riceve solo OTLP e non governa nulla, quindi le funzioni
+&quot;resource&quot; sono disattivate. Il backend si avvia e si ferma con <code>dotnet run</code>, e il suo output di
+console si legge nel terminale. Le tre pagine che contano sono <strong>Structured logs</strong>, <strong>Traces</strong> e
+<strong>Metrics</strong>.</p>
+</blockquote>
+<h4 id="traces">Traces</h4>
+<p>La lista mostra <strong>Timestamp</strong>, <strong>Name</strong>, <strong>Spans</strong> e <strong>Duration</strong>, quest'ultima con un indicatore
+radiale che rende la durata confrontabile a colpo d'occhio con le altre tracce.</p>
+<p>Il campo di ricerca filtra per nome; <strong>Add filter</strong> costruisce invece filtri sugli attributi, e
+propone da sé i valori già visti — filtrare su <code>http.route</code> = <code>/api/users/{id}</code> isola tutte le
+chiamate a quell'endpoint senza scrivere una query.</p>
+<p>Aprendo una traccia con <strong>View details</strong> si ottiene l'albero: in testa <strong>Duration</strong>, <strong>Resources</strong>,
+<strong>Depth</strong> e <strong>Total Spans</strong>, poi una riga per span con la barra proporzionale alla durata.
+L'indentazione è la gerarchia, la barra è <em>quando</em> lo span è iniziato e quanto è durato. Due letture
+diverse e ugualmente importanti:</p>
+<ul>
+<li>barre <strong>in cascata</strong>, ognuna dopo la precedente → lavoro sequenziale (il caso tipico: query in
+serie, spesso una N+1);</li>
+<li>barre <strong>sovrapposte</strong> → lavoro parallelo.</li>
+</ul>
+<p>Un buco tra la fine di uno span e l'inizio del successivo è tempo che <em>nessuno</em> ha rivendicato: sta
+nel codice tra una chiamata e l'altra, non nel database.</p>
+<p>Gli span in errore hanno l'icona rossa — è ciò che <code>LoggingBehavior</code> produce quando marca
+l'activity con <code>SetStatus(Error)</code> e vi allega l'eccezione. Il campo di filtro interno alla traccia
+cerca tra gli span di <em>quella</em> traccia, comodo quando sono decine.</p>
+<h4 id="dal-trace-ai-log-e-ritorno">Dal trace ai log e ritorno</h4>
+<p>È la funzione che giustifica da sola l'esportazione dei log via OTLP:</p>
+<ul>
+<li>da una traccia, <strong>View Logs</strong> apre Structured logs già filtrata su quel <code>trace_id</code>: si leggono
+<strong>solo</strong> le righe di quella richiesta;</li>
+<li>da una riga di log, la colonna <strong>Trace</strong> riporta alla traccia che l'ha prodotta.</li>
+</ul>
+<p>È il ciclo &quot;vedo che è lento → vedo dove → leggo cosa diceva l'applicazione in quel punto&quot; senza
+mai cercare a mano un identificativo.</p>
+<h4 id="structured-logs">Structured logs</h4>
+<p>Colonne <strong>Resource</strong>, <strong>Level</strong>, <strong>Timestamp</strong>, <strong>Message</strong>, <strong>Trace</strong> e <strong>Details</strong>. Il menu
+<strong>Level</strong> filtra per gravità; l'icona del filtro costruisce condizioni su qualunque proprietà del
+log.</p>
+<p>Il punto è che i log sono <strong>strutturati</strong>: <code>logger.LogInformation(&quot;Handled {RequestName} in {ElapsedMs}ms&quot;, ...)</code> non produce una stringa piatta ma un messaggio con i campi <code>RequestName</code> e
+<code>ElapsedMs</code> interrogabili singolarmente. Si può quindi filtrare su <code>RequestName</code> =
+<code>CreateUserCommand</code> invece di cercare sottostringhe. Poiché <code>IncludeScopes</code> è attivo, gli scope
+aperti attorno alla richiesta arrivano come attributi.</p>
+<h4 id="metrics">Metrics</h4>
+<p>Si sceglie prima il <strong>meter</strong>, poi lo <strong>strumento</strong>. Sotto al grafico compaiono i filtri per
+dimensione: sono i <em>tag</em> della metrica, e permettono di isolare per esempio il solo
+<code>http.response.status_code</code> = <code>500</code>.</p>
+<p>Due comandi che vale la pena conoscere:</p>
+<ul>
+<li>il toggle <strong>Count</strong> cambia l'asse verticale tra il valore misurato e il numero di occorrenze;</li>
+<li>il passaggio <strong>grafico ↔ tabella</strong> dà i numeri esatti quando il grafico non basta.</li>
+</ul>
+<p>Sul grafico compaiono puntini piccoli: sono gli <strong>exemplar</strong>. Ognuno è una richiesta reale che ha
+contribuito a quel punto della metrica; passandoci sopra si legge risorsa, operazione, valore e
+istante, e <strong>cliccandoci si salta alla traccia corrispondente</strong>. È il ponte diretto dal picco alla
+richiesta che l'ha causato — dal &quot;quanto&quot; al &quot;dove&quot; in un clic.</p>
+<h3 id="pausa-esportazione-limiti">Pausa, esportazione, limiti</h3>
+<p>Ogni pagina ha un pulsante di <strong>pausa</strong> della raccolta (indipendente per pagina): utile per
+fermare l'arrivo di nuovi dati mentre si sta esaminando qualcosa. Il pulsante di <strong>rimozione</strong>
+svuota i dati della pagina.</p>
+<p>Da <em>Settings → Resource logs and telemetry → Manage</em> si possono <strong>esportare</strong> i dati selezionati in
+uno zip (<code>aspire-telemetry-export-&lt;timestamp&gt;.zip</code>) e <strong>reimportarli</strong> in seguito: è il modo di
+allegare a una segnalazione la telemetria di un problema riprodotto in locale.</p>
+<p>I dati stanno in memoria e sono <strong>limitati</strong>. Superata la soglia il dashboard <strong>elimina i più
+vecchi</strong>, in silenzio:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Variabile</th>
+<th>Default</th>
+<th>Che cosa limita</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DASHBOARD__TELEMETRYLIMITS__MAXLOGCOUNT</code></td>
+<td>10.000</td>
+<td>Righe di log</td>
+</tr>
+<tr>
+<td><code>DASHBOARD__TELEMETRYLIMITS__MAXTRACECOUNT</code></td>
+<td>10.000</td>
+<td>Tracce</td>
+</tr>
+<tr>
+<td><code>DASHBOARD__TELEMETRYLIMITS__MAXMETRICSCOUNT</code></td>
+<td>50.000</td>
+<td>Punti per dimensione</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Se una traccia di dieci minuti fa è sparita, quasi sempre è questo — non un problema di export. Si
+alzano come le altre variabili, nel <code>docker-compose.yml</code>.</p>
 <h3 id="senza-docker">Senza Docker</h3>
 <p>Chi ha generato il progetto con <code>include_docker</code> a <code>false</code> non ha il <code>docker-compose.yml</code>. Il
 dashboard si avvia comunque da solo:</p>
@@ -438,7 +582,259 @@ esaminare</strong>: al primo problema che non si riesce a riprodurre, la percent
 </div>
 <p>Vengono esclusi dalle tracce <code>/health</code>, <code>/swagger</code>, <code>/openapi</code> e <code>/favicon</code>: genererebbero
 traffico costante senza alcun valore diagnostico, e filtrarli all'origine costa meno che filtrarli
-a valle.</p>
+a valle. Il filtro vale per le <strong>tracce</strong>: le metriche HTTP continuano a contare anche quelle
+richieste.</p>
+<h2 id="leggere-i-valori">Leggere i valori</h2>
+<p>Le sezioni precedenti dicono dove guardare. Questa dice che cosa significano i numeri.</p>
+<h3 id="gli-attributi-di-uno-span">Gli attributi di uno span</h3>
+<p><strong>View details</strong> su uno span apre l'elenco dei suoi attributi. Quelli che si incontrano qui:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Attributo</th>
+<th>Su quale span</th>
+<th>Che cosa contiene</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>http.route</code></td>
+<td>HTTP</td>
+<td>Il <em>template</em> della rotta, <code>/api/users/{id}</code> — non l'URL concreto</td>
+</tr>
+<tr>
+<td><code>http.request.method</code> · <code>http.response.status_code</code></td>
+<td>HTTP</td>
+<td>Metodo e stato</td>
+</tr>
+<tr>
+<td><code>url.path</code></td>
+<td>HTTP</td>
+<td>Il percorso realmente chiamato, con gli id veri</td>
+</tr>
+<tr>
+<td><code>db.statement</code></td>
+<td>EF Core</td>
+<td><strong>Il testo SQL</strong>, con i parametri come segnaposto</td>
+</tr>
+<tr>
+<td><code>db.name</code></td>
+<td>EF Core</td>
+<td>Il database</td>
+</tr>
+<tr>
+<td><code>db.system</code> · <code>ef.provider</code></td>
+<td>EF Core</td>
+<td><code>mssql</code> o <code>postgresql</code>, e il provider EF</td>
+</tr>
+<tr>
+<td><code>server.address</code> · <code>server.port</code></td>
+<td>EF Core, HttpClient</td>
+<td>Dove sta il server contattato</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Due avvertenze che fanno risparmiare tempo:</p>
+<ul>
+<li><strong>Gli span EF Core si chiamano come il database, non come la query.</strong> Nell'albero appaiono tutti
+con lo stesso nome (<code>rentals</code>, <code>mio_db</code>…): per sapere <em>quale</em> query sia, va aperto
+<code>db.statement</code>. È il motivo per cui sopra le righe SQL sono mostrate con il nome del database
+davanti.</li>
+<li><code>http.route</code> è il template e <code>url.path</code> il percorso concreto. Per raggruppare (“quanto costa
+<em>questo endpoint</em>”) serve <code>http.route</code>; per ritrovare la singola richiesta, <code>url.path</code>.</li>
+</ul>
+<p>Il valore dei parametri SQL non c'è, e non è una dimenticanza: vedi
+<a href="#sicurezza-che-cosa-non-esce">Sicurezza</a>.</p>
+<h3 id="le-metriche-disponibili">Le metriche disponibili</h3>
+<p>Il template non definisce metriche proprie: quelle che si vedono arrivano tutte dalle tre
+instrumentation registrate. Le più utili, con l'unità in cui sono espresse:</p>
+<p><strong><code>Microsoft.AspNetCore.Hosting</code></strong> — le richieste in ingresso</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Strumento</th>
+<th>Tipo</th>
+<th>Unità</th>
+<th>Legge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>http.server.request.duration</code></td>
+<td>Histogram</td>
+<td><strong>secondi</strong></td>
+<td>Quanto durano le richieste</td>
+</tr>
+<tr>
+<td><code>http.server.active_requests</code></td>
+<td>UpDownCounter</td>
+<td>richieste</td>
+<td>Quante ne sono in corso adesso</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong><code>Microsoft.AspNetCore.Server.Kestrel</code></strong> — le connessioni</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Strumento</th>
+<th>Tipo</th>
+<th>Unità</th>
+<th>Legge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kestrel.active_connections</code></td>
+<td>UpDownCounter</td>
+<td>connessioni</td>
+<td>Connessioni aperte</td>
+</tr>
+<tr>
+<td><code>kestrel.queued_requests</code></td>
+<td>UpDownCounter</td>
+<td>richieste</td>
+<td>Richieste in coda: se sale, il server non sta al passo</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong><code>Microsoft.AspNetCore.RateLimiting</code></strong> — il rate limiter di <code>Program.cs</code></p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Strumento</th>
+<th>Tipo</th>
+<th>Legge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aspnetcore.rate_limiting.requests</code></td>
+<td>Counter</td>
+<td>Tentativi, con <code>aspnetcore.rate_limiting.result</code></td>
+</tr>
+<tr>
+<td><code>aspnetcore.rate_limiting.queued_requests</code></td>
+<td>UpDownCounter</td>
+<td>In attesa di un permesso</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il tag <code>aspnetcore.rate_limiting.policy</code> distingue <code>auth-policy</code> da <code>error-log-policy</code>: è il modo
+di vedere se qualcuno sta martellando il login.</p>
+<p><strong><code>System.Runtime</code></strong> — il processo</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Strumento</th>
+<th>Unità</th>
+<th>Legge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dotnet.gc.pause.time</code></td>
+<td><strong>secondi totali</strong></td>
+<td>Tempo passato in pausa per il GC</td>
+</tr>
+<tr>
+<td><code>dotnet.gc.heap.total_allocated</code></td>
+<td>byte</td>
+<td>Allocato da inizio processo</td>
+</tr>
+<tr>
+<td><code>dotnet.process.memory.working_set</code></td>
+<td>byte</td>
+<td>Memoria fisica del processo</td>
+</tr>
+<tr>
+<td><code>dotnet.thread_pool.queue.length</code></td>
+<td>work item</td>
+<td>Lavoro in coda sul thread pool</td>
+</tr>
+<tr>
+<td><code>dotnet.exceptions</code></td>
+<td>eccezioni</td>
+<td>Eccezioni lanciate, con <code>error.type</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong><code>System.Net.Http</code></strong> — le chiamate in uscita: <code>http.client.request.duration</code> (secondi) e
+<code>http.client.open_connections</code>.</p>
+<h3 id="come-si-legge-un-istogramma">Come si legge un istogramma</h3>
+<p><code>http.server.request.duration</code> è un <strong>istogramma in secondi</strong>, e sono i due dettagli che traggono
+più spesso in inganno:</p>
+<ul>
+<li><strong>secondi, non millisecondi</strong>: <code>0.25</code> è 250ms;</li>
+<li>non è una media, ma una distribuzione in intervalli predefiniti — i bucket di default sono
+<code>0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10</code>.</li>
+</ul>
+<p>La media è la statistica sbagliata per le latenze: novantacinque richieste da 20ms e cinque da 3
+secondi danno una media di 170ms, un numero che nessun utente ha mai sperimentato. Si leggono
+invece i <strong>percentili</strong>: la P50 (la richiesta tipica), la P95 e la P99 (le peggiori, quelle di cui
+gli utenti si lamentano). Un divario ampio tra P50 e P99 dice che il problema riguarda <em>alcune</em>
+richieste — di solito un caso con più dati, una cache fredda o un lock.</p>
+<p>L'ultimo bucket è <code>10</code>: tutto ciò che supera i 10 secondi finisce insieme, e da lì non si distingue
+più una richiesta da 11 secondi da una da due minuti. Se la coda si accumula lì, la risposta sta
+nelle tracce, non nella metrica.</p>
+<h3 id="un-percorso-completo">Un percorso completo</h3>
+<p>Come si incastrano le tre pagine, su un caso concreto:</p>
+<ol>
+<li><strong>Metrics</strong> → <code>http.server.request.duration</code>: la P99 è a 2 secondi mentre la P50 sta a 30ms.
+Qualcosa è lento, ma solo a volte.</li>
+<li>Un <strong>exemplar</strong> sul picco → clic → si apre la traccia di <em>una</em> di quelle richieste lente.</li>
+<li><strong>Traces</strong>: l'albero mostra il comando MediatR e, sotto, dodici span EF Core in cascata quasi
+identici. <code>db.statement</code> li rivela: la stessa <code>SELECT</code> ripetuta per ogni riga — una N+1.</li>
+<li><strong>View Logs</strong> → i log di quella sola richiesta confermano quale handler l'ha eseguita.</li>
+</ol>
+<p>Diagnosi completa senza aggiungere un solo log e senza riprodurre il problema a mano.</p>
+<h3 id="quando-manca-qualcosa">Quando manca qualcosa</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Sintomo</th>
+<th>Causa quasi sempre</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nessun dato</td>
+<td>Container non avviato, o <code>Telemetry:Endpoint</code> vuoto</td>
+</tr>
+<tr>
+<td>Traccia senza il livello SQL</td>
+<td>Il pacchetto EF Core è stato rimosso</td>
+</tr>
+<tr>
+<td>Traccia senza il livello MediatR</td>
+<td>La richiesta non passa da un handler MediatR</td>
+</tr>
+<tr>
+<td>Una traccia vecchia è sparita</td>
+<td>Il limite di 10.000 tracce ha eliminato le più vecchie</td>
+</tr>
+<tr>
+<td>Manca una parte delle tracce</td>
+<td><code>Telemetry:SampleRatio</code> sta campionando</td>
+</tr>
+<tr>
+<td>Nulla su <code>/health</code></td>
+<td>È escluso di proposito</td>
+</tr>
+</tbody>
+</table>
+</div>
 <h2 id="sicurezza-che-cosa-non-esce">Sicurezza: che cosa non esce</h2>
 <p>I <strong>valori</strong> dei parametri SQL non vengono mai esportati. È deliberato: attraverso quei parametri
 passano hash di password, refresh token e dati personali, che finirebbero in chiaro nello storage
@@ -489,6 +885,7 @@ porterebbe il clic dell'utente e la query SQL nella stessa traccia — sarà il 
 se <code>ErrorLogs</code> ha ancora senso.</p>
 <h2 id="da-qui">Da qui</h2>
 <ul>
+<li><a href="#leggere-i-valori">Leggere i valori</a> — che cosa significano gli attributi e le metriche</li>
 <li><a href="../progetto/configurazione.html">Configurazione</a> — tutte le chiavi e come si sovrascrivono</li>
 <li><a href="render.html">Deploy su Render</a> — dove impostare le variabili d'ambiente in produzione</li>
 <li><a href="../architettura/clean-architecture.html">Clean Architecture</a> — perché <code>Application</code> resta senza

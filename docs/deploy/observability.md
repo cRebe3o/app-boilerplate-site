@@ -30,13 +30,15 @@ Con la telemetria attiva la stessa richiesta si legge così, senza aver scritto 
 
 ```
 POST /api/rentals                                    1243ms
-├─ Autenticazione JWT                                   4ms
-├─ CreateRentalContractCommand                       1230ms
-│  ├─ SELECT ... FROM Customers WHERE Id = @p0          8ms
-│  ├─ SELECT MAX(Sequence) FROM RentalContracts      1180ms  ←
-│  └─ INSERT INTO RentalContracts                      35ms
-└─ Risposta 201                                         6ms
+└─ CreateRentalContractCommand                       1230ms
+   ├─ rentals   SELECT ... FROM Customers WHERE Id = @p0        8ms
+   ├─ rentals   SELECT MAX(Sequence) FROM RentalContracts    1180ms  ←
+   └─ rentals   INSERT INTO RentalContracts                     35ms
 ```
+
+Tre livelli, uno per instrumentation: la richiesta HTTP (ASP.NET Core), il comando MediatR
+(`LoggingBehavior`) e le query (EF Core). Autenticazione, CORS e rate limiting non compaiono come
+righe separate: sono middleware, e il loro tempo è dentro lo span HTTP.
 
 La query del progressivo si prende 1180ms su 1243: manca un indice, o la query scansiona
 l'intera tabella. Questa informazione non è in nessun log e non lo sarebbe mai stata, perché
@@ -124,6 +126,116 @@ esattamente il motivo per cui in produzione serve altro.
 
 Se il container non è avviato l'applicazione parte lo stesso: l'export fallisce in silenzio e
 viene ritentato, senza alcun impatto sulle richieste.
+
+### Le pagine del dashboard
+
+In alto a destra ci sono le impostazioni (tema chiaro/scuro, lingua, formato dell'ora) e l'icona
+`?`. **Shift+?** apre l'elenco delle scorciatoie; le più utili sono i tasti singoli che cambiano
+pagina:
+
+| Tasto | Pagina |
+|---|---|
+| **S** | Structured logs |
+| **T** | Traces |
+| **M** | Metrics |
+| **R** / **C** | Resources / Console logs — *vuote, vedi sotto* |
+| **Shift+S** | Impostazioni |
+
+Sui pannelli di dettaglio: `+` e `-` ridimensionano, **Shift+T** ruota il pannello da destra a
+sotto, **Shift+X** lo chiude.
+
+> **Resources e Console logs restano vuote, ed è normale.** Quelle due pagine mostrano i processi
+> avviati e governati dall'*app host* di .NET Aspire — start, stop, restart, stdout. Qui il
+> dashboard gira in **standalone**: riceve solo OTLP e non governa nulla, quindi le funzioni
+> "resource" sono disattivate. Il backend si avvia e si ferma con `dotnet run`, e il suo output di
+> console si legge nel terminale. Le tre pagine che contano sono **Structured logs**, **Traces** e
+> **Metrics**.
+
+#### Traces
+
+La lista mostra **Timestamp**, **Name**, **Spans** e **Duration**, quest'ultima con un indicatore
+radiale che rende la durata confrontabile a colpo d'occhio con le altre tracce.
+
+Il campo di ricerca filtra per nome; **Add filter** costruisce invece filtri sugli attributi, e
+propone da sé i valori già visti — filtrare su `http.route` = `/api/users/{id}` isola tutte le
+chiamate a quell'endpoint senza scrivere una query.
+
+Aprendo una traccia con **View details** si ottiene l'albero: in testa **Duration**, **Resources**,
+**Depth** e **Total Spans**, poi una riga per span con la barra proporzionale alla durata.
+L'indentazione è la gerarchia, la barra è *quando* lo span è iniziato e quanto è durato. Due letture
+diverse e ugualmente importanti:
+
+- barre **in cascata**, ognuna dopo la precedente → lavoro sequenziale (il caso tipico: query in
+  serie, spesso una N+1);
+- barre **sovrapposte** → lavoro parallelo.
+
+Un buco tra la fine di uno span e l'inizio del successivo è tempo che *nessuno* ha rivendicato: sta
+nel codice tra una chiamata e l'altra, non nel database.
+
+Gli span in errore hanno l'icona rossa — è ciò che `LoggingBehavior` produce quando marca
+l'activity con `SetStatus(Error)` e vi allega l'eccezione. Il campo di filtro interno alla traccia
+cerca tra gli span di *quella* traccia, comodo quando sono decine.
+
+#### Dal trace ai log e ritorno
+
+È la funzione che giustifica da sola l'esportazione dei log via OTLP:
+
+- da una traccia, **View Logs** apre Structured logs già filtrata su quel `trace_id`: si leggono
+  **solo** le righe di quella richiesta;
+- da una riga di log, la colonna **Trace** riporta alla traccia che l'ha prodotta.
+
+È il ciclo "vedo che è lento → vedo dove → leggo cosa diceva l'applicazione in quel punto" senza
+mai cercare a mano un identificativo.
+
+#### Structured logs
+
+Colonne **Resource**, **Level**, **Timestamp**, **Message**, **Trace** e **Details**. Il menu
+**Level** filtra per gravità; l'icona del filtro costruisce condizioni su qualunque proprietà del
+log.
+
+Il punto è che i log sono **strutturati**: `logger.LogInformation("Handled {RequestName} in
+{ElapsedMs}ms", ...)` non produce una stringa piatta ma un messaggio con i campi `RequestName` e
+`ElapsedMs` interrogabili singolarmente. Si può quindi filtrare su `RequestName` =
+`CreateUserCommand` invece di cercare sottostringhe. Poiché `IncludeScopes` è attivo, gli scope
+aperti attorno alla richiesta arrivano come attributi.
+
+#### Metrics
+
+Si sceglie prima il **meter**, poi lo **strumento**. Sotto al grafico compaiono i filtri per
+dimensione: sono i *tag* della metrica, e permettono di isolare per esempio il solo
+`http.response.status_code` = `500`.
+
+Due comandi che vale la pena conoscere:
+
+- il toggle **Count** cambia l'asse verticale tra il valore misurato e il numero di occorrenze;
+- il passaggio **grafico ↔ tabella** dà i numeri esatti quando il grafico non basta.
+
+Sul grafico compaiono puntini piccoli: sono gli **exemplar**. Ognuno è una richiesta reale che ha
+contribuito a quel punto della metrica; passandoci sopra si legge risorsa, operazione, valore e
+istante, e **cliccandoci si salta alla traccia corrispondente**. È il ponte diretto dal picco alla
+richiesta che l'ha causato — dal "quanto" al "dove" in un clic.
+
+### Pausa, esportazione, limiti
+
+Ogni pagina ha un pulsante di **pausa** della raccolta (indipendente per pagina): utile per
+fermare l'arrivo di nuovi dati mentre si sta esaminando qualcosa. Il pulsante di **rimozione**
+svuota i dati della pagina.
+
+Da *Settings → Resource logs and telemetry → Manage* si possono **esportare** i dati selezionati in
+uno zip (`aspire-telemetry-export-<timestamp>.zip`) e **reimportarli** in seguito: è il modo di
+allegare a una segnalazione la telemetria di un problema riprodotto in locale.
+
+I dati stanno in memoria e sono **limitati**. Superata la soglia il dashboard **elimina i più
+vecchi**, in silenzio:
+
+| Variabile | Default | Che cosa limita |
+|---|---|---|
+| `DASHBOARD__TELEMETRYLIMITS__MAXLOGCOUNT` | 10.000 | Righe di log |
+| `DASHBOARD__TELEMETRYLIMITS__MAXTRACECOUNT` | 10.000 | Tracce |
+| `DASHBOARD__TELEMETRYLIMITS__MAXMETRICSCOUNT` | 50.000 | Punti per dimensione |
+
+Se una traccia di dieci minuti fa è sparita, quasi sempre è questo — non un problema di export. Si
+alzano come le altre variabili, nel `docker-compose.yml`.
 
 ### Senza Docker
 
@@ -243,7 +355,123 @@ esaminare**: al primo problema che non si riesce a riprodurre, la percentuale va
 
 Vengono esclusi dalle tracce `/health`, `/swagger`, `/openapi` e `/favicon`: genererebbero
 traffico costante senza alcun valore diagnostico, e filtrarli all'origine costa meno che filtrarli
-a valle.
+a valle. Il filtro vale per le **tracce**: le metriche HTTP continuano a contare anche quelle
+richieste.
+
+## Leggere i valori
+
+Le sezioni precedenti dicono dove guardare. Questa dice che cosa significano i numeri.
+
+### Gli attributi di uno span
+
+**View details** su uno span apre l'elenco dei suoi attributi. Quelli che si incontrano qui:
+
+| Attributo | Su quale span | Che cosa contiene |
+|---|---|---|
+| `http.route` | HTTP | Il *template* della rotta, `/api/users/{id}` — non l'URL concreto |
+| `http.request.method` · `http.response.status_code` | HTTP | Metodo e stato |
+| `url.path` | HTTP | Il percorso realmente chiamato, con gli id veri |
+| `db.statement` | EF Core | **Il testo SQL**, con i parametri come segnaposto |
+| `db.name` | EF Core | Il database |
+| `db.system` · `ef.provider` | EF Core | `mssql` o `postgresql`, e il provider EF |
+| `server.address` · `server.port` | EF Core, HttpClient | Dove sta il server contattato |
+
+Due avvertenze che fanno risparmiare tempo:
+
+- **Gli span EF Core si chiamano come il database, non come la query.** Nell'albero appaiono tutti
+  con lo stesso nome (`rentals`, `mio_db`…): per sapere *quale* query sia, va aperto
+  `db.statement`. È il motivo per cui sopra le righe SQL sono mostrate con il nome del database
+  davanti.
+- `http.route` è il template e `url.path` il percorso concreto. Per raggruppare (“quanto costa
+  *questo endpoint*”) serve `http.route`; per ritrovare la singola richiesta, `url.path`.
+
+Il valore dei parametri SQL non c'è, e non è una dimenticanza: vedi
+[Sicurezza](#sicurezza-che-cosa-non-esce).
+
+### Le metriche disponibili
+
+Il template non definisce metriche proprie: quelle che si vedono arrivano tutte dalle tre
+instrumentation registrate. Le più utili, con l'unità in cui sono espresse:
+
+**`Microsoft.AspNetCore.Hosting`** — le richieste in ingresso
+
+| Strumento | Tipo | Unità | Legge |
+|---|---|---|---|
+| `http.server.request.duration` | Histogram | **secondi** | Quanto durano le richieste |
+| `http.server.active_requests` | UpDownCounter | richieste | Quante ne sono in corso adesso |
+
+**`Microsoft.AspNetCore.Server.Kestrel`** — le connessioni
+
+| Strumento | Tipo | Unità | Legge |
+|---|---|---|---|
+| `kestrel.active_connections` | UpDownCounter | connessioni | Connessioni aperte |
+| `kestrel.queued_requests` | UpDownCounter | richieste | Richieste in coda: se sale, il server non sta al passo |
+
+**`Microsoft.AspNetCore.RateLimiting`** — il rate limiter di `Program.cs`
+
+| Strumento | Tipo | Legge |
+|---|---|---|
+| `aspnetcore.rate_limiting.requests` | Counter | Tentativi, con `aspnetcore.rate_limiting.result` |
+| `aspnetcore.rate_limiting.queued_requests` | UpDownCounter | In attesa di un permesso |
+
+Il tag `aspnetcore.rate_limiting.policy` distingue `auth-policy` da `error-log-policy`: è il modo
+di vedere se qualcuno sta martellando il login.
+
+**`System.Runtime`** — il processo
+
+| Strumento | Unità | Legge |
+|---|---|---|
+| `dotnet.gc.pause.time` | **secondi totali** | Tempo passato in pausa per il GC |
+| `dotnet.gc.heap.total_allocated` | byte | Allocato da inizio processo |
+| `dotnet.process.memory.working_set` | byte | Memoria fisica del processo |
+| `dotnet.thread_pool.queue.length` | work item | Lavoro in coda sul thread pool |
+| `dotnet.exceptions` | eccezioni | Eccezioni lanciate, con `error.type` |
+
+**`System.Net.Http`** — le chiamate in uscita: `http.client.request.duration` (secondi) e
+`http.client.open_connections`.
+
+### Come si legge un istogramma
+
+`http.server.request.duration` è un **istogramma in secondi**, e sono i due dettagli che traggono
+più spesso in inganno:
+
+- **secondi, non millisecondi**: `0.25` è 250ms;
+- non è una media, ma una distribuzione in intervalli predefiniti — i bucket di default sono
+  `0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10`.
+
+La media è la statistica sbagliata per le latenze: novantacinque richieste da 20ms e cinque da 3
+secondi danno una media di 170ms, un numero che nessun utente ha mai sperimentato. Si leggono
+invece i **percentili**: la P50 (la richiesta tipica), la P95 e la P99 (le peggiori, quelle di cui
+gli utenti si lamentano). Un divario ampio tra P50 e P99 dice che il problema riguarda *alcune*
+richieste — di solito un caso con più dati, una cache fredda o un lock.
+
+L'ultimo bucket è `10`: tutto ciò che supera i 10 secondi finisce insieme, e da lì non si distingue
+più una richiesta da 11 secondi da una da due minuti. Se la coda si accumula lì, la risposta sta
+nelle tracce, non nella metrica.
+
+### Un percorso completo
+
+Come si incastrano le tre pagine, su un caso concreto:
+
+1. **Metrics** → `http.server.request.duration`: la P99 è a 2 secondi mentre la P50 sta a 30ms.
+   Qualcosa è lento, ma solo a volte.
+2. Un **exemplar** sul picco → clic → si apre la traccia di *una* di quelle richieste lente.
+3. **Traces**: l'albero mostra il comando MediatR e, sotto, dodici span EF Core in cascata quasi
+   identici. `db.statement` li rivela: la stessa `SELECT` ripetuta per ogni riga — una N+1.
+4. **View Logs** → i log di quella sola richiesta confermano quale handler l'ha eseguita.
+
+Diagnosi completa senza aggiungere un solo log e senza riprodurre il problema a mano.
+
+### Quando manca qualcosa
+
+| Sintomo | Causa quasi sempre |
+|---|---|
+| Nessun dato | Container non avviato, o `Telemetry:Endpoint` vuoto |
+| Traccia senza il livello SQL | Il pacchetto EF Core è stato rimosso |
+| Traccia senza il livello MediatR | La richiesta non passa da un handler MediatR |
+| Una traccia vecchia è sparita | Il limite di 10.000 tracce ha eliminato le più vecchie |
+| Manca una parte delle tracce | `Telemetry:SampleRatio` sta campionando |
+| Nulla su `/health` | È escluso di proposito |
 
 ## Sicurezza: che cosa non esce
 
@@ -314,6 +542,7 @@ se `ErrorLogs` ha ancora senso.
 
 ## Da qui
 
+- [Leggere i valori](#leggere-i-valori) — che cosa significano gli attributi e le metriche
 - [Configurazione](../progetto/configurazione.md) — tutte le chiavi e come si sovrascrivono
 - [Deploy su Render](render.md) — dove impostare le variabili d'ambiente in produzione
 - [Clean Architecture](../architettura/clean-architecture.md) — perché `Application` resta senza
