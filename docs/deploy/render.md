@@ -157,7 +157,27 @@ nel bundle del frontend. Non serve nasconderli — serve solo non confonderli fr
 Collegato il repository, Render ridistribuisce a ogni push sul branch configurato (`main`).
 Si disattiva da *Settings → Build & Deploy → Auto-Deploy*.
 
-## 6. Diagnostica
+## 6. Observability
+
+Il backend è instrumentato con OpenTelemetry, ma in produzione la telemetria è **spenta** finché
+non si sceglie una destinazione. Per attivarla si aggiunge una variabile d'ambiente al servizio,
+in *Environment*, senza ricompilare:
+
+| Variabile | Valore |
+|---|---|
+| `Telemetry__Endpoint` | l'endpoint OTLP del collector (Grafana Cloud, un Tempo self-hosted, …) |
+| `Telemetry__ServiceName` | il nome con cui il servizio appare, es. `NomeProgetto.Api` |
+| `Telemetry__SampleRatio` | `0.1` campiona il 10% delle tracce; omessa le esporta tutte |
+
+Se il collector richiede autenticazione — Grafana Cloud lo fa — la credenziale viaggia in
+`OTEL_EXPORTER_OTLP_HEADERS`, che l'SDK legge da sé. È un segreto: va trattata come
+`Auth__Jwt__Secret`.
+
+Con la telemetria attiva, una richiesta lenta si legge come un albero — chiamata HTTP, comando
+MediatR, query SQL — invece che come una riga di log con un tempo complessivo. Vedi
+[Observability](observability.md).
+
+## 7. Diagnostica
 
 **Il backend non parte.**
 Guarda i log (*Logs*). Le cause tipiche falliscono tutte all'avvio con un messaggio esplicito:

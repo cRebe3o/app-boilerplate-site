@@ -78,6 +78,7 @@
           <p class="nav-title">Operatività</p>
           <ul>
             <li><a href="../deploy/render.html" aria-current="page">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
           </ul>
         </div>
     </nav>
@@ -97,7 +98,8 @@
           <li class="lvl-2"><a href="#3-cors">3. CORS</a></li>
           <li class="lvl-2"><a href="#4-segreti">4. Segreti</a></li>
           <li class="lvl-2"><a href="#5-deploy-automatico">5. Deploy automatico</a></li>
-          <li class="lvl-2"><a href="#6-diagnostica">6. Diagnostica</a></li>
+          <li class="lvl-2"><a href="#6-observability">6. Observability</a></li>
+          <li class="lvl-2"><a href="#7-diagnostica">7. Diagnostica</a></li>
         </ul>
       </nav>
 <p>Pubblicare backend e frontend da GitHub su <a href="https://render.com" target="_blank" rel="noopener">Render</a>. Sono due servizi distinti,
@@ -344,7 +346,41 @@ nel bundle del frontend. Non serve nasconderli — serve solo non confonderli fr
 <h2 id="5-deploy-automatico">5. Deploy automatico</h2>
 <p>Collegato il repository, Render ridistribuisce a ogni push sul branch configurato (<code>main</code>).
 Si disattiva da <em>Settings → Build &amp; Deploy → Auto-Deploy</em>.</p>
-<h2 id="6-diagnostica">6. Diagnostica</h2>
+<h2 id="6-observability">6. Observability</h2>
+<p>Il backend è instrumentato con OpenTelemetry, ma in produzione la telemetria è <strong>spenta</strong> finché
+non si sceglie una destinazione. Per attivarla si aggiunge una variabile d'ambiente al servizio,
+in <em>Environment</em>, senza ricompilare:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Variabile</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Telemetry__Endpoint</code></td>
+<td>l'endpoint OTLP del collector (Grafana Cloud, un Tempo self-hosted, …)</td>
+</tr>
+<tr>
+<td><code>Telemetry__ServiceName</code></td>
+<td>il nome con cui il servizio appare, es. <code>NomeProgetto.Api</code></td>
+</tr>
+<tr>
+<td><code>Telemetry__SampleRatio</code></td>
+<td><code>0.1</code> campiona il 10% delle tracce; omessa le esporta tutte</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Se il collector richiede autenticazione — Grafana Cloud lo fa — la credenziale viaggia in
+<code>OTEL_EXPORTER_OTLP_HEADERS</code>, che l'SDK legge da sé. È un segreto: va trattata come
+<code>Auth__Jwt__Secret</code>.</p>
+<p>Con la telemetria attiva, una richiesta lenta si legge come un albero — chiamata HTTP, comando
+MediatR, query SQL — invece che come una riga di log con un tempo complessivo. Vedi
+<a href="observability.html">Observability</a>.</p>
+<h2 id="7-diagnostica">7. Diagnostica</h2>
 <p><strong>Il backend non parte.</strong>
 Guarda i log (<em>Logs</em>). Le cause tipiche falliscono tutte all'avvio con un messaggio esplicito:
 <code>Auth__Jwt__Secret</code> mancante, connection string mancante, <code>Database__Provider</code> con un valore non

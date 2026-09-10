@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observability — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/skill.html">Le skill Claude</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html" aria-current="page">Observability</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Operatività</p>
+      <article class="prose">
+<h1 id="observability">Observability</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#che-cosa-si-vede">Che cosa si vede</a></li>
+          <li class="lvl-2"><a href="#i-tre-segnali">I tre segnali</a></li>
+          <li class="lvl-2"><a href="#i-pezzi-in-gioco">I pezzi in gioco</a></li>
+          <li class="lvl-2"><a href="#in-locale-l-aspire-dashboard">In locale: l'Aspire Dashboard</a></li>
+          <li class="lvl-3"><a href="#perche-questo-dashboard">Perché questo dashboard</a></li>
+          <li class="lvl-3"><a href="#senza-docker">Senza Docker</a></li>
+          <li class="lvl-2"><a href="#in-produzione-una-destinazione-persistente">In produzione: una destinazione persistente</a></li>
+          <li class="lvl-3"><a href="#grafana-cloud">Grafana Cloud</a></li>
+          <li class="lvl-3"><a href="#stack-grafana-self-hosted">Stack Grafana self-hosted</a></li>
+          <li class="lvl-3"><a href="#altre-destinazioni">Altre destinazioni</a></li>
+          <li class="lvl-3"><a href="#la-scelta-in-breve">La scelta, in breve</a></li>
+          <li class="lvl-2"><a href="#configurazione">Configurazione</a></li>
+          <li class="lvl-3"><a href="#il-campionamento">Il campionamento</a></li>
+          <li class="lvl-2"><a href="#che-cosa-viene-tracciato">Che cosa viene tracciato</a></li>
+          <li class="lvl-2"><a href="#sicurezza-che-cosa-non-esce">Sicurezza: che cosa non esce</a></li>
+          <li class="lvl-2"><a href="#dove-sta-il-codice">Dove sta il codice</a></li>
+          <li class="lvl-2"><a href="#il-pacchetto-in-prerelease">Il pacchetto in prerelease</a></li>
+          <li class="lvl-2"><a href="#convive-con-l-errorlog">Convive con l'<code>ErrorLog</code></a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Un log dice <strong>che cosa</strong> è successo. Una traccia dice <strong>come</strong>: mostra una richiesta come un
+albero unico — la chiamata HTTP, il comando MediatR che ha innescato, ogni query SQL che ne è
+seguita — con il tempo di ciascun livello. È la differenza tra sapere che un'operazione ha
+impiegato 1,2 secondi e sapere <strong>quale query</strong> se li è presi.</p>
+<p>Il backend è instrumentato con <strong>OpenTelemetry</strong>, lo standard di settore per questa telemetria.
+È <strong>spento per default</strong>: senza un endpoint configurato non viene registrato nulla e
+l'applicazione si comporta esattamente come se il codice non ci fosse.</p>
+<h2 id="che-cosa-si-vede">Che cosa si vede</h2>
+<blockquote>
+<p><strong>Da dove viene l'esempio.</strong> La richiesta usata qui sotto viene dalla sezione <strong>Noleggi</strong> di
+<code>app-demo</code>, la <em>reference implementation</em> del template: serve un handler che faccia parecchie
+cose per mostrare che cosa aggiunge una traccia. Il meccanismo è identico su qualunque comando.</p>
+</blockquote>
+<p>Questo è ciò che finisce nei log quando un utente apre un contratto:</p>
+<pre><code>Handling CreateRentalContractCommand
+Handled CreateRentalContractCommand in 1243ms
+</code></pre>
+<p>L'handler però fa cinque cose — carica il cliente, verifica le regole, genera il numero
+progressivo, crea il contratto, salva — e il tempo è uno solo per tutte. Per scoprire quale sia
+lenta bisogna aggiungere log a mano, ridistribuire, riprodurre il caso, poi togliere i log.</p>
+<p>Con la telemetria attiva la stessa richiesta si legge così, senza aver scritto nulla:</p>
+<pre><code>POST /api/rentals                                    1243ms
+├─ Autenticazione JWT                                   4ms
+├─ CreateRentalContractCommand                       1230ms
+│  ├─ SELECT ... FROM Customers WHERE Id = @p0          8ms
+│  ├─ SELECT MAX(Sequence) FROM RentalContracts      1180ms  ←
+│  └─ INSERT INTO RentalContracts                      35ms
+└─ Risposta 201                                         6ms
+</code></pre>
+<p>La query del progressivo si prende 1180ms su 1243: manca un indice, o la query scansiona
+l'intera tabella. Questa informazione non è in nessun log e non lo sarebbe mai stata, perché
+nessuno logga le singole query di EF Core con i rispettivi tempi.</p>
+<h2 id="i-tre-segnali">I tre segnali</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Risponde a</th>
+<th>Esempio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Metriche</strong></td>
+<td><em>Quanto?</em></td>
+<td>il 5% delle richieste supera i 2 secondi</td>
+</tr>
+<tr>
+<td><strong>Tracce</strong></td>
+<td><em>Dove?</em></td>
+<td>il tempo se ne va nella query su <code>Customers</code></td>
+</tr>
+<tr>
+<td><strong>Log</strong></td>
+<td><em>Che cosa?</em></td>
+<td>timeout sulla connessione al database</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Servono tutti e tre perché rispondono a domande diverse, in sequenza: si vede il problema con le
+metriche, lo si localizza con le tracce, lo si capisce con i log.</p>
+<p>Il valore vero però è la <strong>correlazione</strong>. Ogni richiesta riceve un <code>trace_id</code> che finisce sia
+nella traccia sia in ogni riga di log che quella richiesta produce. Da una traccia lenta si
+arriva con un clic ai <strong>soli log di quella richiesta</strong>, invece di cercarli in mezzo a tutti gli
+altri. È il motivo per cui questo template esporta anche i log via OTLP e non solo le tracce.</p>
+<h2 id="i-pezzi-in-gioco">I pezzi in gioco</h2>
+<p>OpenTelemetry raccoglie e <strong>spedisce</strong>: non conserva niente e non mostra niente. Se non gli si dà
+un indirizzo dove consegnare, i dati si perdono nell'istante in cui la richiesta finisce. Serve
+sempre una destinazione.</p>
+<pre><code>  applicazione                collector                    interfaccia
+ ┌─────────────┐            ┌───────────┐                ┌────────────┐
+ │OpenTelemetry│  ──OTLP──&gt; │ archivia  │  ─────────────&gt;│ si consulta│
+ └─────────────┘            └───────────┘                └────────────┘
+   nel codice            Tempo · Loki · Prometheus            Grafana
+                          oppure Aspire Dashboard         (o il dashboard)
+</code></pre>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Pezzo</th>
+<th>Ruolo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OpenTelemetry</strong></td>
+<td>Nel codice dell'applicazione: raccoglie e spedisce</td>
+</tr>
+<tr>
+<td><strong>Tempo</strong></td>
+<td>Archivia le <strong>tracce</strong></td>
+</tr>
+<tr>
+<td><strong>Loki</strong></td>
+<td>Archivia i <strong>log</strong></td>
+</tr>
+<tr>
+<td><strong>Prometheus</strong> / <strong>Mimir</strong></td>
+<td>Archivia le <strong>metriche</strong></td>
+</tr>
+<tr>
+<td><strong>Grafana</strong></td>
+<td>L'interfaccia: non archivia niente, legge dagli altri e disegna</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Uno stack Grafana completo sono quindi <strong>quattro servizi</strong>. L'Aspire Dashboard li sostituisce
+tutti per l'uso locale, ed è il motivo per cui il template lo usa in sviluppo e non in produzione.</p>
+<p><strong>OTLP</strong> (<em>OpenTelemetry Protocol</em>) è il protocollo con cui l'applicazione parla al collector.
+Essendo standard, cambiare destinazione non richiede di toccare il codice: è tutta la strategia
+di questa pagina.</p>
+<h2 id="in-locale-l-aspire-dashboard">In locale: l'Aspire Dashboard</h2>
+<pre><code class="language-bash">docker compose up -d
+dotnet run --project apps/backend/NomeProgetto.Api
+</code></pre>
+<p>L'interfaccia è su <strong><a href="http://localhost:18888" target="_blank" rel="noopener">http://localhost:18888</a></strong>. <code>appsettings.Development.json</code> punta già al
+dashboard, quindi non serve configurare nulla.</p>
+<p>Due porte diverse, da non confondere:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Porta</th>
+<th>Che cos'è</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>18888</strong></td>
+<td>L'interfaccia, si apre nel browser</td>
+</tr>
+<tr>
+<td><strong>4317</strong></td>
+<td>Dove il backend <em>consegna</em> i dati (OTLP/gRPC). Non è una pagina web</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>La 4317 è la porta standard di OTLP: il <code>docker-compose.yml</code> la mappa sulla 18889 interna al
+container proprio per esporre all'esterno il numero che ogni strumento si aspetta.</p>
+<h3 id="perche-questo-dashboard">Perché questo dashboard</h3>
+<p>Nonostante il nome, <strong>non richiede il framework .NET Aspire</strong> e non lo introduce nel progetto: è
+un'immagine autonoma che parla OTLP standard, quindi funziona come visualizzatore per qualunque
+servizio instrumentato con OpenTelemetry. Nel template non esiste alcun progetto Aspire, e la
+solution resta quella di sempre.</p>
+<p>Un solo container dà tracce, log e metriche già correlati fra loro, con un'interfaccia curata: in
+sviluppo sostituisce da solo Tempo, Loki, Prometheus e Grafana.</p>
+<p>Il compromesso è che <strong>i dati stanno in memoria</strong>: allo stop del container spariscono. In
+sviluppo è accettabile — anzi desiderabile, perché ogni sessione riparte pulita — ed è
+esattamente il motivo per cui in produzione serve altro.</p>
+<p>Se il container non è avviato l'applicazione parte lo stesso: l'export fallisce in silenzio e
+viene ritentato, senza alcun impatto sulle richieste.</p>
+<h3 id="senza-docker">Senza Docker</h3>
+<p>Chi ha generato il progetto con <code>include_docker</code> a <code>false</code> non ha il <code>docker-compose.yml</code>. Il
+dashboard si avvia comunque da solo:</p>
+<pre><code class="language-bash">docker run --<span class="hljs-built_in">rm</span> -p 18888:18888 -p 4317:18889 \
+  -e DASHBOARD__FRONTEND__AUTHMODE=Unsecured \
+  -e DASHBOARD__OTLP__AUTHMODE=Unsecured \
+  mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+</code></pre>
+<p>Poi in <code>appsettings.Development.json</code>:</p>
+<pre><code class="language-json"><span class="hljs-attr">&quot;Telemetry&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;Endpoint&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;http://localhost:4317&quot;</span> <span class="hljs-punctuation">}</span>
+</code></pre>
+<h2 id="in-produzione-una-destinazione-persistente">In produzione: una destinazione persistente</h2>
+<p>In produzione servono due cose che il dashboard non dà: i dati devono <strong>sopravvivere</strong> al
+riavvio, e devono essere raggiungibili da fuori la macchina di sviluppo.</p>
+<p>La telemetria in produzione è <strong>spenta finché non si sceglie una destinazione</strong>: in
+<code>appsettings.json</code> l'endpoint è vuoto di proposito. Si attiva impostando una variabile
+d'ambiente, senza ricompilare.</p>
+<h3 id="grafana-cloud">Grafana Cloud</h3>
+<p>La strada consigliata per iniziare. È lo stack Grafana completo — Tempo, Loki, Prometheus e
+l'interfaccia Grafana — gestito da loro, con un piano gratuito dalla retention adeguata a un
+progetto piccolo. Si ottiene l'interfaccia Grafana vera senza mantenere quattro servizi.</p>
+<p>Sul servizio (per esempio su Render, in <em>Environment</em>):</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Variabile</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Telemetry__Endpoint</code></td>
+<td>l'endpoint OTLP fornito da Grafana Cloud</td>
+</tr>
+<tr>
+<td><code>Telemetry__ServiceName</code></td>
+<td>il nome con cui l'applicazione appare, es. <code>NomeProgetto.Api</code></td>
+</tr>
+<tr>
+<td><code>Telemetry__SampleRatio</code></td>
+<td><code>0.1</code> per campionare il 10% delle tracce, oppure omessa per tutte</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Grafana Cloud richiede un'autenticazione, che viaggia come header OTLP standard:</p>
+<pre><code>OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic &lt;credenziale in base64&gt;
+</code></pre>
+<p>È una variabile che l'SDK OpenTelemetry legge da sé, senza codice aggiuntivo. <strong>È un segreto</strong>: va
+trattata come <code>Auth__Jwt__Secret</code>, quindi impostata sul servizio e mai committata.</p>
+<h3 id="stack-grafana-self-hosted">Stack Grafana self-hosted</h3>
+<p>Tempo, Loki, Prometheus e Grafana sui propri server. Ha senso quando i dati non possono uscire
+dalla propria infrastruttura, o quando gestire lo stack è esso stesso un obiettivo. Il costo è
+mantenere quattro servizi, ciascuno con il proprio storage e la propria retention.</p>
+<p>Dal punto di vista dell'applicazione non cambia nulla:</p>
+<pre><code>Telemetry__Endpoint=http://tempo:4317
+</code></pre>
+<h3 id="altre-destinazioni">Altre destinazioni</h3>
+<p>Qualunque collector che parli OTLP: <strong>Jaeger</strong>, <strong>Honeycomb</strong>, <strong>Datadog</strong>, <strong>Azure Monitor</strong> (con
+il proprio distro), o un <strong>OpenTelemetry Collector</strong> intermedio che smista verso più backend.
+Nessuna richiede modifiche al codice.</p>
+<h3 id="la-scelta-in-breve">La scelta, in breve</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Sviluppo</th>
+<th>Produzione</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Destinazione</strong></td>
+<td>Aspire Dashboard</td>
+<td>Grafana Cloud, o stack self-hosted</td>
+</tr>
+<tr>
+<td><strong>Persistenza</strong></td>
+<td>in memoria, si perde</td>
+<td>duratura</td>
+</tr>
+<tr>
+<td><strong>Da gestire</strong></td>
+<td>un container</td>
+<td>niente, oppure quattro servizi</td>
+</tr>
+<tr>
+<td><strong>Configurazione</strong></td>
+<td>già pronta</td>
+<td><code>Telemetry__Endpoint</code> sul servizio</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Non sono alternative in concorrenza: sono <strong>due momenti</strong> della stessa strategia, con la stessa
+identica instrumentation. Cambia solo dove i dati vengono consegnati.</p>
+<h2 id="configurazione">Configurazione</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Significato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Telemetry:Endpoint</code></td>
+<td>Collector OTLP/gRPC. <strong>Vuoto = telemetria spenta</strong></td>
+</tr>
+<tr>
+<td><code>Telemetry:ServiceName</code></td>
+<td>Nome con cui l'applicazione appare nel backend. Default: il nome dell'assembly</td>
+</tr>
+<tr>
+<td><code>Telemetry:SampleRatio</code></td>
+<td>Frazione di tracce da campionare, fra 0 e 1. <code>null</code> = tutte</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Come ogni altra chiave, in deploy diventano variabili d'ambiente con il doppio underscore:
+<code>Telemetry__Endpoint</code>, <code>Telemetry__ServiceName</code>, <code>Telemetry__SampleRatio</code>. Vedi
+<a href="../progetto/configurazione.html">Configurazione</a>.</p>
+<p>L'endpoint è <strong>l'interruttore generale</strong>: se manca, OpenTelemetry non viene nemmeno registrato nel
+container di dipendenze, e non c'è alcun costo a runtime. Se è valorizzato ma non è un URI
+assoluto valido, l'applicazione <strong>non parte</strong> e lo dice: un errore di battitura che disattiva in
+silenzio la telemetria sarebbe peggio di un avvio fallito.</p>
+<h3 id="il-campionamento">Il campionamento</h3>
+<p>Con <code>SampleRatio</code> a <code>null</code> vengono esportate tutte le tracce: è quello che si vuole in sviluppo e
+su un servizio a traffico contenuto. In produzione, sotto carico, il volume va contenuto.</p>
+<p>Vale però la pena ricordare che <strong>una traccia campionata via è una traccia che non si potrà più
+esaminare</strong>: al primo problema che non si riesce a riprodurre, la percentuale va alzata. La scelta
+è fra costo di storage e capacità diagnostica, e conviene partire generosi.</p>
+<h2 id="che-cosa-viene-tracciato">Che cosa viene tracciato</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Instrumentation</th>
+<th>Che cosa produce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> Core</strong></td>
+<td>Le richieste HTTP in ingresso: la radice di ogni traccia</td>
+</tr>
+<tr>
+<td><strong>HttpClient</strong></td>
+<td>Le chiamate in uscita (per esempio verso Azure AD durante il login MSAL)</td>
+</tr>
+<tr>
+<td><strong>EF Core</strong></td>
+<td>Le query SQL: il livello che nei log non si vede</td>
+</tr>
+<tr>
+<td><strong>Runtime</strong></td>
+<td>GC, thread pool ed eccezioni del processo (solo metriche)</td>
+</tr>
+<tr>
+<td><strong><code>ApplicationDiagnostics</code></strong></td>
+<td>Gli span dei comandi MediatR, aperti da <code>LoggingBehavior</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Vengono esclusi dalle tracce <code>/health</code>, <code>/swagger</code>, <code>/openapi</code> e <code>/favicon</code>: genererebbero
+traffico costante senza alcun valore diagnostico, e filtrarli all'origine costa meno che filtrarli
+a valle.</p>
+<h2 id="sicurezza-che-cosa-non-esce">Sicurezza: che cosa non esce</h2>
+<p>I <strong>valori</strong> dei parametri SQL non vengono mai esportati. È deliberato: attraverso quei parametri
+passano hash di password, refresh token e dati personali, che finirebbero in chiaro nello storage
+delle tracce — un archivio che, per sua natura, è consultabile da più persone di quante possano
+leggere il database.</p>
+<p>Il <strong>testo</strong> della query invece viene esportato, ed è ciò che serve per capire quale query è
+lenta. I valori compaiono come segnaposto:</p>
+<pre><code class="language-sql"><span class="hljs-keyword">SELECT</span> TOP(<span class="hljs-number">1</span>) [u].[Id], [u].[Email], [u].[PasswordHash] <span class="hljs-keyword">FROM</span> [Users] <span class="hljs-keyword">AS</span> [u]
+<span class="hljs-keyword">WHERE</span> [u].[Username] <span class="hljs-operator">=</span> <span class="hljs-variable">@p0</span>
+</code></pre>
+<p>Il comportamento è stato verificato inviando un login con una password riconoscibile e
+ispezionando il payload OTLP esportato: né la password né il nome utente vi comparivano.</p>
+<p>Se una versione futura dell'instrumentation introducesse un'opzione per includere i valori, <strong>va
+lasciata disattivata</strong>.</p>
+<h2 id="dove-sta-il-codice">Dove sta il codice</h2>
+<pre><code>Api/Extensions/TelemetryExtensions.cs          tutta la configurazione
+Api/Program.cs                                 builder.AddAppTelemetry();
+Application/ApplicationDiagnostics.cs          l'ActivitySource del layer
+Application/Behaviors/LoggingBehavior.cs       apre lo span di ogni comando
+</code></pre>
+<p>L'instrumentation vive <strong>soltanto nel progetto <code>Api</code></strong>, il guscio HTTP. <code>Application</code> non ha alcun
+pacchetto OpenTelemetry: emette i suoi span attraverso <code>ActivitySource</code>, che appartiene a
+<code>System.Diagnostics</code> nel framework base.</p>
+<p>Non è un dettaglio stilistico. I test di architettura vietano ad <code>Application</code> di dipendere da
+<a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> e dal provider di database, per la stessa ragione per cui deve restare indipendente dal
+sistema di observability: è una scelta infrastrutturale, e domani potrebbe cambiare. Il prezzo di
+questa indipendenza è un'unica costante condivisa — il nome della sorgente — e in cambio il layer
+applicativo non sa nemmeno che la telemetria esiste.</p>
+<p>Quando nessuno è in ascolto, <code>StartActivity</code> restituisce <code>null</code> e il costo a runtime è
+trascurabile: è il motivo per cui <code>LoggingBehavior</code> può aprire uno span incondizionatamente.</p>
+<h2 id="il-pacchetto-in-prerelease">Il pacchetto in prerelease</h2>
+<p><code>OpenTelemetry.Instrumentation.EntityFrameworkCore</code> è l'unico pacchetto del gruppo in versione
+beta. Non è una svista: per EF Core non esiste una release stabile, perché EF espone un
+<code>DiagnosticSource</code> e non un <code>ActivitySource</code> proprio, e serve quindi un adapter. È la versione
+correntemente in uso anche in produzione altrove, ed è annotata nel <code>.csproj</code> come da riportare a
+una stabile appena verrà pubblicata.</p>
+<p>Chi preferisse evitare del tutto le prerelease può rimuovere quel pacchetto e la riga
+<code>AddEntityFrameworkCoreInstrumentation()</code>: si perde il livello SQL nell'albero delle tracce — che
+è però il più interessante.</p>
+<h2 id="convive-con-l-errorlog">Convive con l'<code>ErrorLog</code></h2>
+<p>Il template ha già una tabella <code>ErrorLogs</code>, alimentata da un endpoint pubblico su cui il frontend
+riporta i propri errori. Non è stata rimossa e continua a funzionare: sopravvive a un riavvio, è
+interrogabile in SQL e non richiede alcuna infrastruttura esterna.</p>
+<p>Le due cose coprono però bisogni vicini, e conviene sapere qual è la differenza: <code>ErrorLogs</code>
+registra <strong>gli errori del frontend</strong>, la telemetria racconta <strong>il comportamento del backend</strong>. Se
+un giorno la telemetria coprirà anche il browser — OpenTelemetry ha un SDK per il frontend, che
+porterebbe il clic dell'utente e la query SQL nella stessa traccia — sarà il momento di decidere
+se <code>ErrorLogs</code> ha ancora senso.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="../progetto/configurazione.html">Configurazione</a> — tutte le chiavi e come si sovrascrivono</li>
+<li><a href="render.html">Deploy su Render</a> — dove impostare le variabili d'ambiente in produzione</li>
+<li><a href="../architettura/clean-architecture.html">Clean Architecture</a> — perché <code>Application</code> resta senza
+dipendenze infrastrutturali</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

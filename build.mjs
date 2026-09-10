@@ -162,6 +162,11 @@ const SITE = {
           title: 'Deploy su Render',
           summary: 'Pubblicare backend e frontend da GitHub: servizi, variabili, CORS, diagnostica.',
         },
+        {
+          file: 'deploy/observability.md',
+          title: 'Observability',
+          summary: 'Tracce, metriche e log con OpenTelemetry: l’Aspire Dashboard in sviluppo, Grafana Cloud o uno stack self-hosted in produzione.',
+        },
       ],
     },
   ],

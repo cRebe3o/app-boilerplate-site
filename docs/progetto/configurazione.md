@@ -82,6 +82,19 @@ aggiungono lì, ma su un database già avviato vanno creati dal pannello Permess
 | `Cors:AllowedOrigins` | Array degli origin del frontend, esatti (`https://app.example.com`). In `Development` è ignorato: qualsiasi porta su `localhost` è ammessa |
 | `Logging:LogLevel:*` | Standard .NET. Per vedere le query EF: `Microsoft.EntityFrameworkCore.Database.Command` a `Information` |
 
+### `Telemetry`
+
+| Chiave | Valore |
+|---|---|
+| `Telemetry:Endpoint` | Collector OTLP/gRPC verso cui esportare tracce, metriche e log. **Vuoto = telemetria spenta**, ed è il default |
+| `Telemetry:ServiceName` | Nome con cui l'applicazione appare nel backend di observability |
+| `Telemetry:SampleRatio` | Frazione di tracce da campionare, fra 0 e 1. `null` = tutte |
+
+In sviluppo, con `include_docker`, l'endpoint punta già all'Aspire Dashboard avviato da
+`docker compose`. In produzione va impostato solo dopo aver scelto una destinazione. Se il valore
+non è un URI assoluto valido l'applicazione non parte, invece di disattivare la telemetria in
+silenzio. Vedi [Observability](../deploy/observability.md).
+
 ### Come arrivano agli handler
 
 Gli handler **non leggono `IConfiguration`**: i test di architettura vietano ASP.NET in

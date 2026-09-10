@@ -78,6 +78,7 @@
           <p class="nav-title">Operatività</p>
           <ul>
             <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
           </ul>
         </div>
     </nav>
@@ -95,6 +96,7 @@
           <li class="lvl-3"><a href="#auth"><code>Auth</code></a></li>
           <li class="lvl-3"><a href="#seed"><code>Seed</code></a></li>
           <li class="lvl-3"><a href="#cors-e-logging"><code>Cors</code> e <code>Logging</code></a></li>
+          <li class="lvl-3"><a href="#telemetry"><code>Telemetry</code></a></li>
           <li class="lvl-3"><a href="#come-arrivano-agli-handler">Come arrivano agli handler</a></li>
           <li class="lvl-2"><a href="#frontend-le-variabili-vite">Frontend: le variabili <code>VITE_*</code></a></li>
           <li class="lvl-2"><a href="#le-variabili-copier">Le variabili Copier</a></li>
@@ -312,6 +314,35 @@ aggiungono lì, ma su un database già avviato vanno creati dal pannello Permess
 </tbody>
 </table>
 </div>
+<h3 id="telemetry"><code>Telemetry</code></h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Telemetry:Endpoint</code></td>
+<td>Collector OTLP/gRPC verso cui esportare tracce, metriche e log. <strong>Vuoto = telemetria spenta</strong>, ed è il default</td>
+</tr>
+<tr>
+<td><code>Telemetry:ServiceName</code></td>
+<td>Nome con cui l'applicazione appare nel backend di observability</td>
+</tr>
+<tr>
+<td><code>Telemetry:SampleRatio</code></td>
+<td>Frazione di tracce da campionare, fra 0 e 1. <code>null</code> = tutte</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>In sviluppo, con <code>include_docker</code>, l'endpoint punta già all'Aspire Dashboard avviato da
+<code>docker compose</code>. In produzione va impostato solo dopo aver scelto una destinazione. Se il valore
+non è un URI assoluto valido l'applicazione non parte, invece di disattivare la telemetria in
+silenzio. Vedi <a href="../deploy/observability.html">Observability</a>.</p>
 <h3 id="come-arrivano-agli-handler">Come arrivano agli handler</h3>
 <p>Gli handler <strong>non leggono <code>IConfiguration</code></strong>: i test di architettura vietano <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> in
 <code>Application</code>, e una chiave letta a mano in un handler è una dipendenza nascosta. Le impostazioni
