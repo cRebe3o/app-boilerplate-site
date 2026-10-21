@@ -154,7 +154,7 @@ dopo. La mappa:
 |---|---|
 | una variabile Copier o un passo post-generazione | [Generare e aggiornare](generazione.md) |
 | una chiave `appsettings` o una `VITE_*` | [Configurazione](configurazione.md) |
-| una skill o un comando | [Le skill Claude](skill.md) |
+| una skill o un comando | [Le skill Claude](../claude/skill.md) |
 | una convenzione del backend | [Comandi e query](../architettura/comandi-e-query.md), [Il codice](../infrastructure/implementazione.md) |
 | una convenzione del frontend | [Struttura](../frontend/struttura.md), [Convenzioni e flussi](../frontend/convenzioni.md) |
 | il percorso di una feature | [Aggiungere una feature](../guide/nuova-feature.md) |
@@ -168,4 +168,4 @@ costa un minuto e trova le pagine rimaste indietro.
 ## Da qui
 
 - [Generare e aggiornare](generazione.md) — `copier copy` e `copier update`, dall'altra parte del giro
-- [Le skill Claude](skill.md) — le skill nascono nei progetti e tornano al template per questa strada
+- [Le skill Claude](../claude/skill.md) — le skill nascono nei progetti e tornano al template per questa strada

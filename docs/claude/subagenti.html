@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I subagenti — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Claude</p>
+          <ul>
+            <li><a href="../claude/come-lavora.html">Il modello di lavoro</a></li>
+            <li><a href="../claude/ciclo-di-una-modifica.html">Il ciclo di una modifica</a></li>
+            <li><a href="../claude/lavorare-con-claude.html">Lavorare con Claude</a></li>
+            <li><a href="../claude/subagenti.html" aria-current="page">I subagenti</a></li>
+            <li><a href="../claude/istruzioni.html">Le istruzioni</a></li>
+            <li><a href="../claude/skill.html">Le skill e i comandi</a></li>
+            <li><a href="../claude/permessi-e-hook.html">Permessi e hook</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Claude</p>
+      <article class="prose">
+<h1 id="i-subagenti">I subagenti</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#che-cos-e-un-subagente">Che cos'è un subagente</a></li>
+          <li class="lvl-2"><a href="#i-subagenti-del-progetto">I subagenti del progetto</a></li>
+          <li class="lvl-2"><a href="#una-chiamata-dall-inizio-alla-fine">Una chiamata, dall'inizio alla fine</a></li>
+          <li class="lvl-2"><a href="#la-richiesta-che-cosa-passa-il-lead">La richiesta: che cosa passa il lead</a></li>
+          <li class="lvl-2"><a href="#il-rapporto-che-cosa-restituiscono">Il rapporto: che cosa restituiscono</a></li>
+          <li class="lvl-2"><a href="#come-sono-definiti">Come sono definiti</a></li>
+          <li class="lvl-2"><a href="#in-parallelo-e-quando-no">In parallelo, e quando no</a></li>
+          <li class="lvl-2"><a href="#explore-e-plan-in-pratica">Explore e Plan, in pratica</a></li>
+          <li class="lvl-3"><a href="#explore">Explore</a></li>
+          <li class="lvl-3"><a href="#plan">Plan</a></li>
+          <li class="lvl-2"><a href="#limiti-e-costi">Limiti e costi</a></li>
+          <li class="lvl-2"><a href="#aggiungere-un-subagente">Aggiungere un subagente</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Il <a href="come-lavora.html">modello di lavoro</a> stabilisce che i subagenti <strong>guardano e cercano, ma non
+scrivono</strong>. Questa pagina spiega come lavorano in concreto: chi li chiama, che cosa ricevono, che
+cosa restituiscono, come sono definiti e che cosa succede alle loro segnalazioni.</p>
+<blockquote>
+<p><strong>Stato.</strong> Explore e Plan sono integrati in Claude Code e si usano già. I due reviewer
+(<code>architecture-security-reviewer</code> ed <code>ef-sql-reviewer</code>) sono <strong>in arrivo</strong>: questa pagina è la
+loro specifica. Quando entrano nel template, i file descritti qui compaiono in <code>.claude/agents/</code>.</p>
+</blockquote>
+<h2 id="che-cos-e-un-subagente">Che cos'è un subagente</h2>
+<p>Un subagente è un'altra istanza di Claude che il lead avvia per un compito circoscritto. Ha tre
+caratteristiche che ne decidono l'uso:</p>
+<ul>
+<li><strong>Parte a freddo.</strong> Non vede la conversazione con te, né i file che il lead ha già letto, né le
+decisioni prese. Sa soltanto ciò che il lead gli scrive nella richiesta, più ciò che legge da
+solo.</li>
+<li><strong>Lavora in un contesto separato.</strong> I file che apre e i tentativi che fa restano nel suo
+contesto. Al lead torna solo il rapporto finale. È questo che lo rende utile: venti file letti
+da un subagente costano al lead una pagina di conclusioni, non venti file.</li>
+<li><strong>Risponde al lead, non a te.</strong> Il rapporto lo legge il lead, che te ne riporta la sostanza. Per
+questo il lead, chiudendo, ti dice sempre quali segnalazioni ha applicato e quali ha scartato.</li>
+</ul>
+<p>Da qui vengono le due regole che seguono: la <strong>richiesta</strong> deve contenere tutto ciò che serve, e
+il <strong>rapporto</strong> deve avere un formato che il lead possa valutare punto per punto.</p>
+<h2 id="i-subagenti-del-progetto">I subagenti del progetto</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Subagente</th>
+<th>Tipo</th>
+<th>Modello</th>
+<th>Strumenti</th>
+<th>Compito</th>
+<th>Stato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Explore</strong></td>
+<td>integrato</td>
+<td>quello predefinito</td>
+<td>sola lettura</td>
+<td>Ricerca a ventaglio: trova dove sta qualcosa e restituisce la conclusione</td>
+<td>presente</td>
+</tr>
+<tr>
+<td><strong>Plan</strong></td>
+<td>integrato</td>
+<td>quello del lead</td>
+<td>sola lettura</td>
+<td>Critica un piano già scritto: file dimenticati, rischi, alternative più semplici</td>
+<td>presente</td>
+</tr>
+<tr>
+<td><strong>architecture-security-reviewer</strong></td>
+<td>del progetto</td>
+<td>Sonnet</td>
+<td><code>Read</code>, <code>Grep</code>, <code>Glob</code></td>
+<td>Permessi, posto delle regole di business, dati esposti, aderenza all'architettura</td>
+<td>in arrivo</td>
+</tr>
+<tr>
+<td><strong>ef-sql-reviewer</strong></td>
+<td>del progetto</td>
+<td>Sonnet</td>
+<td><code>Read</code>, <code>Grep</code>, <code>Glob</code></td>
+<td>Query, mapping, migration e differenze fra SQL Server e PostgreSQL</td>
+<td>in arrivo</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Che cosa guarda ciascun reviewer, e che cosa lascia ai test, è descritto in
+<a href="come-lavora.html#i-reviewer">I reviewer</a>.</p>
+<h2 id="una-chiamata-dall-inizio-alla-fine">Una chiamata, dall'inizio alla fine</h2>
+<pre><code>Lead                                   Subagente
+ │
+ ├── scrive la richiesta  ───────────►  legge il CLAUDE.md del progetto
+ │   obiettivo, file, diff,             legge i file indicati e quelli vicini
+ │   che cosa guardare                  confronta con le regole
+ │                                               │
+ │   ◄───────────────────────────────── rapporto in formato fisso
+ │
+ ├── valuta ogni segnalazione
+ │     corretta     → corregge
+ │     non corretta → scarta, con la ragione
+ │
+ └── verifica di nuovo (build, test, lint, typecheck)
+</code></pre>
+<p>Il subagente non modifica nulla e non lancia comandi. Ogni correzione la fa il lead, e passa dalla
+stessa verifica di qualsiasi altra modifica.</p>
+<h2 id="la-richiesta-che-cosa-passa-il-lead">La richiesta: che cosa passa il lead</h2>
+<p>Siccome il subagente parte a freddo, una richiesta vaga produce una review vaga. Il lead scrive
+sempre:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Che cosa</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>L'obiettivo della modifica</strong>, in una o due frasi</td>
+<td>Senza, il reviewer giudica il codice ma non sa se fa ciò che deve</td>
+</tr>
+<tr>
+<td><strong>Le decisioni già prese con te</strong> (es. &quot;hard delete, confermato&quot;)</td>
+<td>Altrimenti il reviewer le ripropone come problemi</td>
+</tr>
+<tr>
+<td><strong>L'elenco dei file</strong> creati e modificati</td>
+<td>Delimita il perimetro: il reviewer non rilegge tutto il progetto</td>
+</tr>
+<tr>
+<td><strong>Il diff</strong> delle parti di sua competenza</td>
+<td>Il reviewer non ha <code>git</code>: il diff gli arriva nella richiesta</td>
+</tr>
+<tr>
+<td><strong>Che cosa guardare in particolare</strong>, se c'è</td>
+<td>&quot;La tabella <code>Suppliers</code> in produzione ha già 40.000 righe&quot; cambia il giudizio su una migration</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Un esempio, per l'anagrafica fornitori:</p>
+<pre><code class="language-text">Revisiona la parte dati di una nuova entità Supplier (anagrafica fornitori).
+
+Obiettivo: CRUD fornitori con lista paginata lato server e ricerca su ragione sociale
+e partita IVA. La partita IVA è univoca (confermato dall&#x27;utente). Hard delete.
+
+File:
+- Domain/Suppliers/Supplier.cs (nuovo)
+- Infrastructure/Persistence/Configurations/SupplierConfiguration.cs (nuovo)
+- Infrastructure/Migrations/SqlServer/…_AddSuppliers.cs (nuovo)
+- Infrastructure/Migrations/PostgreSql/…_AddSuppliers.cs (nuovo)
+- Application/Suppliers/GetSuppliers/GetSuppliersQueryHandler.cs (nuovo)
+
+Diff: &lt;diff dei file sopra&gt;
+
+Attenzione in particolare a: la ricerca deve comportarsi allo stesso modo sui due provider.
+</code></pre>
+<h2 id="il-rapporto-che-cosa-restituiscono">Il rapporto: che cosa restituiscono</h2>
+<p>I reviewer rispondono sempre nello stesso formato, perché il lead deve poter decidere segnalazione
+per segnalazione:</p>
+<pre><code class="language-text">[ALTA] Application/Suppliers/GetSuppliers/GetSuppliersQueryHandler.cs:34
+Problema: la ricerca usa Contains sulla ragione sociale. Su PostgreSQL il confronto
+è case-sensitive, su SQL Server (collation predefinita) no: la stessa ricerca dà
+risultati diversi.
+Correzione: normalizzare il maiuscolo/minuscolo su entrambi i lati del confronto,
+così il risultato non dipende dal provider.
+
+[BASSA] Infrastructure/Persistence/Configurations/SupplierConfiguration.cs:21
+Problema: Email senza HasMaxLength: diventa nvarchar(max) / text.
+Correzione: HasMaxLength(256), come User.Email.
+
+Non verificato: l&#x27;indice univoco sulla partita IVA in presenza di righe esistenti,
+perché la tabella è nuova.
+</code></pre>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Severità</th>
+<th>Significato</th>
+<th>Che cosa ne fa il lead</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ALTA</strong></td>
+<td>Un bug, una falla di sicurezza, una migration che perde dati</td>
+<td>Corregge prima di chiudere, o ti spiega perché non è un problema</td>
+</tr>
+<tr>
+<td><strong>MEDIA</strong></td>
+<td>Funziona, ma viola una convenzione o crea un problema prevedibile</td>
+<td>Corregge, salvo una ragione esplicita</td>
+</tr>
+<tr>
+<td><strong>BASSA</strong></td>
+<td>Miglioria, coerenza con il resto del codice</td>
+<td>Valuta; può proportela invece di applicarla</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Due regole del formato:</p>
+<ul>
+<li><strong>Se non trova problemi lo dice</strong>, con una riga: &quot;Nessun problema nel perimetro indicato&quot;. Un
+reviewer che inventa segnalazioni per sembrare utile è peggio di nessun reviewer.</li>
+<li><strong>Dichiara che cosa non ha potuto verificare.</strong> È la sezione <em>Non verificato</em>: dice al lead dove
+la review non arriva, invece di lasciar credere che tutto sia stato controllato.</li>
+</ul>
+<h2 id="come-sono-definiti">Come sono definiti</h2>
+<p>Ogni reviewer è un file Markdown in <code>.claude/agents/</code>, con un'intestazione che ne fissa nome,
+strumenti e modello, e un corpo che è il suo prompt di sistema:</p>
+<pre><code class="language-markdown">---
+name: ef-sql-reviewer
+description: Revisiona entità, configuration, migration e query EF Core su SQL Server
+  e PostgreSQL. Usalo dopo modifiche al modello dati o a query di lettura non banali.
+tools: Read, Grep, Glob
+<span class="hljs-section">model: sonnet
+---</span>
+
+Sei un reviewer di accesso ai dati. Non modifichi file.
+
+<span class="hljs-bullet">1.</span> Leggi il CLAUDE.md di root e quello di apps/backend: descrivono l&#x27;architettura
+   di QUESTO progetto. Non dare per scontata un&#x27;architettura diversa.
+<span class="hljs-bullet">2.</span> Leggi i file indicati nella richiesta e, se serve, quelli che usano o sono usati.
+<span class="hljs-bullet">3.</span> Controlla: …
+<span class="hljs-bullet">4.</span> Rispondi nel formato: [SEVERITÀ] file:riga / Problema / Correzione,
+   poi &quot;Non verificato&quot;. Se non ci sono problemi, dillo in una riga.
+</code></pre>
+<p>Tre scelte in questa intestazione:</p>
+<ul>
+<li><strong><code>tools: Read, Grep, Glob</code></strong> — la sola lettura non è un'istruzione che il reviewer potrebbe
+ignorare: senza <code>Edit</code>, <code>Write</code> e <code>Bash</code> non ha proprio il modo di modificare qualcosa. È il
+<a href="come-lavora.html#tre-livelli-di-garanzia">livello deterministico</a> applicato al reviewer stesso.
+Per lo stesso motivo il diff arriva nella richiesta invece di essere letto con <code>git diff</code>.</li>
+<li><strong><code>model: sonnet</code></strong> — un compito circoscritto e ben descritto non ha bisogno del modello del
+lead. Sonnet ragiona abbastanza bene su architettura e SQL, ed è più rapido ed economico.</li>
+<li><strong>La <code>description</code></strong> dice <em>quando</em> usarlo. È ciò che il lead legge per decidere se chiamarlo, e
+deve essere coerente con la tabella in <a href="ciclo-di-una-modifica.html#5-revisionare">Il ciclo di una modifica</a>.</li>
+</ul>
+<p>L'architettura <strong>non sta nel prompt</strong>: il reviewer la legge dal <code>CLAUDE.md</code>. Così lo stesso file
+funziona su un progetto in Clean Architecture e su uno organizzato a vertical slice.</p>
+<h2 id="in-parallelo-e-quando-no">In parallelo, e quando no</h2>
+<p><strong>In parallelo sì</strong>, quando i compiti sono indipendenti e nessuno scrive:</p>
+<ul>
+<li>i due reviewer sulla stessa modifica, che tocca sia endpoint e permessi sia il modello dati: il
+lead li avvia insieme e ne raccoglie i rapporti;</li>
+<li>due o tre ricerche di Explore su domande diverse (&quot;dove si usa <code>IsActive</code>?&quot;, &quot;quali store usano
+ancora <code>run</code> per le scritture?&quot;).</li>
+</ul>
+<p><strong>In parallelo no:</strong></p>
+<ul>
+<li><strong>mai per scrivere.</strong> Vedi <a href="come-lavora.html#il-principio-un-solo-autore">il principio</a>.</li>
+<li><strong>mai una catena &quot;review → correggi → review&quot;</strong> lasciata girare da sola. Dopo le correzioni il
+lead rilancia la verifica, non il reviewer. Lo richiama solo se le correzioni hanno cambiato il
+disegno (un'entità rimodellata, un permesso diverso), e in quel caso è una review nuova, con una
+richiesta nuova.</li>
+</ul>
+<h2 id="explore-e-plan-in-pratica">Explore e Plan, in pratica</h2>
+<h3 id="explore">Explore</h3>
+<p>Si usa quando la risposta richiede di <strong>scorrere molti file</strong> e al lead serve solo la conclusione.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Explore sì</th>
+<th>Explore no</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;In quali pagine c'è una ricerca, e quali usano <code>useServerTable</code>?&quot;</td>
+<td>Leggere un file di cui si conosce il percorso</td>
+</tr>
+<tr>
+<td>&quot;Dove viene letto o scritto <code>Supplier.VatNumber</code>, backend e frontend?&quot;</td>
+<td>Cercare una classe per nome: basta una ricerca diretta</td>
+</tr>
+<tr>
+<td>Capire una convenzione che cambia nome da una cartella all'altra</td>
+<td>Leggere i file che si stanno per modificare: il lead deve averli davanti lui</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Nella richiesta il lead indica <strong>quanto cercare a fondo</strong> e <strong>che forma deve avere la risposta</strong>
+(un elenco di file e righe, una tabella, un sì/no con le eccezioni).</p>
+<h3 id="plan">Plan</h3>
+<p>Si usa sulle modifiche grandi, <strong>dopo</strong> che il lead ha scritto un piano e <strong>prima</strong> di
+presentartelo. Riceve il piano e i requisiti, e restituisce ciò che manca o che non torna: file
+dimenticati (il <code>DataSeeder</code> per i permessi, <code>sections.config.ts</code> per il menu, le traduzioni),
+migration con rischi, una strada più semplice. Il lead corregge il piano e ti porta la versione
+corretta, dicendo che cosa è cambiato.</p>
+<h2 id="limiti-e-costi">Limiti e costi</h2>
+<ul>
+<li><strong>Ogni chiamata riparte da zero.</strong> Rilegge <code>CLAUDE.md</code> e codice: costa tempo e token. Per questo
+un reviewer si chiama quando la modifica tocca ciò che sa giudicare, non a ogni modifica.</li>
+<li><strong>Vede solo una parte.</strong> Legge il perimetro che gli è stato dato e poco intorno. Può segnalare
+come problema una scelta che il contesto rende giusta: è il motivo per cui il lead valuta ogni
+segnalazione invece di applicarla.</li>
+<li><strong>Non è deterministico.</strong> Due esecuzioni sullo stesso codice possono dare rapporti diversi. Un
+reviewer non sostituisce un test.</li>
+<li><strong>Se una segnalazione si ripete, va promossa.</strong> Quando lo stesso problema torna in più review ed
+è esprimibile come test, regola ESLint o hook, si scrive lì, e si toglie dalla checklist del
+reviewer. È la regola dei <a href="come-lavora.html#tre-livelli-di-garanzia">tre livelli</a> usata nel verso
+opposto.</li>
+</ul>
+<h2 id="aggiungere-un-subagente">Aggiungere un subagente</h2>
+<p>Prima di aggiungerne uno, la domanda è se il controllo può stare a un livello più affidabile: un
+test, un hook, una riga di <code>CLAUDE.md</code>. Molte proposte si fermano qui: vedi
+<a href="come-lavora.html#le-scelte-scartate">Le scelte scartate</a>.</p>
+<p>Se serve davvero, il nuovo subagente deve:</p>
+<ul>
+<li>avere un <strong>compito circoscritto</strong>, descrivibile in una frase nella <code>description</code>;</li>
+<li>essere in <strong>sola lettura</strong>, con <code>tools</code> che lo garantisce;</li>
+<li>giudicare qualcosa che <strong>non si riesce a esprimere come test</strong>;</li>
+<li>leggere l'architettura dal <strong><code>CLAUDE.md</code></strong>, non averla scritta nel prompt;</li>
+<li>rispondere nel <strong>formato fisso</strong> del rapporto.</li>
+</ul>
+<p><strong>Come si prova.</strong> Su un branch di prova si introducono di proposito i problemi che il subagente
+deve trovare (un endpoint con il permesso sbagliato, una query N+1, una migration che elimina una
+colonna piena) e si controlla che li segnali tutti. Poi lo si lancia su una modifica corretta, e si
+controlla che risponda &quot;nessun problema&quot; invece di inventarne. Il subagente entra nel template
+solo se supera entrambe le prove.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="come-lavora.html">Il modello di lavoro</a></strong> — perché i subagenti non scrivono, e i tre livelli di
+garanzia</li>
+<li><strong><a href="ciclo-di-una-modifica.html#5-revisionare">Il ciclo di una modifica</a></strong> — quando si chiama quale
+reviewer</li>
+<li><strong><a href="skill.html">Le skill e i comandi</a></strong> — le istruzioni che il lead segue mentre scrive</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

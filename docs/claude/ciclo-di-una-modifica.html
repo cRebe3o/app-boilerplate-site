@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Il ciclo di una modifica — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Claude</p>
+          <ul>
+            <li><a href="../claude/come-lavora.html">Il modello di lavoro</a></li>
+            <li><a href="../claude/ciclo-di-una-modifica.html" aria-current="page">Il ciclo di una modifica</a></li>
+            <li><a href="../claude/lavorare-con-claude.html">Lavorare con Claude</a></li>
+            <li><a href="../claude/subagenti.html">I subagenti</a></li>
+            <li><a href="../claude/istruzioni.html">Le istruzioni</a></li>
+            <li><a href="../claude/skill.html">Le skill e i comandi</a></li>
+            <li><a href="../claude/permessi-e-hook.html">Permessi e hook</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Claude</p>
+      <article class="prose">
+<h1 id="il-ciclo-di-una-modifica">Il ciclo di una modifica</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#1-capire">1. Capire</a></li>
+          <li class="lvl-2"><a href="#2-pianificare">2. Pianificare</a></li>
+          <li class="lvl-2"><a href="#3-implementare">3. Implementare</a></li>
+          <li class="lvl-2"><a href="#4-verificare">4. Verificare</a></li>
+          <li class="lvl-2"><a href="#5-revisionare">5. Revisionare</a></li>
+          <li class="lvl-2"><a href="#6-chiudere">6. Chiudere</a></li>
+          <li class="lvl-2"><a href="#tre-esempi">Tre esempi</a></li>
+          <li class="lvl-3"><a href="#una-nuova-entita-i-fornitori">Una nuova entità: i fornitori</a></li>
+          <li class="lvl-3"><a href="#un-nuovo-caso-d-uso-disattivare-un-fornitore">Un nuovo caso d'uso: disattivare un fornitore</a></li>
+          <li class="lvl-3"><a href="#un-bug">Un bug</a></li>
+          <li class="lvl-2"><a href="#quando-il-ciclo-si-accorcia">Quando il ciclo si accorcia</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Il <a href="come-lavora.html">modello di lavoro</a> dice chi fa che cosa. Questa pagina lo mostra in movimento:
+i passi che una modifica attraversa da quando la chiedi a quando è committata, che cosa succede in
+ciascuno e quali strumenti entrano in gioco.</p>
+<pre><code> 1. Capire  →  2. Pianificare  →  3. Implementare  →  4. Verificare  →  5. Revisionare  →  6. Chiudere
+                   (se serve)          ↑    hook          │                (se serve)
+                                       └──── se rosso ────┘
+</code></pre>
+<p>Non tutte le modifiche attraversano tutti i passi: correggere un'etichetta non ha bisogno di un
+piano né di un reviewer. Ma la <strong>verifica non si salta mai</strong>, e il passo che si salta va saltato
+per una ragione, non per fretta. In fondo alla pagina c'è <a href="#quando-il-ciclo-si-accorcia">quando il ciclo si accorcia</a>.</p>
+<h2 id="1-capire">1. Capire</h2>
+<p>Prima di scrivere, il lead deve sapere <strong>che cosa c'è già</strong> e <strong>che cosa è stato deciso</strong>.</p>
+<ul>
+<li>Il <code>CLAUDE.md</code> di root è già caricato all'avvio: dice come si lavora. Quelli di
+<code>apps/backend</code> e <code>apps/frontend</code> si caricano quando Claude apre file in quelle cartelle: dicono
+com'è fatto il codice.</li>
+<li>Il lead legge i file che la modifica tocca <strong>prima</strong> di toccarli, e una feature esistente dello
+stesso tipo da usare come riferimento (<code>Groups</code> per una lookup, <code>Users</code> per un aggregato con M2M).</li>
+<li>Se rispondere richiede di scorrere molti file — &quot;dove viene usato questo campo?&quot;, &quot;quali pagine
+hanno una ricerca?&quot; — la ricerca va a <strong>Explore</strong>, che restituisce la conclusione senza riempire il
+contesto del lead di file letti a metà.</li>
+</ul>
+<p><strong>Le domande si fanno qui, non dopo.</strong> Se la richiesta lascia aperta una decisione che spetta a
+te, Claude la chiede prima di scrivere codice:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Domanda tipica</th>
+<th>Perché non la decide Claude</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hard o soft delete?</td>
+<td>Il default è hard delete; il soft delete cambia query, indici e audit</td>
+</tr>
+<tr>
+<td>Che permessi servono, e a quali ruoli vanno?</td>
+<td>È una scelta di sicurezza, non di stile</td>
+</tr>
+<tr>
+<td>La lista va paginata lato server? Con quali filtri?</td>
+<td>Dipende dai volumi reali, che Claude non conosce</td>
+</tr>
+<tr>
+<td>La migration elimina o trasforma dati esistenti?</td>
+<td>È irreversibile in produzione</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le domande con una risposta ovvia o deducibile dal codice non si fanno: si sceglie il default del
+progetto e lo si dice.</p>
+<h2 id="2-pianificare">2. Pianificare</h2>
+<p>Il <strong>plan mode</strong> è il passo in cui il lead esplora e scrive un piano senza toccare file. Il piano
+diventa codice solo dopo la tua approvazione.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Si pianifica</th>
+<th>Non serve un piano</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>La modifica tocca <strong>più layer</strong> (es. Domain + Application + frontend)</td>
+<td>Un fix confinato in un file</td>
+</tr>
+<tr>
+<td>Cambia il <strong>modello dati</strong>: entità, colonne, relazioni, migration</td>
+<td>Un testo, una traduzione, uno stile</td>
+</tr>
+<tr>
+<td>Tocca <strong>permessi o autenticazione</strong></td>
+<td>Un test che manca</td>
+</tr>
+<tr>
+<td>Non è chiaro <strong>dove</strong> va la logica (aggregato, domain service, handler)</td>
+<td>Una modifica meccanica già descritta da un comando (<code>/add-field</code>)</td>
+</tr>
+<tr>
+<td>Ci sono più strade ragionevoli e la scelta ha conseguenze</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Un buon piano, in questi progetti, dice sempre:</p>
+<ul>
+<li><strong>i file</strong> che crea e che modifica, layer per layer, dal centro verso l'esterno;</li>
+<li><strong>le migration</strong>: quali, e se toccano dati esistenti;</li>
+<li><strong>i permessi</strong>: nuovi, riusati, e a quali ruoli del seed vanno;</li>
+<li><strong>i test</strong> che aggiunge: invarianti in <code>Domain.Tests</code>, handler in <code>Application.Tests</code>, store e
+pagine nel frontend;</li>
+<li><strong>le domande aperte</strong>, se ne restano.</li>
+</ul>
+<p>Per le modifiche grandi — una nuova area funzionale, un cambio al modello di autorizzazione — il
+piano può passare dal subagente <strong>Plan</strong> prima di arrivare a te: un secondo contesto che lo critica
+cercando file dimenticati, rischi e alternative più semplici.</p>
+<h2 id="3-implementare">3. Implementare</h2>
+<p>Il lead scrive il codice, seguendo il piano se c'è. Lo strumento giusto dipende dal compito:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Compito</th>
+<th>Strumento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Una nuova entità con il CRUD completo, dal database alla pagina</td>
+<td><code>/new-feature &lt;Entità&gt;</code></td>
+</tr>
+<tr>
+<td>Un nuovo caso d'uso su un'entità esistente (un'azione, una query, un report)</td>
+<td><code>/new-slice</code> <em>(in arrivo)</em></td>
+</tr>
+<tr>
+<td>Aggiungere o togliere un campo, propagandolo ovunque</td>
+<td><code>/add-field</code>, <code>/remove-field</code></td>
+</tr>
+<tr>
+<td>Un bug descritto a parole</td>
+<td><code>/fix</code></td>
+</tr>
+<tr>
+<td>Tutto il resto</td>
+<td>Le skill, che si attivano da sole: <code>backend-slice</code>, <code>db-entity</code>, <code>vue-feature</code>, <code>pagination</code>, …</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>L'ordine di scrittura segue le dipendenze, <strong>dal centro verso l'esterno</strong>: dominio, mapping e
+migration, Application, Api, poi frontend. Ogni passo compila sopra il precedente, e un errore si
+scopre vicino a dove è nato.</p>
+<p>Durante la scrittura lavorano gli <strong>hook</strong> <em>(in arrivo)</em>: una modifica a un file generato, a una
+migration committata o a un file di segreti viene bloccata con la ragione, e ogni file scritto
+esce già formattato.</p>
+<h2 id="4-verificare">4. Verificare</h2>
+<p><strong>Una modifica è finita quando i controlli sono verdi</strong>, non quando sembra giusta.</p>
+<pre><code class="language-bash">pnpm verify          <span class="hljs-comment"># in arrivo: tutto ciò che segue, con un esito sintetico</span>
+</code></pre>
+<p>Oggi, gli stessi controlli uno per uno:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># backend (in apps/backend)</span>
+dotnet build &lt;Progetto&gt;.sln
+dotnet <span class="hljs-built_in">test</span> &lt;Progetto&gt;.sln         <span class="hljs-comment"># inclusi i test di architettura</span>
+
+<span class="hljs-comment"># frontend (in apps/frontend)</span>
+pnpm vue-tsc --noEmit
+pnpm eslint .
+pnpm vitest run
+</code></pre>
+<p>Fa parte della verifica anche <strong>scrivere i test</strong> che la modifica richiede: un'invariante nuova ha
+il suo test in <code>Domain.Tests</code>, un handler nuovo il suo in <code>Application.Tests</code> (vedi
+<a href="../guide/test-backend.html">Testare il backend</a>).</p>
+<p>Se qualcosa è rosso, si torna al passo 3. Se resta rosso per una ragione che non dipende dalla
+modifica — un test già rotto, un servizio non avviato — Claude lo dice con l'output, invece di
+dichiarare finito.</p>
+<h2 id="5-revisionare">5. Revisionare</h2>
+<p>La review ha due forme.</p>
+<p><strong><code>/review</code></strong> è la review generale: parte dal diff del branch rispetto a <code>main</code> e lo confronta con
+le convenzioni del progetto, backend e frontend. Si usa a fine lavoro su qualsiasi modifica non
+banale.</p>
+<p><strong>I reviewer</strong> sono la review specialistica, e si chiamano quando la modifica tocca ciò che sanno
+giudicare <em>(in arrivo)</em>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>La modifica tocca…</th>
+<th>Reviewer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Endpoint nuovi o modificati, permessi, autenticazione, dati restituiti al client, snapshot di audit</td>
+<td><code>architecture-security-reviewer</code></td>
+</tr>
+<tr>
+<td>Una regola di business di cui non è ovvio il posto</td>
+<td><code>architecture-security-reviewer</code></td>
+</tr>
+<tr>
+<td>Entità, configuration, migration</td>
+<td><code>ef-sql-reviewer</code></td>
+</tr>
+<tr>
+<td>Query di lettura nuove o con filtri, ordinamenti, paginazione</td>
+<td><code>ef-sql-reviewer</code></td>
+</tr>
+<tr>
+<td>Solo frontend, testi, stili</td>
+<td>nessuno: bastano <code>/review</code> e i controlli</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Quando la modifica tocca entrambe le aree, i due reviewer lavorano <strong>in parallelo</strong>: leggono soltanto,
+quindi non si intralciano.</p>
+<p><strong>Che cosa si fa con le segnalazioni.</strong> Un reviewer è un secondo parere, non un'autorità. Il lead
+legge ogni segnalazione e per ciascuna:</p>
+<ul>
+<li>se è corretta, <strong>la corregge</strong> e torna alla verifica;</li>
+<li>se non lo è, <strong>la scarta dicendo perché</strong> — un reviewer che legge solo una parte del codice può
+non vedere il contesto che rende giusta una scelta.</li>
+</ul>
+<p>Ciò che non si fa è applicare le segnalazioni alla cieca.</p>
+<h2 id="6-chiudere">6. Chiudere</h2>
+<p>Le operazioni git le fai <strong>tu</strong>. Claude si ferma con le modifiche nel working tree e ti consegna
+ciò che serve per committarle:</p>
+<ul>
+<li><strong>il riepilogo</strong> dei file creati e modificati, raggruppati per layer;</li>
+<li><strong>un messaggio di commit proposto</strong>, in italiano e con il prefisso convenzionale (<code>feat:</code>,
+<code>fix:</code>, <code>refactor:</code>, <code>docs:</code>, <code>chore:</code>, <code>test:</code>), che dice <em>che cosa</em> cambia e, se non è ovvio,
+<em>perché</em>;</li>
+<li>se la modifica cambia il comportamento del <strong>template</strong>, la voce aggiunta al suo <code>CHANGELOG.md</code>.</li>
+</ul>
+<p>Branch, commit, push, merge e tag Claude li esegue solo se glielo chiedi esplicitamente, e solo
+l'operazione chiesta.</p>
+<h2 id="tre-esempi">Tre esempi</h2>
+<h3 id="una-nuova-entita-i-fornitori">Una nuova entità: i fornitori</h3>
+<blockquote>
+<p>&quot;Mi serve l'anagrafica fornitori: ragione sociale, partita IVA, email, attivo sì/no.&quot;</p>
+</blockquote>
+<ol>
+<li><strong>Capire</strong> — il lead apre <code>Groups</code> come riferimento e chiede ciò che non può dedurre: la lista
+va paginata? Con ricerca su quali campi? La partita IVA è univoca? Quali ruoli vedono e
+modificano i fornitori?</li>
+<li><strong>Pianificare</strong> — plan mode, perché tocca tutti i layer e il modello dati. Il piano elenca
+l'aggregato <code>Supplier</code> con l'unicità della partita IVA, la configuration con l'indice univoco,
+le due migration, le slice CRUD, i permessi <code>suppliers.read/write/delete</code>, la pagina con
+<code>pagination</code> e <code>search-filter</code>, i test.</li>
+<li><strong>Implementare</strong> — <code>/new-feature Supplier</code>, che combina <code>db-entity</code>, <code>backend-slice</code>,
+<code>permissions</code>, <code>vue-feature</code>, <code>vuetify-dialog-form</code>.</li>
+<li><strong>Verificare</strong> — tutti i controlli, più i test dell'aggregato e degli handler.</li>
+<li><strong>Revisionare</strong> — <code>/review</code>, poi i due reviewer in parallelo: c'è un'entità nuova con indice
+univoco (ef-sql) e ci sono endpoint e permessi nuovi (architecture-security).</li>
+<li><strong>Chiudere</strong> — messaggio proposto: <code>feat: anagrafica fornitori</code>.</li>
+</ol>
+<h3 id="un-nuovo-caso-d-uso-disattivare-un-fornitore">Un nuovo caso d'uso: disattivare un fornitore</h3>
+<blockquote>
+<p>&quot;Un fornitore disattivato non deve più comparire nei menu a tendina, ma resta nello storico.&quot;</p>
+</blockquote>
+<ol>
+<li><strong>Capire</strong> — esiste già <code>Supplier</code>. La domanda da fare è una: chi può disattivare?</li>
+<li><strong>Pianificare</strong> — sì, ma breve: la regola &quot;un fornitore già disattivato non si disattiva di nuovo&quot;
+va nell'aggregato (<code>Supplier.Deactivate()</code>), non nell'handler; le query dei menu a tendina
+filtrano gli attivi.</li>
+<li><strong>Implementare</strong> — <code>/new-slice</code> <em>(in arrivo)</em>: comando <code>DeactivateSupplier</code>, endpoint, permesso,
+azione nello store e pulsante nella pagina.</li>
+<li><strong>Verificare</strong> — più un test dell'invariante in <code>Domain.Tests</code>.</li>
+<li><strong>Revisionare</strong> — <code>architecture-security-reviewer</code>: un endpoint nuovo con un permesso.
+Nessuna modifica allo schema, quindi niente ef-sql.</li>
+<li><strong>Chiudere</strong> — messaggio proposto: <code>feat: disattivazione dei fornitori</code>.</li>
+</ol>
+<h3 id="un-bug">Un bug</h3>
+<blockquote>
+<p>&quot;Nel dialog dei fornitori, se il salvataggio fallisce il dialog si chiude lo stesso.&quot;</p>
+</blockquote>
+<ol>
+<li><strong>Capire</strong> — <code>/fix</code> con la descrizione. Il lead legge dialog, store e service: l'azione di
+scrittura usa <code>run</code> invece di <code>runOrThrow</code>, quindi l'errore non arriva al dialog.</li>
+<li><strong>Pianificare</strong> — no: la causa è chiara e la correzione è in un file.</li>
+<li><strong>Implementare</strong> — <code>runOrThrow</code> nello store. Il lead controlla se lo stesso errore c'è in altri
+store, e lo segnala invece di correggerlo in silenzio.</li>
+<li><strong>Verificare</strong> — più un test dello store che dimostra che l'errore viene rilanciato: è il test che
+avrebbe intercettato il bug.</li>
+<li><strong>Revisionare</strong> — <code>/review</code> sul diff; nessun reviewer specialistico.</li>
+<li><strong>Chiudere</strong> — messaggio proposto: <code>fix: il dialog fornitori resta aperto se il salvataggio fallisce</code>.</li>
+</ol>
+<h2 id="quando-il-ciclo-si-accorcia">Quando il ciclo si accorcia</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Modifica</th>
+<th>Passi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Un testo, una traduzione, uno stile</td>
+<td>Capire → Implementare → Verificare → Chiudere</td>
+</tr>
+<tr>
+<td>Un fix confinato e con causa chiara</td>
+<td>Capire → Implementare → Verificare (con il test che lo dimostra) → <code>/review</code> → Chiudere</td>
+</tr>
+<tr>
+<td>Un campo in più</td>
+<td>Capire → <code>/add-field</code> → Verificare → <code>ef-sql-reviewer</code> se la tabella ha già dati → Chiudere</td>
+</tr>
+<tr>
+<td>Tutto il resto</td>
+<td>Il ciclo completo</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il passo che non si accorcia mai è la verifica.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="come-lavora.html">Il modello di lavoro</a></strong> — i componenti e le ragioni delle scelte</li>
+<li><strong><a href="lavorare-con-claude.html">Lavorare con Claude</a></strong> — che cosa controllare tu, passo per passo</li>
+<li><strong><a href="subagenti.html">I subagenti</a></strong> — che cosa ricevono i reviewer e che cosa restituiscono</li>
+<li><strong><a href="../guide/nuova-feature.html">Aggiungere una feature</a></strong> — il percorso di <code>/new-feature</code> spiegato per
+esteso, utile per rivederne l'output</li>
+<li><strong><a href="../guide/test-backend.html">Testare il backend</a></strong> — che cosa si testa dove</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

@@ -382,4 +382,4 @@ Dalla radice del monorepo gli stessi comandi sono `pnpm typecheck:frontend`, `pn
 
 - [Struttura del progetto](struttura.md) — le cartelle, una per una
 - [Aggiungere una feature](../guide/nuova-feature.md) — il percorso completo, backend compreso
-- [Le skill Claude](../progetto/skill.md) — le skill frontend e di test che applicano queste regole
+- [Le skill Claude](../claude/skill.md) — le skill frontend e di test che applicano queste regole

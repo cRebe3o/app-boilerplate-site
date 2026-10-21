@@ -388,4 +388,4 @@ codice; ciò che deve essere servito tale e quale (favicon, `_redirects` per l'h
 
 - [Convenzioni e flussi](convenzioni.md) — come si scrive una feature attraversando queste cartelle
 - [Aggiungere una feature](../guide/nuova-feature.md) — il percorso completo, backend compreso
-- [Le skill Claude](../progetto/skill.md) — `vue-feature`, `detail-page`, `vuetify-dialog-form` e le skill di test
+- [Le skill Claude](../claude/skill.md) — `vue-feature`, `detail-page`, `vuetify-dialog-form` e le skill di test

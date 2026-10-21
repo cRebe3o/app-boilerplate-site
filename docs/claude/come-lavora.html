@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Il modello di lavoro — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Claude</p>
+          <ul>
+            <li><a href="../claude/come-lavora.html" aria-current="page">Il modello di lavoro</a></li>
+            <li><a href="../claude/ciclo-di-una-modifica.html">Il ciclo di una modifica</a></li>
+            <li><a href="../claude/lavorare-con-claude.html">Lavorare con Claude</a></li>
+            <li><a href="../claude/subagenti.html">I subagenti</a></li>
+            <li><a href="../claude/istruzioni.html">Le istruzioni</a></li>
+            <li><a href="../claude/skill.html">Le skill e i comandi</a></li>
+            <li><a href="../claude/permessi-e-hook.html">Permessi e hook</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Claude</p>
+      <article class="prose">
+<h1 id="il-modello-di-lavoro">Il modello di lavoro</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#il-principio-un-solo-autore">Il principio: un solo autore</a></li>
+          <li class="lvl-2"><a href="#tre-livelli-di-garanzia">Tre livelli di garanzia</a></li>
+          <li class="lvl-2"><a href="#i-componenti">I componenti</a></li>
+          <li class="lvl-3"><a href="#il-lead-e-gli-strumenti-integrati">Il lead e gli strumenti integrati</a></li>
+          <li class="lvl-3"><a href="#i-reviewer">I reviewer</a></li>
+          <li class="lvl-3"><a href="#le-istruzioni">Le istruzioni</a></li>
+          <li class="lvl-3"><a href="#i-controlli-deterministici">I controlli deterministici</a></li>
+          <li class="lvl-2"><a href="#le-scelte-scartate">Le scelte scartate</a></li>
+          <li class="lvl-2"><a href="#le-regole-che-valgono-sempre">Le regole che valgono sempre</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Questa pagina descrive <strong>come Claude Code lavora su un progetto generato dal template</strong>: chi fa che
+cosa, quali strumenti entrano in gioco, quali garanzie danno e perché l'organizzazione è questa e
+non un'altra.</p>
+<p>Non è un manuale di Claude Code. È la parte che il manuale non può dire: le scelte fatte <em>per
+questi progetti</em> — una Clean Architecture .NET con doppio provider e un frontend Vue generato dai
+tipi OpenAPI — e le ragioni dietro ciascuna.</p>
+<blockquote>
+<p><strong>Stato.</strong> Questa pagina è la specifica dell'organizzazione, e una parte di ciò che descrive
+è ancora in introduzione nel template. Nelle tabelle la colonna <strong>Stato</strong> distingue ciò che c'è
+già (<strong>presente</strong>) da ciò che sta arrivando (<strong>in arrivo</strong>). Quando un pezzo entra nel template,
+la sua riga cambia qui.</p>
+</blockquote>
+<h2 id="il-principio-un-solo-autore">Il principio: un solo autore</h2>
+<p>Su un progetto lavora <strong>un solo agente principale</strong> — il <em>lead</em>, su Opus — che legge il codice,
+pianifica, scrive le modifiche e decide. Tutto il codice che finisce in un commit passa dalle sue
+mani.</p>
+<p>I subagenti esistono, ma con due soli compiti:</p>
+<ul>
+<li><strong>guardare con occhi indipendenti</strong> — una review fatta da un contesto che non ha scritto il codice
+vede cose che l'autore non vede più;</li>
+<li><strong>cercare in largo</strong> — quando rispondere a una domanda richiede di scorrere decine di file e al
+lead serve solo la conclusione, non i file.</li>
+</ul>
+<p>Nessun subagente scrive codice. Le ragioni sono pratiche:</p>
+<ul>
+<li><strong>un subagente parte a freddo</strong>: non ha la conversazione, non sa che cosa è stato deciso dieci
+minuti prima, rilegge ciò che il lead sapeva già. Delegare la scrittura costa contesto e produce
+codice che il lead deve comunque rileggere tutto;</li>
+<li><strong>due autori in parallelo si pestano i piedi</strong>: una slice tocca Domain, Application,
+Infrastructure, Api e frontend insieme, e i punti di contatto (il <code>DataSeeder</code>, <code>IReadDbContext</code>,
+<code>sections.config.ts</code>, le traduzioni) sono proprio quelli dove due modifiche concorrenti
+confliggono;</li>
+<li><strong>la coerenza è il valore del template</strong>: il codice aggiunto deve assomigliare a quello che c'è.
+Un solo autore che segue le stesse istruzioni la mantiene; tanti autori la diluiscono.</li>
+</ul>
+<h2 id="tre-livelli-di-garanzia">Tre livelli di garanzia</h2>
+<p>Ogni regola del progetto può essere fatta rispettare in tre modi, con affidabilità molto diversa:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Livello</th>
+<th>Strumenti</th>
+<th>Che cosa garantisce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Deterministico</strong></td>
+<td>test, <code>Architecture.Tests</code>, compilatore, <code>vue-tsc</code>, ESLint, hook, CI</td>
+<td>Sempre, a ogni esecuzione, senza interpretazione. Se la regola è violata, qualcosa diventa rosso</td>
+</tr>
+<tr>
+<td><strong>2. Istruzioni</strong></td>
+<td><code>CLAUDE.md</code>, skill, comandi</td>
+<td>Che Claude <em>sappia</em> la regola e la applichi scrivendo. Funziona quasi sempre, ma è una lettura, non un controllo</td>
+</tr>
+<tr>
+<td><strong>3. Giudizio</strong></td>
+<td>i subagenti reviewer</td>
+<td>Una seconda lettura che trova ciò che non si può esprimere come test: un permesso sbagliato, una query che diventa N+1, una regola di business nel posto sbagliato</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Da qui viene la regola che decide come si aggiunge un controllo nuovo:</p>
+<blockquote>
+<p><strong>Se una regola può essere un test o un hook, non diventa un'istruzione. Se può essere
+un'istruzione chiara, non diventa un agente.</strong> Si scende di livello solo quando quello sopra non
+riesce a esprimerla.</p>
+</blockquote>
+<p>Un esempio dal template. &quot;Un handler non usa <code>AppDbContext</code>&quot; potrebbe essere una voce della
+checklist di review — ma è verificabile sugli assembly compilati, e infatti lo verifica
+<code>Architecture.Tests</code>, che fa fallire la build. Nessun reviewer deve più ricordarselo. Invece &quot;questo
+endpoint richiede il permesso giusto&quot; non è riducibile a un test: che <code>users.write</code> sia il permesso
+corretto per <em>quella</em> operazione è un giudizio, ed è lì che serve il reviewer.</p>
+<h2 id="i-componenti">I componenti</h2>
+<pre><code>Claude lead (Opus)                    legge, pianifica, scrive, decide
+│
+├── Explore                           subagente integrato · ricerca in sola lettura
+├── Plan mode / Plan                  integrato · piano prima di scrivere, critica del piano
+│
+├── architecture-security-reviewer    subagente · Sonnet · sola lettura
+│                                     permessi, confini fra layer, dati esposti
+├── ef-sql-reviewer                   subagente · Sonnet · sola lettura
+│                                     query, mapping, migration sui due provider
+│
+├── Istruzioni                        CLAUDE.md (root, backend, frontend) · skill · comandi
+│
+└── Controlli deterministici          hook · pnpm verify · test · CI
+</code></pre>
+<h3 id="il-lead-e-gli-strumenti-integrati">Il lead e gli strumenti integrati</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Che cosa fa</th>
+<th>Quando entra</th>
+<th>Stato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lead</strong> (Opus)</td>
+<td>Tutto il lavoro di scrittura e tutte le decisioni</td>
+<td>Sempre</td>
+<td>presente</td>
+</tr>
+<tr>
+<td><strong>Explore</strong></td>
+<td>Ricerca a ventaglio in sola lettura, restituisce la conclusione</td>
+<td>Quando la risposta richiede di scorrere molti file o convenzioni di nomi diverse. Non per leggere un file noto</td>
+<td>presente</td>
+</tr>
+<tr>
+<td><strong>Plan mode</strong></td>
+<td>Il lead esplora e propone un piano senza toccare file, finché non lo approvi</td>
+<td>Modifiche non banali: più layer, modello dati, permessi (vedi <a href="ciclo-di-una-modifica.html#2-pianificare">Il ciclo di una modifica</a>)</td>
+<td>presente</td>
+</tr>
+<tr>
+<td><strong>Plan</strong> (subagente)</td>
+<td>Critica un piano già scritto: file dimenticati, rischi, alternative</td>
+<td>Modifiche grandi, dove un errore di piano costa ore</td>
+<td>presente</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="i-reviewer">I reviewer</h3>
+<p>Due subagenti, entrambi <strong>in sola lettura</strong> e su <strong>Sonnet</strong>: abbastanza capaci da ragionare su
+architettura e SQL, più rapidi ed economici del lead per un compito circoscritto. Non modificano
+file: restituiscono un elenco di problemi in formato fisso (file e riga, severità, correzione
+proposta), e il lead decide che cosa farne. Come si chiamano, che cosa ricevono e come sono definiti è in
+<a href="subagenti.html">I subagenti</a>.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Reviewer</th>
+<th>Che cosa guarda</th>
+<th>Che cosa <strong>non</strong> guarda</th>
+<th>Stato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>architecture-security-reviewer</strong></td>
+<td>Che ogni endpoint abbia il permesso <em>giusto</em>; che le regole di business stiano nell'aggregato e non nell'handler; che nessun dato sensibile finisca in una response, in un log o in uno snapshot di audit; che la slice rispetti l'architettura descritta nel <code>CLAUDE.md</code> del progetto</td>
+<td>La direzione delle dipendenze fra layer e la presenza di <code>.RequireAuthorization</code> — li verificano i test</td>
+<td>in arrivo</td>
+</tr>
+<tr>
+<td><strong>ef-sql-reviewer</strong></td>
+<td>Query che diventano N+1 o caricano colonne inutili; indici mancanti sui filtri; mapping (lunghezze, delete behavior, conversioni); migration che non reggono su una tabella già piena; differenze fra SQL Server e PostgreSQL (<code>Contains</code> case-sensitive, tipi, default)</td>
+<td>Che le due migration esistano e siano allineate al modello — lo verifica la CI</td>
+<td>in arrivo</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>I reviewer <strong>non conoscono l'architettura a memoria</strong>: la leggono dal <code>CLAUDE.md</code> del progetto che
+stanno revisionando. È ciò che permette di usarli sia sui progetti generati dal template (Clean
+Architecture) sia su progetti con un'organizzazione diversa, come una vertical slice.</p>
+<h3 id="le-istruzioni">Le istruzioni</h3>
+<p>Come si scrivono e dove va una regola nuova è in <a href="istruzioni.html">Le istruzioni</a>.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Livello</th>
+<th>Che cosa contiene</th>
+<th>Quando si carica</th>
+<th>Stato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CLAUDE.md</code> di root</td>
+<td><strong>Come si lavora</strong>: il ciclo, la definizione di &quot;fatto&quot;, quando usare plan mode e reviewer, le convenzioni di commit, che cosa non si fa mai</td>
+<td>All'avvio di ogni sessione</td>
+<td>in arrivo</td>
+</tr>
+<tr>
+<td><code>apps/backend/CLAUDE.md</code>, <code>apps/frontend/CLAUDE.md</code></td>
+<td><strong>Com'è fatto il codice</strong>: struttura, regole dei layer, convenzioni</td>
+<td>Quando Claude legge file in quella cartella</td>
+<td>presente</td>
+</tr>
+<tr>
+<td>Skill (<code>.claude/skills/</code>)</td>
+<td><strong>Procedure</strong>: come si scrive una slice, un'entità, una pagina, un test</td>
+<td>Da sole, quando la richiesta corrisponde alla loro descrizione</td>
+<td>presente</td>
+</tr>
+<tr>
+<td>Comandi (<code>/new-feature</code>, <code>/new-slice</code>, <code>/add-field</code>, <code>/remove-field</code>, <code>/fix</code>, <code>/review</code>)</td>
+<td><strong>Flussi completi</strong> che combinano più skill</td>
+<td>Solo quando li invochi tu</td>
+<td>presenti, <code>/new-slice</code> in arrivo</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>La distinzione fra skill e comandi è voluta. Una skill si attiva da sola perché descrive <em>come</em> si
+fa una cosa, e saperlo non fa mai danni. Un comando è un'azione con conseguenze — crea una dozzina
+di file, genera migration — e parte solo se lo chiedi.</p>
+<h3 id="i-controlli-deterministici">I controlli deterministici</h3>
+<p>Permessi e hook, con la loro configurazione, sono descritti in <a href="permessi-e-hook.html">Permessi e hook</a>.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Controllo</th>
+<th>Che cosa fa</th>
+<th>Stato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Hook prima della modifica</strong></td>
+<td>Bloccano le modifiche che non vanno mai fatte a mano: <code>api.generated.ts</code> (è generato), le migration già committate (si corregge con una migration nuova), <code>appsettings.local.json</code> e <code>.env*.local</code> (contengono segreti)</td>
+<td>in arrivo</td>
+</tr>
+<tr>
+<td><strong>Hook dopo la modifica</strong></td>
+<td>Formattano il file appena scritto (Prettier ed ESLint su ts e vue, <code>dotnet format</code> su C#), così le differenze di stile non arrivano mai in review</td>
+<td>in arrivo</td>
+</tr>
+<tr>
+<td><strong><code>pnpm verify</code></strong></td>
+<td>Build, test, lint e typecheck di backend e frontend in un comando, con un esito sintetico</td>
+<td>in arrivo — oggi gli stessi comandi uno per uno</td>
+</tr>
+<tr>
+<td><strong>Test</strong></td>
+<td>Domain, Application e architettura; in arrivo i test di integrazione su un database vero, per <strong>entrambi</strong> i provider</td>
+<td>presenti, integrazione in arrivo</td>
+</tr>
+<tr>
+<td><strong>CI</strong></td>
+<td>Gli stessi controlli di <code>verify</code> su ogni push, più due che in locale si dimenticano: migration mancanti rispetto al modello e tipi TypeScript non rigenerati dopo una modifica all'API</td>
+<td>in arrivo</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="le-scelte-scartate">Le scelte scartate</h2>
+<p>Organizzazioni più ricche sono state considerate e scartate. Le ragioni restano scritte qui, così
+la scelta non va ridiscussa ogni volta.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Scartato</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Un subagente che lancia build e test</strong> (es. su Haiku, &quot;riporta solo l'esito&quot;)</td>
+<td>Uno script con output sintetico fa lo stesso lavoro in modo deterministico, più in fretta e senza poter riassumere male un errore. Il lead deve comunque vedere l'errore per correggerlo</td>
+</tr>
+<tr>
+<td><strong>Un subagente che confronta DTO .NET e tipi TypeScript</strong></td>
+<td>I tipi non si scrivono: si generano dallo schema OpenAPI. Il rischio vero è dimenticarsi di rigenerarli, e lo intercetta la CI confrontando i tipi committati con quelli rigenerati</td>
+</tr>
+<tr>
+<td><strong>Un reviewer dedicato ai componenti Vue/Vuetify</strong></td>
+<td>Le regole del frontend sono quasi tutte meccaniche (testi con <code>t()</code>, nessuna chiamata HTTP fuori dai service, dimensione dei componenti) e stanno meglio in ESLint. Il resto è una checklist di <code>/review</code></td>
+</tr>
+<tr>
+<td><strong>Un reviewer con l'architettura scritta dentro</strong> (es. &quot;vertical slice&quot;)</td>
+<td>I progetti non hanno tutti la stessa architettura. Un reviewer che la legge dal <code>CLAUDE.md</code> funziona ovunque; uno che la conosce a memoria va riscritto per ogni progetto</td>
+</tr>
+<tr>
+<td><strong>Più agenti che scrivono codice in parallelo</strong></td>
+<td>Vedi <a href="#il-principio-un-solo-autore">il principio</a>: costa contesto, produce conflitti nei punti di contatto e diluisce la coerenza</td>
+</tr>
+<tr>
+<td><strong>Un reviewer a ogni modifica</strong></td>
+<td>La review ha un costo e un rumore. Si chiama quando la modifica tocca ciò che il reviewer sa giudicare — vedi <a href="ciclo-di-una-modifica.html#5-revisionare">quando revisionare</a></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="le-regole-che-valgono-sempre">Le regole che valgono sempre</h2>
+<p>Indipendentemente dal compito:</p>
+<ul>
+<li><strong>&quot;Fatto&quot; significa verificato.</strong> Una modifica è finita quando build, test, lint e typecheck sono
+verdi — non quando &quot;dovrebbe funzionare&quot;. Se un controllo fallisce, lo si dice con l'output.</li>
+<li><strong>Una regola si scrive in un solo posto.</strong> Se la stessa convenzione compare nel <code>CLAUDE.md</code>, in una
+skill e in un comando, prima o poi uno dei tre resta indietro e Claude riceve istruzioni
+contraddittorie. Gli altri posti rimandano a quello.</li>
+<li><strong>Il codice generato non si modifica a mano</strong>: <code>api.generated.ts</code> si rigenera, una migration
+committata si corregge con una migration nuova.</li>
+<li><strong>I segreti non si toccano</strong>: <code>appsettings.local.json</code> e <code>.env*.local</code> non si leggono e non si
+scrivono.</li>
+<li><strong>Git lo usi tu.</strong> Branch, stage, commit, push, merge e tag li fai tu; Claude li fa solo quando
+glielo chiedi esplicitamente, e solo l'operazione chiesta. Può leggere lo stato del repository
+(<code>git status</code>, <code>git diff</code>, <code>git log</code>) per capire che cosa è cambiato.</li>
+<li><strong>Le decisioni che spettano a te restano tue</strong>: un soft delete, il nome di un permesso, una
+migration che cancella dati. Claude chiede, invece di scegliere un default con conseguenze.</li>
+</ul>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="ciclo-di-una-modifica.html">Il ciclo di una modifica</a></strong> — lo stesso modello visto in azione,
+passo per passo, con tre esempi</li>
+<li><strong><a href="lavorare-con-claude.html">Lavorare con Claude</a></strong> — lo stesso modello visto dal tuo lato</li>
+<li><strong><a href="subagenti.html">I subagenti</a></strong> — come lavorano Explore, Plan e i reviewer</li>
+<li><strong><a href="skill.html">Le skill e i comandi</a></strong> — le skill e i comandi inclusi nel template</li>
+<li><strong><a href="../architettura/clean-architecture.html">Clean Architecture</a></strong> — le regole che i test fanno
+rispettare da soli</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

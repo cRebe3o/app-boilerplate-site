@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lavorare con Claude — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Claude</p>
+          <ul>
+            <li><a href="../claude/come-lavora.html">Il modello di lavoro</a></li>
+            <li><a href="../claude/ciclo-di-una-modifica.html">Il ciclo di una modifica</a></li>
+            <li><a href="../claude/lavorare-con-claude.html" aria-current="page">Lavorare con Claude</a></li>
+            <li><a href="../claude/subagenti.html">I subagenti</a></li>
+            <li><a href="../claude/istruzioni.html">Le istruzioni</a></li>
+            <li><a href="../claude/skill.html">Le skill e i comandi</a></li>
+            <li><a href="../claude/permessi-e-hook.html">Permessi e hook</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Claude</p>
+      <article class="prose">
+<h1 id="lavorare-con-claude">Lavorare con Claude</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#aprire-la-sessione">Aprire la sessione</a></li>
+          <li class="lvl-2"><a href="#chiedere-una-modifica">Chiedere una modifica</a></li>
+          <li class="lvl-2"><a href="#comando-o-richiesta-libera">Comando o richiesta libera?</a></li>
+          <li class="lvl-2"><a href="#i-momenti-in-cui-claude-si-ferma">I momenti in cui Claude si ferma</a></li>
+          <li class="lvl-3"><a href="#le-domande">Le domande</a></li>
+          <li class="lvl-3"><a href="#il-piano">Il piano</a></li>
+          <li class="lvl-3"><a href="#il-riepilogo-finale">Il riepilogo finale</a></li>
+          <li class="lvl-2"><a href="#correggere-la-rotta">Correggere la rotta</a></li>
+          <li class="lvl-2"><a href="#tenere-in-buono-stato-la-sessione">Tenere in buono stato la sessione</a></li>
+          <li class="lvl-2"><a href="#che-cosa-non-chiedere">Che cosa non chiedere</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Le altre pagine di questa sezione descrivono l'organizzazione dal punto di vista di Claude. Questa
+è dal tuo: come chiedere una modifica, che cosa controllare nei momenti in cui Claude si ferma,
+come correggere la rotta e come tenere una sessione in buono stato.</p>
+<h2 id="aprire-la-sessione">Aprire la sessione</h2>
+<p>Apri Claude Code <strong>nella root del monorepo</strong>, non in <code>apps/backend</code> o <code>apps/frontend</code>. Da lì:</p>
+<ul>
+<li>vale il <code>.claude/</code> del progetto: skill, comandi, permessi;</li>
+<li>si carica il <code>CLAUDE.md</code> di root <em>(in arrivo)</em>, e quelli delle app quando Claude ci entra;</li>
+<li>una modifica che attraversa backend e frontend sta in una sessione sola.</li>
+</ul>
+<p>Prima di cominciare, conviene che il working tree sia pulito o su un branch dedicato: alla fine
+avrai un diff che contiene solo questa modifica, più facile da rivedere e da committare.</p>
+<h2 id="chiedere-una-modifica">Chiedere una modifica</h2>
+<p>Una buona richiesta dice <strong>che cosa deve succedere</strong>, non come scriverlo: il come lo sanno le
+istruzioni del progetto.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Meno efficace</th>
+<th>Più efficace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;Crea un'entità Supplier con un controller&quot;</td>
+<td>&quot;Mi serve l'anagrafica fornitori: ragione sociale, partita IVA univoca, email, attivo sì/no. La vedono tutti, la modificano gli amministratori&quot;</td>
+</tr>
+<tr>
+<td>&quot;Sistema il dialog&quot;</td>
+<td>&quot;Nel dialog dei fornitori, se il salvataggio fallisce il dialog si chiude lo stesso. Deve restare aperto e mostrare l'errore&quot;</td>
+</tr>
+<tr>
+<td>&quot;Aggiungi un filtro&quot;</td>
+<td>&quot;Nella lista fornitori voglio filtrare per attivo/non attivo, insieme alla ricerca che c'è già&quot;</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Che cosa aiuta mettere nella richiesta:</p>
+<ul>
+<li><strong>il comportamento atteso</strong> dal punto di vista di chi usa l'applicazione;</li>
+<li><strong>le decisioni che hai già preso</strong>: chi può fare che cosa, se la cancellazione è logica, se ci
+sono dati esistenti da migrare;</li>
+<li><strong>un riferimento</strong>, se ne hai uno: &quot;come la pagina dei gruppi&quot;;</li>
+<li><strong>per un bug, come si riproduce</strong> e che cosa succede invece di ciò che ti aspetti.</li>
+</ul>
+<p>Se manca una decisione che spetta a te, Claude te la chiede prima di scrivere codice
+(vedi <a href="ciclo-di-una-modifica.html#1-capire">Capire</a>). Se ti accorgi di non saperla prendere, dillo:
+Claude può presentarti le alternative con le conseguenze, ma la scelta resta tua.</p>
+<h2 id="comando-o-richiesta-libera">Comando o richiesta libera?</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Se devi…</th>
+<th>Usa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Creare un'entità nuova con tutto il CRUD</td>
+<td><code>/new-feature &lt;Entità&gt;</code></td>
+</tr>
+<tr>
+<td>Aggiungere o togliere un campo ovunque</td>
+<td><code>/add-field</code>, <code>/remove-field</code></td>
+</tr>
+<tr>
+<td>Correggere un bug descritto a parole</td>
+<td><code>/fix</code></td>
+</tr>
+<tr>
+<td>Rivedere ciò che hai o che ha scritto Claude</td>
+<td><code>/review</code></td>
+</tr>
+<tr>
+<td>Tutto il resto</td>
+<td>Una richiesta in linguaggio naturale: le skill giuste si attivano da sole</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>I comandi sono descritti in <a href="skill.html#i-comandi">Le skill e i comandi</a>.</p>
+<h2 id="i-momenti-in-cui-claude-si-ferma">I momenti in cui Claude si ferma</h2>
+<p>Ci sono tre punti in cui il lavoro aspetta te. Sono anche i tre punti in cui un tuo controllo
+rende di più.</p>
+<h3 id="le-domande">Le domande</h3>
+<p>Rispondi a tutte, anche con &quot;scegli tu il default&quot;: a quel punto Claude usa il default del
+progetto e lo scrive nel riepilogo, così resta visibile.</p>
+<h3 id="il-piano">Il piano</h3>
+<p>Quando Claude propone un piano (vedi <a href="ciclo-di-una-modifica.html#2-pianificare">Pianificare</a>), è il
+momento più economico per correggerlo: cambiare una riga del piano costa un minuto, cambiare il
+codice dopo costa un giro intero. Controlla soprattutto:</p>
+<ul>
+<li><strong>i permessi</strong>: nomi e ruoli a cui vanno;</li>
+<li><strong>le migration</strong>: se toccano dati esistenti, e come;</li>
+<li><strong>dove sta la logica</strong>: una regola di business deve stare nell'aggregato, non nell'handler o
+nella pagina;</li>
+<li><strong>che cosa non c'è</strong>: una pagina che ti aspettavi, un filtro, un test.</li>
+</ul>
+<p>Se qualcosa non va, rispondi con la correzione invece di approvare: Claude rivede il piano e te lo
+ripropone.</p>
+<h3 id="il-riepilogo-finale">Il riepilogo finale</h3>
+<p>A fine lavoro Claude ti consegna i file toccati, l'esito dei controlli, le segnalazioni dei reviewer
+con ciò che ne ha fatto, e un messaggio di commit proposto (vedi <a href="ciclo-di-una-modifica.html#6-chiudere">Chiudere</a>).
+Prima di committare:</p>
+<ul>
+<li><strong>leggi il diff</strong>, almeno nelle parti che toccano dominio, permessi e migration;</li>
+<li><strong>guarda l'esito dei controlli</strong>: se Claude dice che un controllo è rosso per una ragione esterna,
+verifica che lo sia davvero;</li>
+<li><strong>prova l'applicazione</strong> sul caso che hai chiesto: i test dicono che il codice fa ciò che i test
+verificano, non che fa ciò che volevi.</li>
+</ul>
+<h2 id="correggere-la-rotta">Correggere la rotta</h2>
+<p>Puoi interrompere Claude in qualsiasi momento (Esc) e scrivere una correzione. Conviene farlo
+appena vedi che va nella direzione sbagliata, non alla fine.</p>
+<ul>
+<li><strong>&quot;No, così no&quot;</strong> non basta: di' che cosa è sbagliato e che cosa vuoi invece. &quot;Il filtro va lato
+server, non nello store&quot; è una correzione che Claude può applicare.</li>
+<li><strong>Se la stessa correzione ti serve due volte</strong>, non è un problema di questa sessione: è
+un'istruzione che manca. Va scritta dove serve (vedi <a href="istruzioni.html#dove-va-una-regola-nuova">Le istruzioni</a>),
+così la terza volta non succede.</li>
+<li><strong>Se la modifica è andata troppo lontano</strong>, è più rapido scartarla e ripartire con una richiesta
+migliore che correggerla un pezzo alla volta. Le modifiche sono nel working tree: le scarti con
+git, che usi tu.</li>
+</ul>
+<h2 id="tenere-in-buono-stato-la-sessione">Tenere in buono stato la sessione</h2>
+<p>Claude lavora dentro un contesto di dimensione limitata: ogni file letto, ogni output di test, ogni
+scambio lo riempie. Quando è pieno, la parte vecchia viene riassunta e i dettagli si perdono.</p>
+<ul>
+<li><strong>Una sessione, un compito.</strong> Finita una modifica e committata, inizia una sessione nuova
+(<code>/clear</code>) per la successiva. Il contesto della modifica precedente non serve più e occupa
+spazio.</li>
+<li><strong>Le ricerche larghe vanno a Explore</strong>: è il motivo per cui esiste
+(vedi <a href="subagenti.html#explore">I subagenti</a>). Se chiedi &quot;dove si usa X in tutto il progetto?&quot;,
+Claude dovrebbe delegarla da sé; puoi anche chiederlo esplicitamente.</li>
+<li><strong>Non incollare log interi</strong>: incolla l'errore e le righe intorno. Se serve di più, Claude lo
+chiede o lo legge da sé.</li>
+<li><strong>Le cose da ricordare oltre la sessione</strong> non stanno nella conversazione: stanno nei
+<code>CLAUDE.md</code>, nelle skill, nel codice. Ciò che dici a Claude oggi, domani non lo sa più.</li>
+</ul>
+<h2 id="che-cosa-non-chiedere">Che cosa non chiedere</h2>
+<ul>
+<li><strong>Di modificare i file generati o i segreti</strong>: <code>api.generated.ts</code>, le migration committate,
+<code>appsettings.local.json</code>. Claude rifiuta e propone la strada giusta; gli hook <em>(in arrivo)</em> lo
+impediranno comunque.</li>
+<li><strong>Di saltare la verifica &quot;perché è una modifica piccola&quot;</strong>: le modifiche piccole sono quelle che
+rompono i test di architettura senza che nessuno se lo aspetti.</li>
+<li><strong>Di committare e pushare in automatico a fine lavoro</strong>, come abitudine. Puoi chiederlo per una
+singola modifica, ma la revisione del diff prima del commit è il tuo controllo, e saltarlo
+toglie l'ultimo livello.</li>
+</ul>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="ciclo-di-una-modifica.html">Il ciclo di una modifica</a></strong> — gli stessi passi visti da Claude</li>
+<li><strong><a href="skill.html">Le skill e i comandi</a></strong> — che cosa puoi invocare</li>
+<li><strong><a href="permessi-e-hook.html">Permessi e hook</a></strong> — che cosa Claude può fare senza chiederti</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

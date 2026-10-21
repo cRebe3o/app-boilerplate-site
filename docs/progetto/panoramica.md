@@ -264,7 +264,7 @@ Nascondere il pulsante è cortesia verso l'utente; a **negare** l'operazione è 
 
 - [Generare e aggiornare](generazione.md) — le variabili del template, `copier copy` e `copier update`
 - [Configurazione](configurazione.md) — tutte le chiavi del backend e le variabili del frontend, dove si mettono
-- [Le skill Claude](skill.md) — gli scaffolding inclusi per aggiungere codice nel modo previsto
+- [Le skill Claude](../claude/skill.md) — gli scaffolding inclusi per aggiungere codice nel modo previsto
 - [Clean Architecture](../architettura/clean-architecture.md) — i layer, la regola delle dipendenze, dove mettere la logica
 - [Frontend](../frontend/struttura.md) — la struttura del progetto Vue e le convenzioni con cui si scrive una feature
 - [Infrastruttura](../infrastructure/panoramica.md) — perché due provider SQL e come sono tenuti insieme

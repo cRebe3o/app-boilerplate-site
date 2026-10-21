@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le istruzioni — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Claude</p>
+          <ul>
+            <li><a href="../claude/come-lavora.html">Il modello di lavoro</a></li>
+            <li><a href="../claude/ciclo-di-una-modifica.html">Il ciclo di una modifica</a></li>
+            <li><a href="../claude/lavorare-con-claude.html">Lavorare con Claude</a></li>
+            <li><a href="../claude/subagenti.html">I subagenti</a></li>
+            <li><a href="../claude/istruzioni.html" aria-current="page">Le istruzioni</a></li>
+            <li><a href="../claude/skill.html">Le skill e i comandi</a></li>
+            <li><a href="../claude/permessi-e-hook.html">Permessi e hook</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Claude</p>
+      <article class="prose">
+<h1 id="le-istruzioni">Le istruzioni</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#che-cosa-legge-claude-e-quando">Che cosa legge Claude, e quando</a></li>
+          <li class="lvl-2"><a href="#com-e-fatto-un-claudemd-di-cartella">Com'è fatto un <code>CLAUDE.md</code> di cartella</a></li>
+          <li class="lvl-2"><a href="#dove-va-una-regola-nuova">Dove va una regola nuova</a></li>
+          <li class="lvl-2"><a href="#una-regola-in-un-solo-posto">Una regola in un solo posto</a></li>
+          <li class="lvl-2"><a href="#scrivere-istruzioni-che-funzionano">Scrivere istruzioni che funzionano</a></li>
+          <li class="lvl-2"><a href="#le-istruzioni-nei-progetti-generati">Le istruzioni nei progetti generati</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Il secondo dei <a href="come-lavora.html#tre-livelli-di-garanzia">tre livelli di garanzia</a> è fatto di testo:
+i <code>CLAUDE.md</code>, le skill, i comandi. Questa pagina spiega che cosa contiene ciascun file, quando
+Claude lo legge e, soprattutto, <strong>dove va scritta una regola nuova</strong>: è la decisione che, presa
+male, riempie il progetto di istruzioni duplicate e contraddittorie.</p>
+<h2 id="che-cosa-legge-claude-e-quando">Che cosa legge Claude, e quando</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Che cosa contiene</th>
+<th>Quando si carica</th>
+<th>Stato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CLAUDE.md</code> di root</td>
+<td><strong>Come si lavora</strong>: il ciclo, la definizione di &quot;fatto&quot;, quando usare plan mode e reviewer, git, che cosa non si fa mai</td>
+<td>All'avvio di ogni sessione aperta nella root del monorepo</td>
+<td>in arrivo</td>
+</tr>
+<tr>
+<td><code>apps/backend/CLAUDE.md</code></td>
+<td><strong>Com'è fatto il backend</strong>: struttura della soluzione, regola delle dipendenze, aggregati, slice, persistenza, errori, auth, audit, test</td>
+<td>Quando Claude legge file sotto <code>apps/backend/</code></td>
+<td>presente</td>
+</tr>
+<tr>
+<td><code>apps/frontend/CLAUDE.md</code></td>
+<td><strong>Com'è fatto il frontend</strong>: struttura, tipi generati, flusso di una feature, store e pagine tipo, router, i18n, permessi, verifica</td>
+<td>Quando Claude legge file sotto <code>apps/frontend/</code></td>
+<td>presente</td>
+</tr>
+<tr>
+<td><code>.claude/skills/*/SKILL.md</code></td>
+<td><strong>Procedure</strong> per un compito preciso</td>
+<td>Quando la richiesta corrisponde alla <code>description</code> della skill</td>
+<td>presente</td>
+</tr>
+<tr>
+<td><code>.claude/commands/*.md</code></td>
+<td><strong>Flussi completi</strong> che combinano più skill</td>
+<td>Solo quando li invochi (<code>/new-feature</code>, <code>/fix</code>, …)</td>
+<td>presente</td>
+</tr>
+<tr>
+<td><code>.claude/agents/*.md</code></td>
+<td><strong>Prompt dei reviewer</strong></td>
+<td>Quando il lead chiama il subagente</td>
+<td>in arrivo</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Due conseguenze pratiche:</p>
+<ul>
+<li><strong>Il <code>CLAUDE.md</code> di root è l'unico sempre presente.</strong> Tutto ciò che deve valere in ogni sessione,
+qualunque cartella si tocchi, sta lì. Oggi questo ruolo non ha ancora un file: le regole di
+lavoro sono scritte in <a href="come-lavora.html#le-regole-che-valgono-sempre">Il modello di lavoro</a> e
+diventano il <code>CLAUDE.md</code> di root quando entra nel template.</li>
+<li><strong>I <code>CLAUDE.md</code> di backend e frontend arrivano solo quando servono.</strong> Una sessione che tocca solo
+il frontend non paga il costo delle 330 righe del backend, e viceversa.</li>
+</ul>
+<h2 id="com-e-fatto-un-claudemd-di-cartella">Com'è fatto un <code>CLAUDE.md</code> di cartella</h2>
+<p>I due file esistenti seguono la stessa forma, che conviene mantenere:</p>
+<ol>
+<li><strong>La struttura</strong>: le cartelle e che cosa contengono, così Claude sa dove guardare e dove
+scrivere.</li>
+<li><strong>Le regole, con il perché.</strong> &quot;Le query usano <code>IReadDbContext</code>&quot; è una regola; &quot;perché le letture
+non passano dai repository: proiettano direttamente nei DTO&quot; è ciò che permette a Claude di
+applicarla bene in un caso che la regola non prevede.</li>
+<li><strong>Un esempio tipo</strong> per le forme che si ripetono: lo store di una lista paginata, la pagina
+lista, la slice di un comando. Un esempio vale più di un paragrafo di descrizione.</li>
+<li><strong>La verifica</strong>: i comandi che dicono se la modifica è giusta.</li>
+<li><strong>Le note per Claude</strong>: le regole più facili da violare, in forma di elenco breve, in fondo.</li>
+</ol>
+<p>Le <strong>note per Claude</strong> sono un promemoria, non il posto dove una regola è definita: ogni voce
+riassume qualcosa che è spiegato sopra, nello stesso file. Se una nota non ha una sezione che la
+spiega, va scritta prima la sezione.</p>
+<h2 id="dove-va-una-regola-nuova">Dove va una regola nuova</h2>
+<p>È la domanda da farsi ogni volta che una convenzione nasce o cambia. Si parte dall'alto e ci si
+ferma alla prima risposta &quot;sì&quot;:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Domanda</th>
+<th>Se sì</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Si può verificare in modo automatico? (un test di architettura, una regola ESLint, un hook, un controllo in CI)</td>
+<td><strong>Si scrive lì</strong>, e non serve un'istruzione. Vedi <a href="permessi-e-hook.html">Permessi e hook</a></td>
+</tr>
+<tr>
+<td>Vale <strong>sempre</strong>, in qualsiasi parte del monorepo? (git, verifica, segreti)</td>
+<td><code>CLAUDE.md</code> di root</td>
+</tr>
+<tr>
+<td>Descrive <strong>com'è fatto</strong> il codice di un'app? (un layer, un pattern, una convenzione di nomi)</td>
+<td>Il <code>CLAUDE.md</code> di quella app</td>
+</tr>
+<tr>
+<td>Descrive <strong>come si fa</strong> un compito preciso, passo per passo? (una slice, una pagina, un test)</td>
+<td>Una skill</td>
+</tr>
+<tr>
+<td>È una <strong>sequenza di compiti</strong> che si ripete e che ha conseguenze? (crea file, genera migration)</td>
+<td>Un comando, che richiama le skill</td>
+</tr>
+<tr>
+<td>È un <strong>giudizio</strong> che non si riesce a scrivere come regola?</td>
+<td>La checklist di un reviewer</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Un esempio. &quot;Ogni modifica al modello richiede due migration&quot; sta oggi nel <code>CLAUDE.md</code> del backend
+e nella skill <code>db-entity</code>. Ma è verificabile: la CI confronta il modello con le migration di
+entrambi i provider <em>(in arrivo)</em>. Quando quel controllo esiste, l'istruzione resta solo come
+spiegazione del <em>perché</em> servono due migration, non come regola da ricordare.</p>
+<h2 id="una-regola-in-un-solo-posto">Una regola in un solo posto</h2>
+<p>Se la stessa regola è scritta in tre file, prima o poi uno resta indietro e Claude riceve
+istruzioni contraddittorie, senza modo di sapere quale sia quella giusta. Per questo:</p>
+<ul>
+<li><strong>la regola si definisce in un solo posto</strong>, quello indicato dalla tabella sopra;</li>
+<li><strong>gli altri file rimandano</strong>: una skill dice &quot;segui le regole sugli store in
+<code>apps/frontend/CLAUDE.md</code>&quot; invece di ricopiarle;</li>
+<li><strong>una skill può ripetere un esempio di codice</strong>, perché le serve per scaffoldare, ma l'esempio
+deve compilare con le regole del <code>CLAUDE.md</code>, non introdurne di nuove.</li>
+</ul>
+<p>Quando cambi una convenzione, cerca dove è citata (<code>grep</code> sul nome del metodo o del pattern in
+<code>apps/*/CLAUDE.md</code> e <code>.claude/</code>) e aggiorna tutti i rimandi nello stesso commit.</p>
+<h2 id="scrivere-istruzioni-che-funzionano">Scrivere istruzioni che funzionano</h2>
+<ul>
+<li><strong>Concrete, non generiche.</strong> &quot;Scrivi codice pulito&quot; non cambia nulla. &quot;Nessuna chiamata <code>axios</code>
+fuori dai service&quot; cambia il codice che Claude scrive.</li>
+<li><strong>Con il perché.</strong> Una regola senza ragione viene applicata alla lettera anche dove non ha
+senso, o ignorata dove sembra di troppo.</li>
+<li><strong>Con il caso di riferimento.</strong> &quot;Come <code>Groups</code>&quot; o &quot;come <code>users.store.ts</code>&quot; porta Claude a leggere
+codice vero, che è sempre aggiornato più di qualsiasi descrizione.</li>
+<li><strong>Corte.</strong> Un <code>CLAUDE.md</code> si legge per intero a ogni caricamento: ciò che è raro o lungo sta
+meglio in una skill, che si carica solo quando serve.</li>
+<li><strong>Verificate.</strong> Un'istruzione nuova si prova chiedendo a Claude il compito che dovrebbe
+governare, in una sessione pulita, e guardando se il risultato la rispetta.</li>
+</ul>
+<h2 id="le-istruzioni-nei-progetti-generati">Le istruzioni nei progetti generati</h2>
+<p>I <code>CLAUDE.md</code>, le skill e i comandi arrivano dal template e si aggiornano con
+<a href="../progetto/generazione.html#aggiornare-un-progetto-quando-il-template-cambia"><code>copier update</code></a>,
+come il resto del codice. Un progetto può aggiungere le sue regole, ma conviene farlo <strong>in fondo ai
+file, in una sezione propria</strong>, o in skill con un nome nuovo: così un aggiornamento del template
+produce meno conflitti.</p>
+<p>Una regola nata in un progetto che vale per tutti torna al template per la strada descritta in
+<a href="../progetto/contribuire.html">Contribuire al template</a>.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="skill.html">Le skill e i comandi</a></strong> — l'elenco di ciò che il template include</li>
+<li><strong><a href="permessi-e-hook.html">Permessi e hook</a></strong> — il livello deterministico, dove le regole non
+dipendono dalla lettura</li>
+<li><strong><a href="come-lavora.html">Il modello di lavoro</a></strong> — i tre livelli di garanzia</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

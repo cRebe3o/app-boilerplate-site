@@ -1,4 +1,4 @@
-# Le skill Claude
+# Le skill e i comandi
 
 Un progetto generato porta con sé una cartella `.claude/` con le sue **skill** e i suoi
 **comandi**. Sono
@@ -95,10 +95,10 @@ altri.
 
 Le skill che nascono nei progetti e si rivelano generali sono anche il canale naturale per
 migliorare il template: portate in `app-boilerplate`, arrivano a tutti i progetti al successivo
-[`copier update`](generazione.md#aggiornare-un-progetto-quando-il-template-cambia).
+[`copier update`](../progetto/generazione.md#aggiornare-un-progetto-quando-il-template-cambia).
 
 ## Da qui
 
 - [Aggiungere una feature](../guide/nuova-feature.md) — lo stesso percorso delle skill, spiegato per esteso
-- [Panoramica](panoramica.md) — le convenzioni che le skill applicano
-- [Contribuire al template](contribuire.md) — come una skill nata in un progetto torna al template
+- [Panoramica](../progetto/panoramica.md) — le convenzioni che le skill applicano
+- [Contribuire al template](../progetto/contribuire.md) — come una skill nata in un progetto torna al template

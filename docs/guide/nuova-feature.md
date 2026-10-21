@@ -11,7 +11,7 @@ ordinamento — cioè il caso più semplice e il più facile da adattare. Non es
 tipo di entità che il tuo progetto aggiungerà per primo. Le feature già presenti (`Groups`, `Roles`,
 `Users`) seguono esattamente questa forma e si possono aprire per confronto.
 
-> **Scorciatoia.** Le [skill Claude](../progetto/skill.md) incluse nel progetto scaffoldano tutti i
+> **Scorciatoia.** Le [skill Claude](../claude/skill.md) incluse nel progetto scaffoldano tutti i
 > passaggi che seguono — `db-entity` per l'entità e le migration, `backend-slice` per le
 > slice, `vue-feature` per il frontend, o `/new-feature Category` per l'intero giro. Questa pagina
 > descrive *che cosa* producono e perché, che è ciò che serve per rivederne l'output.

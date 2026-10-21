@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Permessi e hook — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Claude</p>
+          <ul>
+            <li><a href="../claude/come-lavora.html">Il modello di lavoro</a></li>
+            <li><a href="../claude/ciclo-di-una-modifica.html">Il ciclo di una modifica</a></li>
+            <li><a href="../claude/lavorare-con-claude.html">Lavorare con Claude</a></li>
+            <li><a href="../claude/subagenti.html">I subagenti</a></li>
+            <li><a href="../claude/istruzioni.html">Le istruzioni</a></li>
+            <li><a href="../claude/skill.html">Le skill e i comandi</a></li>
+            <li><a href="../claude/permessi-e-hook.html" aria-current="page">Permessi e hook</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Claude</p>
+      <article class="prose">
+<h1 id="permessi-e-hook">Permessi e hook</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#i-permessi">I permessi</a></li>
+          <li class="lvl-3"><a href="#che-cosa-e-consentito-oggi">Che cosa è consentito oggi</a></li>
+          <li class="lvl-3"><a href="#che-cosa-manca-le-regole-deny-proposta">Che cosa manca: le regole deny *(proposta)*</a></li>
+          <li class="lvl-3"><a href="#le-impostazioni-personali">Le impostazioni personali</a></li>
+          <li class="lvl-2"><a href="#gli-hook-in-arrivo">Gli hook *(in arrivo)*</a></li>
+          <li class="lvl-3"><a href="#prima-della-modifica-i-file-che-non-si-toccano">Prima della modifica: i file che non si toccano</a></li>
+          <li class="lvl-3"><a href="#dopo-la-modifica-la-formattazione">Dopo la modifica: la formattazione</a></li>
+          <li class="lvl-3"><a href="#come-si-configurano">Come si configurano</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Le istruzioni dicono a Claude che cosa <em>dovrebbe</em> fare. I permessi e gli hook decidono che cosa
+<em>può</em> fare. Sono il <a href="come-lavora.html#tre-livelli-di-garanzia">livello deterministico</a> applicato a
+Claude stesso: non dipendono da una lettura, valgono a ogni chiamata.</p>
+<p>Entrambi si configurano in <code>.claude/settings.json</code>, che è versionato con il progetto e vale per
+tutti quelli che ci lavorano.</p>
+<h2 id="i-permessi">I permessi</h2>
+<p>Ogni azione di Claude che esce dalla lettura dei file (lanciare un comando, modificare un file)
+passa da un controllo dei permessi, con tre esiti:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Esito</th>
+<th>Che cosa succede</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>allow</strong></td>
+<td>Claude esegue senza chiedere</td>
+</tr>
+<tr>
+<td><strong>ask</strong> (il default)</td>
+<td>Claude si ferma e ti chiede conferma</td>
+</tr>
+<tr>
+<td><strong>deny</strong></td>
+<td>Claude non può farlo, nemmeno se glielo confermi in quel momento</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="che-cosa-e-consentito-oggi">Che cosa è consentito oggi</h3>
+<p>Il <code>settings.json</code> del template consente senza conferma i comandi che servono al
+<a href="ciclo-di-una-modifica.html">ciclo di una modifica</a> e che non hanno effetti fuori dal progetto:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Gruppo</th>
+<th>Comandi</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Build e test .NET</td>
+<td><code>dotnet build</code>, <code>test</code>, <code>restore</code>, <code>clean</code>, <code>list</code>, <code>add</code></td>
+<td>La verifica non deve chiedere conferma a ogni giro</td>
+</tr>
+<tr>
+<td>Migration</td>
+<td><code>dotnet ef</code></td>
+<td>Generare le due migration fa parte di ogni modifica al modello</td>
+</tr>
+<tr>
+<td>Frontend</td>
+<td><code>pnpm install</code>, <code>run</code>, <code>exec</code>, <code>eslint</code>, <code>vitest</code>, <code>vue-tsc</code>, <code>gen:api</code>, <code>outdated</code>, <code>--filter</code>; gli stessi via <code>npx</code></td>
+<td>Lint, typecheck, test e rigenerazione dei tipi</td>
+</tr>
+<tr>
+<td>Git in lettura</td>
+<td><code>git status</code>, <code>git diff</code>, <code>git log</code></td>
+<td>Claude deve poter vedere che cosa è cambiato</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Che cosa resta su &quot;ask&quot;</strong>, per scelta: tutto il resto, e in particolare <strong>ogni git che scrive</strong>
+(<code>add</code>, <code>commit</code>, <code>push</code>, <code>checkout</code>, <code>reset</code>, …). È la regola
+<a href="come-lavora.html#le-regole-che-valgono-sempre">&quot;Git lo usi tu&quot;</a> resa concreta: anche se Claude
+provasse a committare di sua iniziativa, si fermerebbe davanti alla richiesta di conferma.</p>
+<p>Due voci sono più larghe di quanto sembri, e vale la pena saperlo:</p>
+<ul>
+<li><strong><code>dotnet ef</code></strong> comprende anche <code>database update</code> e <code>migrations remove</code>, che modificano il database
+locale o i file delle migration. Sul database di sviluppo è accettabile; per questo la stringa di
+connessione in uso sulla tua macchina deve puntare a un database di sviluppo, mai a uno condiviso.</li>
+<li><strong><code>pnpm run</code> e <code>pnpm exec</code></strong> eseguono qualsiasi script o binario del progetto. Sono consentiti
+perché gli script del monorepo sono build, test e lint; chi aggiunge uno script con effetti
+esterni (un deploy, una pubblicazione) deve tenerlo presente.</li>
+</ul>
+<h3 id="che-cosa-manca-le-regole-deny-proposta">Che cosa manca: le regole deny <em>(proposta)</em></h3>
+<p>Oggi il template non ha regole <code>deny</code>. La regola &quot;i segreti non si leggono e non si scrivono&quot; è
+quindi solo un'istruzione. Il modo deterministico di farla rispettare è questo:</p>
+<pre><code class="language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;permissions&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;deny&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
+      <span class="hljs-string">&quot;Read(./apps/backend/**/appsettings.local.json)&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-string">&quot;Edit(./apps/backend/**/appsettings.local.json)&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-string">&quot;Read(./apps/frontend/.env*.local)&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-string">&quot;Edit(./apps/frontend/.env*.local)&quot;</span>
+    <span class="hljs-punctuation">]</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<p>Con queste righe Claude non può aprire quei file nemmeno per errore, ad esempio cercando una chiave
+di configurazione. Le chiavi e la loro forma restano documentate in
+<a href="../progetto/configurazione.html">Configurazione</a>, che è ciò che serve per lavorarci.</p>
+<h3 id="le-impostazioni-personali">Le impostazioni personali</h3>
+<p>Ognuno può aggiungere permessi suoi in <strong><code>.claude/settings.local.json</code></strong>: ad esempio consentire
+<code>docker compose</code> o uno strumento che usa solo lui. Quel file è personale e non va committato.</p>
+<blockquote>
+<p><strong>Da sistemare nel template.</strong> <code>.claude/settings.local.json</code> oggi non è nel <code>.gitignore</code> del
+template: va aggiunto, altrimenti i permessi personali di qualcuno finiscono nel repository e
+valgono per tutti.</p>
+</blockquote>
+<h2 id="gli-hook-in-arrivo">Gli hook <em>(in arrivo)</em></h2>
+<p>Un hook è un comando che Claude Code esegue <strong>da sé</strong> in un momento preciso, ad esempio prima o
+dopo che Claude modifichi un file. Claude non lo decide e non può saltarlo. Gli hook previsti sono
+due, già elencati in <a href="come-lavora.html#i-controlli-deterministici">I controlli deterministici</a>.</p>
+<h3 id="prima-della-modifica-i-file-che-non-si-toccano">Prima della modifica: i file che non si toccano</h3>
+<p>Prima di ogni <code>Edit</code> o <code>Write</code>, uno script controlla il percorso del file e <strong>blocca</strong> la modifica
+se è uno di questi:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Perché</th>
+<th>Che cosa fare invece</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>apps/frontend/src/types/api.generated.ts</code></td>
+<td>È generato dallo schema OpenAPI</td>
+<td><code>pnpm gen:api</code></td>
+</tr>
+<tr>
+<td>una migration già committata</td>
+<td>È già stata applicata, altrove o in produzione</td>
+<td>Una migration nuova che corregge</td>
+</tr>
+<tr>
+<td><code>appsettings.local.json</code>, <code>.env*.local</code></td>
+<td>Contengono segreti</td>
+<td>Documentare la chiave in <a href="../progetto/configurazione.html">Configurazione</a></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Quando blocca, lo script spiega il motivo, e il motivo arriva a Claude: invece di un errore muto,
+Claude legge &quot;è generato, usa <code>pnpm gen:api</code>&quot; e cambia strada.</p>
+<p>Una migration &quot;già committata&quot; si riconosce con git: se il file è tracciato e non è fra le
+modifiche in corso, è committato. Una migration appena generata nel lavoro corrente invece si può
+ancora correggere.</p>
+<h3 id="dopo-la-modifica-la-formattazione">Dopo la modifica: la formattazione</h3>
+<p>Dopo ogni <code>Edit</code> o <code>Write</code>, il file appena scritto viene formattato: Prettier ed ESLint con
+correzione automatica sui <code>.ts</code> e <code>.vue</code>, <code>dotnet format</code> sui <code>.cs</code>. Così le differenze di stile non
+arrivano mai in review, e il diff contiene solo ciò che cambia davvero.</p>
+<h3 id="come-si-configurano">Come si configurano</h3>
+<p>Gli hook stanno nello stesso <code>settings.json</code>, e gli script in <code>.claude/hooks/</code>:</p>
+<pre><code class="language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;hooks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;PreToolUse&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
+      <span class="hljs-punctuation">{</span>
+        <span class="hljs-attr">&quot;matcher&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Edit|Write&quot;</span><span class="hljs-punctuation">,</span>
+        <span class="hljs-attr">&quot;hooks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;type&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;command&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;command&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;node .claude/hooks/protect-files.mjs&quot;</span> <span class="hljs-punctuation">}</span><span class="hljs-punctuation">]</span>
+      <span class="hljs-punctuation">}</span>
+    <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;PostToolUse&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
+      <span class="hljs-punctuation">{</span>
+        <span class="hljs-attr">&quot;matcher&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Edit|Write&quot;</span><span class="hljs-punctuation">,</span>
+        <span class="hljs-attr">&quot;hooks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;type&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;command&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;command&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;node .claude/hooks/format.mjs&quot;</span> <span class="hljs-punctuation">}</span><span class="hljs-punctuation">]</span>
+      <span class="hljs-punctuation">}</span>
+    <span class="hljs-punctuation">]</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<p>Lo script riceve su stdin un JSON con lo strumento chiamato e i suoi argomenti, fra cui il percorso
+del file. Per bloccare esce con codice <code>2</code> e scrive il motivo su stderr; con codice <code>0</code> la modifica
+procede.</p>
+<p>Gli script sono in Node, non in PowerShell o bash, perché devono funzionare uguale su Windows,
+macOS e Linux, e Node c'è già per il frontend.</p>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><strong><a href="come-lavora.html">Il modello di lavoro</a></strong> — perché un controllo deterministico batte
+un'istruzione</li>
+<li><strong><a href="istruzioni.html">Le istruzioni</a></strong> — dove va una regola che non si riesce a rendere deterministica</li>
+<li><strong><a href="../progetto/configurazione.html">Configurazione</a></strong> — i file di segreti e le loro chiavi</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

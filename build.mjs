@@ -43,14 +43,49 @@ const SITE = {
           summary: 'appsettings, appsettings.local.json, variabili d’ambiente e VITE_*: tutte le chiavi, dove si mettono, quali sono obbligatorie.',
         },
         {
-          file: 'progetto/skill.md',
-          title: 'Le skill Claude',
-          summary: 'Le skill incluse nel template: che cosa scaffoldano e quando conviene invocarle.',
-        },
-        {
           file: 'progetto/contribuire.md',
           title: 'Contribuire al template',
           summary: 'Che cos’è app-demo, come si riportano le modifiche nel template, che cosa resta diverso, come si rilascia una versione.',
+        },
+      ],
+    },
+    {
+      title: 'Claude',
+      pages: [
+        {
+          file: 'claude/come-lavora.md',
+          title: 'Il modello di lavoro',
+          summary: 'Un solo autore, tre livelli di garanzia, i reviewer e i controlli automatici: chi fa che cosa e perché, comprese le scelte scartate.',
+        },
+        {
+          file: 'claude/ciclo-di-una-modifica.md',
+          title: 'Il ciclo di una modifica',
+          summary: 'Capire, pianificare, implementare, verificare, revisionare, chiudere: che cosa succede in ogni passo, con tre esempi completi.',
+        },
+        {
+          file: 'claude/lavorare-con-claude.md',
+          title: 'Lavorare con Claude',
+          summary: 'Dal tuo lato: come chiedere una modifica, che cosa controllare nel piano e nel riepilogo, come correggere la rotta e tenere pulita la sessione.',
+        },
+        {
+          file: 'claude/subagenti.md',
+          title: 'I subagenti',
+          summary: 'Explore, Plan e i due reviewer: che cosa ricevono, che cosa restituiscono, come sono definiti e che cosa fa il lead delle loro segnalazioni.',
+        },
+        {
+          file: 'claude/istruzioni.md',
+          title: 'Le istruzioni',
+          summary: 'I CLAUDE.md, le skill e i comandi: che cosa contiene ciascuno, quando si carica e dove va scritta una regola nuova.',
+        },
+        {
+          file: 'claude/skill.md',
+          title: 'Le skill e i comandi',
+          summary: 'Le skill e i comandi inclusi nel template: che cosa scaffoldano e quando conviene invocarli.',
+        },
+        {
+          file: 'claude/permessi-e-hook.md',
+          title: 'Permessi e hook',
+          summary: 'Che cosa Claude può fare senza chiedere, che cosa no, e gli hook che proteggono i file generati e i segreti.',
         },
       ],
     },

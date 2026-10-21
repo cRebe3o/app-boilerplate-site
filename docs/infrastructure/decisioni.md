@@ -199,7 +199,7 @@ cartelle diverse — e cancellarla significa ricordarsi di tutte e quattro. Cos�
 una cartella: si crea, si legge e si elimina in un posto solo.
 
 Per un template il vantaggio è doppio, perché rende meccanico ciò che accade in ogni progetto:
-aggiungere feature. È anche il motivo per cui le [skill](../progetto/skill.md) possono scaffoldare
+aggiungere feature. È anche il motivo per cui le [skill](../claude/skill.md) possono scaffoldare
 una slice in modo affidabile — c'è una forma sola, ripetuta.
 
 **Il rovescio**: c'è più ripetizione fra slice simili di quanta ne avrebbe un service condiviso, e
