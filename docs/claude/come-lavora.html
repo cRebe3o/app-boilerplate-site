@@ -263,13 +263,13 @@ proposta), e il lead decide che cosa farne. Come si chiamano, che cosa ricevono 
 <tr>
 <td><strong>architecture-security-reviewer</strong></td>
 <td>Che ogni endpoint abbia il permesso <em>giusto</em>; che le regole di business stiano nell'aggregato e non nell'handler; che nessun dato sensibile finisca in una response, in un log o in uno snapshot di audit; che la slice rispetti l'architettura descritta nel <code>CLAUDE.md</code> del progetto</td>
-<td>La direzione delle dipendenze fra layer e la presenza di <code>.RequireAuthorization</code> — li verificano i test</td>
+<td>La direzione delle dipendenze fra layer — la verificano i test di architettura</td>
 <td>in arrivo</td>
 </tr>
 <tr>
 <td><strong>ef-sql-reviewer</strong></td>
 <td>Query che diventano N+1 o caricano colonne inutili; indici mancanti sui filtri; mapping (lunghezze, delete behavior, conversioni); migration che non reggono su una tabella già piena; differenze fra SQL Server e PostgreSQL (<code>Contains</code> case-sensitive, tipi, default)</td>
-<td>Che le due migration esistano e siano allineate al modello — lo verifica la CI</td>
+<td>Che le due migration esistano e siano allineate al modello — lo verificherà la CI <em>(in arrivo)</em>; fino ad allora è nella checklist di <code>/review</code></td>
 <td>in arrivo</td>
 </tr>
 </tbody>
@@ -295,7 +295,7 @@ Architecture) sia su progetti con un'organizzazione diversa, come una vertical s
 <td><code>CLAUDE.md</code> di root</td>
 <td><strong>Come si lavora</strong>: il ciclo, la definizione di &quot;fatto&quot;, quando usare plan mode e reviewer, le convenzioni di commit, che cosa non si fa mai</td>
 <td>All'avvio di ogni sessione</td>
-<td>in arrivo</td>
+<td>presente</td>
 </tr>
 <tr>
 <td><code>apps/backend/CLAUDE.md</code>, <code>apps/frontend/CLAUDE.md</code></td>
@@ -311,7 +311,7 @@ Architecture) sia su progetti con un'organizzazione diversa, come una vertical s
 </tr>
 <tr>
 <td>Comandi (<code>/new-feature</code>, <code>/new-slice</code>, <code>/add-field</code>, <code>/remove-field</code>, <code>/fix</code>, <code>/review</code>)</td>
-<td><strong>Flussi completi</strong> che combinano più skill</td>
+<td><strong>Flussi completi</strong> che combinano più skill. Sono skill con <code>disable-model-invocation: true</code></td>
 <td>Solo quando li invochi tu</td>
 <td>presenti, <code>/new-slice</code> in arrivo</td>
 </tr>
@@ -336,17 +336,17 @@ di file, genera migration — e parte solo se lo chiedi.</p>
 <tr>
 <td><strong>Hook prima della modifica</strong></td>
 <td>Bloccano le modifiche che non vanno mai fatte a mano: <code>api.generated.ts</code> (è generato), le migration già committate (si corregge con una migration nuova), <code>appsettings.local.json</code> e <code>.env*.local</code> (contengono segreti)</td>
-<td>in arrivo</td>
+<td>presente</td>
 </tr>
 <tr>
 <td><strong>Hook dopo la modifica</strong></td>
 <td>Formattano il file appena scritto (Prettier ed ESLint su ts e vue, <code>dotnet format</code> su C#), così le differenze di stile non arrivano mai in review</td>
-<td>in arrivo</td>
+<td>presente</td>
 </tr>
 <tr>
 <td><strong><code>pnpm verify</code></strong></td>
 <td>Build, test, lint e typecheck di backend e frontend in un comando, con un esito sintetico</td>
-<td>in arrivo — oggi gli stessi comandi uno per uno</td>
+<td>presente</td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
@@ -379,7 +379,7 @@ la scelta non va ridiscussa ogni volta.</p>
 </tr>
 <tr>
 <td><strong>Un subagente che confronta DTO .NET e tipi TypeScript</strong></td>
-<td>I tipi non si scrivono: si generano dallo schema OpenAPI. Il rischio vero è dimenticarsi di rigenerarli, e lo intercetta la CI confrontando i tipi committati con quelli rigenerati</td>
+<td>I tipi non si scrivono: si generano dallo schema OpenAPI. Il rischio vero è dimenticarsi di rigenerarli: lo intercetterà la CI <em>(in arrivo)</em> confrontando i tipi committati con quelli rigenerati; fino ad allora è una voce della checklist di <code>/review</code></td>
 </tr>
 <tr>
 <td><strong>Un reviewer dedicato ai componenti Vue/Vuetify</strong></td>

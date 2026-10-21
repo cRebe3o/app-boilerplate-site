@@ -9,7 +9,7 @@ come correggere la rotta e come tenere una sessione in buono stato.
 Apri Claude Code **nella root del monorepo**, non in `apps/backend` o `apps/frontend`. Da lì:
 
 - vale il `.claude/` del progetto: skill, comandi, permessi;
-- si carica il `CLAUDE.md` di root *(in arrivo)*, e quelli delle app quando Claude ci entra;
+- si carica il `CLAUDE.md` di root, e quelli delle app quando Claude ci entra;
 - una modifica che attraversa backend e frontend sta in una sessione sola.
 
 Prima di cominciare, conviene che il working tree sia pulito o su un branch dedicato: alla fine
@@ -120,8 +120,8 @@ scambio lo riempie. Quando è pieno, la parte vecchia viene riassunta e i dettag
 ## Che cosa non chiedere
 
 - **Di modificare i file generati o i segreti**: `api.generated.ts`, le migration committate,
-  `appsettings.local.json`. Claude rifiuta e propone la strada giusta; gli hook *(in arrivo)* lo
-  impediranno comunque.
+  `appsettings.local.json`. Claude rifiuta e propone la strada giusta, e gli
+  [hook](permessi-e-hook.md#gli-hook) lo impediscono comunque.
 - **Di saltare la verifica "perché è una modifica piccola"**: le modifiche piccole sono quelle che
   rompono i test di architettura senza che nessuno se lo aspetti.
 - **Di committare e pushare in automatico a fine lavoro**, come abitudine. Puoi chiederlo per una

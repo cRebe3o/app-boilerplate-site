@@ -161,7 +161,7 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 </tr>
 <tr>
 <td><strong><code>pagination</code></strong></td>
-<td>Una lista che deve paginare lato server: <code>PagedResult</code> sul backend, <code>v-data-table-server</code> sul frontend</td>
+<td>Una lista che deve paginare lato server: <code>PagedResponse</code> sul backend, <code>v-data-table-server</code> sul frontend</td>
 </tr>
 <tr>
 <td><strong><code>search-filter</code></strong></td>
@@ -206,7 +206,7 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 </tr>
 <tr>
 <td><strong><code>vuetify-dialog-form</code></strong></td>
-<td>Un dialog di creazione o modifica in <code>components/&lt;dominio&gt;/</code>: validazione, <code>attempt()</code> per chiudersi solo se il salvataggio riesce, reset alla chiusura, un solo componente per create ed edit</td>
+<td>Un dialog di creazione o modifica in <code>components/&lt;dominio&gt;/</code>: validazione, <code>attempt()</code> per chiudersi solo se il salvataggio riesce, reset all'apertura, un solo componente per create ed edit</td>
 </tr>
 </tbody>
 </table>
@@ -222,38 +222,20 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 </thead>
 <tbody>
 <tr>
-<td><strong><code>vitest-setup</code></strong></td>
-<td>Configurazione di Vitest: jsdom, <code>vitest.setup.ts</code>, soglie di coverage, che cosa mockare globalmente</td>
-</tr>
-<tr>
-<td><strong><code>vue-component-test</code></strong></td>
-<td>Test unitari di componente con <code>@vue/test-utils</code>: props, eventi, slot</td>
-</tr>
-<tr>
-<td><strong><code>pinia-store-test</code></strong></td>
-<td>Test di uno store con il service mockato: stato iniziale, <code>run</code> che non rilancia, <code>runOrThrow</code> che rilancia, <code>reload</code> con l'ultima query, <code>loading</code></td>
-</tr>
-<tr>
-<td><strong><code>api-mock-test</code></strong></td>
-<td>Test di service e store con <code>api</code> o il service mockati: URL e payload, ProblemDetails 4xx, errore di rete</td>
-</tr>
-<tr>
-<td><strong><code>crud-operations-test</code></strong></td>
-<td>Test del giro completo create / read / update / delete</td>
-</tr>
-<tr>
-<td><strong><code>form-validation-test</code></strong></td>
-<td>Test di validazione di un form: campi obbligatori, pattern, regole custom</td>
-</tr>
-<tr>
-<td><strong><code>page-integration-test</code></strong></td>
-<td>Test di una pagina montata con router in memoria, service mockato e store reale: caricamento, interazioni, errori visibili, ricarica</td>
+<td><strong><code>frontend-testing</code></strong></td>
+<td>Qualsiasi test del frontend. Una sola skill per tutti i tipi, perché condividono le stesse regole (che cosa si mocka, la forma degli errori simulati, <code>flushPromises</code>): service con <code>api</code> mockato, store (<code>run</code> che non rilancia, <code>runOrThrow</code> che rilancia, <code>reload</code>, <code>loading</code>), componenti, dialog con form (non valido, salvataggio riuscito, fallito), pagine con router in memoria, e la configurazione di Vitest</td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>I test del backend non hanno una skill: le regole sono in <code>apps/backend/CLAUDE.md</code> e in
+<a href="../guide/test-backend.html">Testare il backend</a>.</p>
 <h2 id="i-comandi">I comandi</h2>
-<p>Oltre alle skill, cinque comandi per le operazioni ricorrenti:</p>
+<p>Oltre alle skill, cinque comandi per le operazioni ricorrenti. Tecnicamente sono skill anche
+loro, in <code>.claude/skills/</code>, ma con <code>disable-model-invocation: true</code> nell'intestazione: Claude
+non li avvia mai da solo, partono solo quando li scrivi. È la differenza voluta fra <em>sapere come
+si fa</em> una cosa (una skill, che si carica da sola) e <em>farla</em> (un comando, che crea file e
+genera migration).</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -265,23 +247,23 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 <tbody>
 <tr>
 <td><code>/new-feature &lt;Entità&gt;</code></td>
-<td>Crea una feature CRUD completa end-to-end, backend e frontend</td>
+<td>Crea una feature CRUD completa end-to-end, backend e frontend, passando da un piano che approvi tu</td>
 </tr>
 <tr>
 <td><code>/add-field &lt;Entità&gt;</code></td>
-<td>Aggiunge un campo a un'entità esistente, propagandolo su tutti i punti che lo richiedono</td>
+<td>Aggiunge un campo a un'entità esistente, lo propaga su tutti i punti che lo richiedono e verifica</td>
 </tr>
 <tr>
 <td><code>/remove-field &lt;Entità&gt;</code></td>
-<td>L'operazione inversa, con la stessa propagazione</td>
+<td>L'operazione inversa: chiede conferma prima della migration che cancella i dati</td>
 </tr>
 <tr>
 <td><code>/review</code></td>
-<td>Rilegge il codice scritto verificandolo contro le convenzioni del progetto</td>
+<td>Rilegge le modifiche del branch rispetto a <code>main</code> (o i percorsi indicati) contro le convenzioni del progetto, senza modificare file</td>
 </tr>
 <tr>
-<td><code>/fix</code></td>
-<td>Interviene su un problema descritto a parole</td>
+<td><code>/fix &lt;descrizione&gt;</code></td>
+<td>Trova la causa di un bug, la dimostra con un test, la corregge e verifica; segnala lo stesso errore se lo trova altrove</td>
 </tr>
 </tbody>
 </table>

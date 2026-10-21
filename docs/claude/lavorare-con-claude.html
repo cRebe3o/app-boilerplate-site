@@ -121,7 +121,7 @@ come correggere la rotta e come tenere una sessione in buono stato.</p>
 <p>Apri Claude Code <strong>nella root del monorepo</strong>, non in <code>apps/backend</code> o <code>apps/frontend</code>. Da lì:</p>
 <ul>
 <li>vale il <code>.claude/</code> del progetto: skill, comandi, permessi;</li>
-<li>si carica il <code>CLAUDE.md</code> di root <em>(in arrivo)</em>, e quelli delle app quando Claude ci entra;</li>
+<li>si carica il <code>CLAUDE.md</code> di root, e quelli delle app quando Claude ci entra;</li>
 <li>una modifica che attraversa backend e frontend sta in una sessione sola.</li>
 </ul>
 <p>Prima di cominciare, conviene che il working tree sia pulito o su un branch dedicato: alla fine
@@ -259,8 +259,8 @@ chiede o lo legge da sé.</li>
 <h2 id="che-cosa-non-chiedere">Che cosa non chiedere</h2>
 <ul>
 <li><strong>Di modificare i file generati o i segreti</strong>: <code>api.generated.ts</code>, le migration committate,
-<code>appsettings.local.json</code>. Claude rifiuta e propone la strada giusta; gli hook <em>(in arrivo)</em> lo
-impediranno comunque.</li>
+<code>appsettings.local.json</code>. Claude rifiuta e propone la strada giusta, e gli
+<a href="permessi-e-hook.html#gli-hook">hook</a> lo impediscono comunque.</li>
 <li><strong>Di saltare la verifica &quot;perché è una modifica piccola&quot;</strong>: le modifiche piccole sono quelle che
 rompono i test di architettura senza che nessuno se lo aspetti.</li>
 <li><strong>Di committare e pushare in automatico a fine lavoro</strong>, come abitudine. Puoi chiederlo per una

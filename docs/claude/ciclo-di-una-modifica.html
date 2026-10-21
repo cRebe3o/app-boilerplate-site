@@ -253,23 +253,16 @@ cercando file dimenticati, rischi e alternative più semplici.</p>
 <p>L'ordine di scrittura segue le dipendenze, <strong>dal centro verso l'esterno</strong>: dominio, mapping e
 migration, Application, Api, poi frontend. Ogni passo compila sopra il precedente, e un errore si
 scopre vicino a dove è nato.</p>
-<p>Durante la scrittura lavorano gli <strong>hook</strong> <em>(in arrivo)</em>: una modifica a un file generato, a una
+<p>Durante la scrittura lavorano gli <strong><a href="permessi-e-hook.html#gli-hook">hook</a></strong>: una modifica a un file generato, a una
 migration committata o a un file di segreti viene bloccata con la ragione, e ogni file scritto
 esce già formattato.</p>
 <h2 id="4-verificare">4. Verificare</h2>
 <p><strong>Una modifica è finita quando i controlli sono verdi</strong>, non quando sembra giusta.</p>
-<pre><code class="language-bash">pnpm verify          <span class="hljs-comment"># in arrivo: tutto ciò che segue, con un esito sintetico</span>
+<pre><code class="language-bash">pnpm verify              <span class="hljs-comment"># dalla root: build e test .NET, typecheck, lint e test Vue</span>
+pnpm verify --backend    <span class="hljs-comment"># solo la parte .NET (--frontend: solo la parte Vue)</span>
 </code></pre>
-<p>Oggi, gli stessi controlli uno per uno:</p>
-<pre><code class="language-bash"><span class="hljs-comment"># backend (in apps/backend)</span>
-dotnet build &lt;Progetto&gt;.sln
-dotnet <span class="hljs-built_in">test</span> &lt;Progetto&gt;.sln         <span class="hljs-comment"># inclusi i test di architettura</span>
-
-<span class="hljs-comment"># frontend (in apps/frontend)</span>
-pnpm vue-tsc --noEmit
-pnpm eslint .
-pnpm vitest run
-</code></pre>
+<p>Un esito per passo e, per quelli rossi, solo le righe d'errore: vedi
+<a href="permessi-e-hook.html#la-verifica-pnpm-verify">La verifica</a>.</p>
 <p>Fa parte della verifica anche <strong>scrivere i test</strong> che la modifica richiede: un'invariante nuova ha
 il suo test in <code>Domain.Tests</code>, un handler nuovo il suo in <code>Application.Tests</code> (vedi
 <a href="../guide/test-backend.html">Testare il backend</a>).</p>

@@ -31,7 +31,7 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 | **`db-entity`** | Una nuova entità: l'aggregato in `Domain/`, la sua `IEntityTypeConfiguration`, il repository e la **doppia migration** SQL Server + Postgres |
 | **`audit-log`** | Come funziona l'audit automatico via `AuditLogInterceptor` e che cosa deve fare un repository perché lo snapshot *prima* sia corretto. Un handler non scrive mai l'audit a mano. Vedi [Audit log](../infrastructure/audit-log.md) |
 | **`permissions`** | Un permesso nuovo end-to-end: policy sull'endpoint, guardia di rotta, `v-if` nella UI e voce nel seed |
-| **`pagination`** | Una lista che deve paginare lato server: `PagedResult` sul backend, `v-data-table-server` sul frontend |
+| **`pagination`** | Una lista che deve paginare lato server: `PagedResponse` sul backend, `v-data-table-server` sul frontend |
 | **`search-filter`** | Ricerca testuale o filtri su una lista, con il `Where` dinamico lato EF e il debounce lato Vue |
 | **`bulk-operations`** | Cancellazioni o modifiche multiple, con `ExecuteDelete`/`ExecuteUpdate` e la selezione a checkbox |
 | **`export-csv`** | Esportazione dei dati in CSV o Excel: endpoint che genera il file e pulsante di download |
@@ -44,31 +44,32 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 |---|---|
 | **`vue-feature`** | Una nuova feature di frontend completa: tipi da `pnpm gen:api`, service, store con `useAsyncAction`, pagina, rotta figlia di AppShell, voce di menu in `sections.config.ts`, traduzioni. Vedi [Convenzioni e flussi](../frontend/convenzioni.md) |
 | **`detail-page`** | Una pagina di dettaglio su rotta `:id(\\d+)`, che serve creazione e modifica, con `useBackNavigation` per il ritorno e `useApiErrors` per gli errori per campo |
-| **`vuetify-dialog-form`** | Un dialog di creazione o modifica in `components/<dominio>/`: validazione, `attempt()` per chiudersi solo se il salvataggio riesce, reset alla chiusura, un solo componente per create ed edit |
+| **`vuetify-dialog-form`** | Un dialog di creazione o modifica in `components/<dominio>/`: validazione, `attempt()` per chiudersi solo se il salvataggio riesce, reset all'apertura, un solo componente per create ed edit |
 
 ## Test
 
 | Skill | Quando si attiva |
 |---|---|
-| **`vitest-setup`** | Configurazione di Vitest: jsdom, `vitest.setup.ts`, soglie di coverage, che cosa mockare globalmente |
-| **`vue-component-test`** | Test unitari di componente con `@vue/test-utils`: props, eventi, slot |
-| **`pinia-store-test`** | Test di uno store con il service mockato: stato iniziale, `run` che non rilancia, `runOrThrow` che rilancia, `reload` con l'ultima query, `loading` |
-| **`api-mock-test`** | Test di service e store con `api` o il service mockati: URL e payload, ProblemDetails 4xx, errore di rete |
-| **`crud-operations-test`** | Test del giro completo create / read / update / delete |
-| **`form-validation-test`** | Test di validazione di un form: campi obbligatori, pattern, regole custom |
-| **`page-integration-test`** | Test di una pagina montata con router in memoria, service mockato e store reale: caricamento, interazioni, errori visibili, ricarica |
+| **`frontend-testing`** | Qualsiasi test del frontend. Una sola skill per tutti i tipi, perché condividono le stesse regole (che cosa si mocka, la forma degli errori simulati, `flushPromises`): service con `api` mockato, store (`run` che non rilancia, `runOrThrow` che rilancia, `reload`, `loading`), componenti, dialog con form (non valido, salvataggio riuscito, fallito), pagine con router in memoria, e la configurazione di Vitest |
+
+I test del backend non hanno una skill: le regole sono in `apps/backend/CLAUDE.md` e in
+[Testare il backend](../guide/test-backend.md).
 
 ## I comandi
 
-Oltre alle skill, cinque comandi per le operazioni ricorrenti:
+Oltre alle skill, cinque comandi per le operazioni ricorrenti. Tecnicamente sono skill anche
+loro, in `.claude/skills/`, ma con `disable-model-invocation: true` nell'intestazione: Claude
+non li avvia mai da solo, partono solo quando li scrivi. È la differenza voluta fra *sapere come
+si fa* una cosa (una skill, che si carica da sola) e *farla* (un comando, che crea file e
+genera migration).
 
 | Comando | Che cosa fa |
 |---|---|
-| `/new-feature <Entità>` | Crea una feature CRUD completa end-to-end, backend e frontend |
-| `/add-field <Entità>` | Aggiunge un campo a un'entità esistente, propagandolo su tutti i punti che lo richiedono |
-| `/remove-field <Entità>` | L'operazione inversa, con la stessa propagazione |
-| `/review` | Rilegge il codice scritto verificandolo contro le convenzioni del progetto |
-| `/fix` | Interviene su un problema descritto a parole |
+| `/new-feature <Entità>` | Crea una feature CRUD completa end-to-end, backend e frontend, passando da un piano che approvi tu |
+| `/add-field <Entità>` | Aggiunge un campo a un'entità esistente, lo propaga su tutti i punti che lo richiedono e verifica |
+| `/remove-field <Entità>` | L'operazione inversa: chiede conferma prima della migration che cancella i dati |
+| `/review` | Rilegge le modifiche del branch rispetto a `main` (o i percorsi indicati) contro le convenzioni del progetto, senza modificare file |
+| `/fix <descrizione>` | Trova la causa di un bug, la dimostra con un test, la corregge e verifica; segnala lo stesso errore se lo trova altrove |
 
 ## Le combinazioni che ricorrono
 

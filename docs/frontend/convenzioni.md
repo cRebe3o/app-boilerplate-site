@@ -344,10 +344,10 @@ Che cosa testare, per tipo di file:
 
 | File | Test | Skill |
 |---|---|---|
-| store | stato iniziale; ogni lettura (dati e parametri); lettura fallita → `error` senza throw; scrittura fallita → `error` e promise rigettata; `reload` con l'ultima query; `loading` durante | `pinia-store-test`, `crud-operations-test` |
-| service | URL, parametri e payload con `toHaveBeenCalledWith`; 4xx con ProblemDetails; errore di rete | `api-mock-test` |
-| componente | prop, eventi, `v-model`, slot | `vue-component-test`, `form-validation-test` |
-| pagina | mount con router in memoria, service mockato, store reale; caricamento, un'interazione, l'errore visibile, la ricarica dopo una scrittura. `flushPromises()`, mai `setTimeout` | `page-integration-test` |
+| store | stato iniziale; ogni lettura (dati e parametri); lettura fallita → `error` senza throw; scrittura fallita → `error` e promise rigettata; `reload` con l'ultima query; `loading` durante | `frontend-testing` |
+| service | URL, parametri e payload con `toHaveBeenCalledWith`; 4xx con ProblemDetails; errore di rete | `frontend-testing` |
+| componente | prop, eventi, `v-model`, slot; per un dialog con form: non valido, salvataggio riuscito (si chiude), fallito (resta aperto con il messaggio del backend) | `frontend-testing` |
+| pagina | mount con router in memoria, service mockato, store reale; caricamento, un'interazione, l'errore visibile, la ricarica dopo una scrittura. `flushPromises()`, mai `setTimeout` | `frontend-testing` |
 
 Le soglie di coverage in `vitest.config.ts` sono il livello raggiunto: impediscono di peggiorare e
 vanno alzate man mano.

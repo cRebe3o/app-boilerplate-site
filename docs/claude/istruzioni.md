@@ -9,19 +9,19 @@ male, riempie il progetto di istruzioni duplicate e contraddittorie.
 
 | File | Che cosa contiene | Quando si carica | Stato |
 |---|---|---|---|
-| `CLAUDE.md` di root | **Come si lavora**: il ciclo, la definizione di "fatto", quando usare plan mode e reviewer, git, che cosa non si fa mai | All'avvio di ogni sessione aperta nella root del monorepo | in arrivo |
+| `CLAUDE.md` di root | **Come si lavora**: il ciclo, la definizione di "fatto", quando usare plan mode e reviewer, git, che cosa non si fa mai | All'avvio di ogni sessione aperta nella root del monorepo | presente |
 | `apps/backend/CLAUDE.md` | **Com'è fatto il backend**: struttura della soluzione, regola delle dipendenze, aggregati, slice, persistenza, errori, auth, audit, test | Quando Claude legge file sotto `apps/backend/` | presente |
 | `apps/frontend/CLAUDE.md` | **Com'è fatto il frontend**: struttura, tipi generati, flusso di una feature, store e pagine tipo, router, i18n, permessi, verifica | Quando Claude legge file sotto `apps/frontend/` | presente |
 | `.claude/skills/*/SKILL.md` | **Procedure** per un compito preciso | Quando la richiesta corrisponde alla `description` della skill | presente |
-| `.claude/commands/*.md` | **Flussi completi** che combinano più skill | Solo quando li invochi (`/new-feature`, `/fix`, …) | presente |
+| `.claude/skills/*/SKILL.md` con `disable-model-invocation: true` | **Comandi**: flussi completi che combinano più skill | Solo quando li invochi (`/new-feature`, `/fix`, …) | presente |
 | `.claude/agents/*.md` | **Prompt dei reviewer** | Quando il lead chiama il subagente | in arrivo |
 
 Due conseguenze pratiche:
 
 - **Il `CLAUDE.md` di root è l'unico sempre presente.** Tutto ciò che deve valere in ogni sessione,
-  qualunque cartella si tocchi, sta lì. Oggi questo ruolo non ha ancora un file: le regole di
-  lavoro sono scritte in [Il modello di lavoro](come-lavora.md#le-regole-che-valgono-sempre) e
-  diventano il `CLAUDE.md` di root quando entra nel template.
+  qualunque cartella si tocchi, sta lì: il ciclo, la verifica, git, i segreti, il codice
+  generato, i messaggi di commit. È la versione operativa delle
+  [regole che valgono sempre](come-lavora.md#le-regole-che-valgono-sempre).
 - **I `CLAUDE.md` di backend e frontend arrivano solo quando servono.** Una sessione che tocca solo
   il frontend non paga il costo delle 330 righe del backend, e viceversa.
 

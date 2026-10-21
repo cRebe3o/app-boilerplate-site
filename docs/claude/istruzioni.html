@@ -130,7 +130,7 @@ male, riempie il progetto di istruzioni duplicate e contraddittorie.</p>
 <td><code>CLAUDE.md</code> di root</td>
 <td><strong>Come si lavora</strong>: il ciclo, la definizione di &quot;fatto&quot;, quando usare plan mode e reviewer, git, che cosa non si fa mai</td>
 <td>All'avvio di ogni sessione aperta nella root del monorepo</td>
-<td>in arrivo</td>
+<td>presente</td>
 </tr>
 <tr>
 <td><code>apps/backend/CLAUDE.md</code></td>
@@ -151,8 +151,8 @@ male, riempie il progetto di istruzioni duplicate e contraddittorie.</p>
 <td>presente</td>
 </tr>
 <tr>
-<td><code>.claude/commands/*.md</code></td>
-<td><strong>Flussi completi</strong> che combinano più skill</td>
+<td><code>.claude/skills/*/SKILL.md</code> con <code>disable-model-invocation: true</code></td>
+<td><strong>Comandi</strong>: flussi completi che combinano più skill</td>
 <td>Solo quando li invochi (<code>/new-feature</code>, <code>/fix</code>, …)</td>
 <td>presente</td>
 </tr>
@@ -168,9 +168,9 @@ male, riempie il progetto di istruzioni duplicate e contraddittorie.</p>
 <p>Due conseguenze pratiche:</p>
 <ul>
 <li><strong>Il <code>CLAUDE.md</code> di root è l'unico sempre presente.</strong> Tutto ciò che deve valere in ogni sessione,
-qualunque cartella si tocchi, sta lì. Oggi questo ruolo non ha ancora un file: le regole di
-lavoro sono scritte in <a href="come-lavora.html#le-regole-che-valgono-sempre">Il modello di lavoro</a> e
-diventano il <code>CLAUDE.md</code> di root quando entra nel template.</li>
+qualunque cartella si tocchi, sta lì: il ciclo, la verifica, git, i segreti, il codice
+generato, i messaggi di commit. È la versione operativa delle
+<a href="come-lavora.html#le-regole-che-valgono-sempre">regole che valgono sempre</a>.</li>
 <li><strong>I <code>CLAUDE.md</code> di backend e frontend arrivano solo quando servono.</strong> Una sessione che tocca solo
 il frontend non paga il costo delle 330 righe del backend, e viceversa.</li>
 </ul>

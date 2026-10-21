@@ -82,7 +82,7 @@ L'ordine di scrittura segue le dipendenze, **dal centro verso l'esterno**: domin
 migration, Application, Api, poi frontend. Ogni passo compila sopra il precedente, e un errore si
 scopre vicino a dove è nato.
 
-Durante la scrittura lavorano gli **hook** *(in arrivo)*: una modifica a un file generato, a una
+Durante la scrittura lavorano gli **[hook](permessi-e-hook.md#gli-hook)**: una modifica a un file generato, a una
 migration committata o a un file di segreti viene bloccata con la ragione, e ogni file scritto
 esce già formattato.
 
@@ -91,21 +91,12 @@ esce già formattato.
 **Una modifica è finita quando i controlli sono verdi**, non quando sembra giusta.
 
 ```bash
-pnpm verify          # in arrivo: tutto ciò che segue, con un esito sintetico
+pnpm verify              # dalla root: build e test .NET, typecheck, lint e test Vue
+pnpm verify --backend    # solo la parte .NET (--frontend: solo la parte Vue)
 ```
 
-Oggi, gli stessi controlli uno per uno:
-
-```bash
-# backend (in apps/backend)
-dotnet build <Progetto>.sln
-dotnet test <Progetto>.sln         # inclusi i test di architettura
-
-# frontend (in apps/frontend)
-pnpm vue-tsc --noEmit
-pnpm eslint .
-pnpm vitest run
-```
+Un esito per passo e, per quelli rossi, solo le righe d'errore: vedi
+[La verifica](permessi-e-hook.md#la-verifica-pnpm-verify).
 
 Fa parte della verifica anche **scrivere i test** che la modifica richiede: un'invariante nuova ha
 il suo test in `Domain.Tests`, un handler nuovo il suo in `Application.Tests` (vedi

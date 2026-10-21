@@ -507,22 +507,22 @@ parte.</p>
 <tr>
 <td>store</td>
 <td>stato iniziale; ogni lettura (dati e parametri); lettura fallita → <code>error</code> senza throw; scrittura fallita → <code>error</code> e promise rigettata; <code>reload</code> con l'ultima query; <code>loading</code> durante</td>
-<td><code>pinia-store-test</code>, <code>crud-operations-test</code></td>
+<td><code>frontend-testing</code></td>
 </tr>
 <tr>
 <td>service</td>
 <td>URL, parametri e payload con <code>toHaveBeenCalledWith</code>; 4xx con ProblemDetails; errore di rete</td>
-<td><code>api-mock-test</code></td>
+<td><code>frontend-testing</code></td>
 </tr>
 <tr>
 <td>componente</td>
-<td>prop, eventi, <code>v-model</code>, slot</td>
-<td><code>vue-component-test</code>, <code>form-validation-test</code></td>
+<td>prop, eventi, <code>v-model</code>, slot; per un dialog con form: non valido, salvataggio riuscito (si chiude), fallito (resta aperto con il messaggio del backend)</td>
+<td><code>frontend-testing</code></td>
 </tr>
 <tr>
 <td>pagina</td>
 <td>mount con router in memoria, service mockato, store reale; caricamento, un'interazione, l'errore visibile, la ricarica dopo una scrittura. <code>flushPromises()</code>, mai <code>setTimeout</code></td>
-<td><code>page-integration-test</code></td>
+<td><code>frontend-testing</code></td>
 </tr>
 </tbody>
 </table>

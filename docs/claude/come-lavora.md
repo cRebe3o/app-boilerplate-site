@@ -97,8 +97,8 @@ proposta), e il lead decide che cosa farne. Come si chiamano, che cosa ricevono 
 
 | Reviewer | Che cosa guarda | Che cosa **non** guarda | Stato |
 |---|---|---|---|
-| **architecture-security-reviewer** | Che ogni endpoint abbia il permesso *giusto*; che le regole di business stiano nell'aggregato e non nell'handler; che nessun dato sensibile finisca in una response, in un log o in uno snapshot di audit; che la slice rispetti l'architettura descritta nel `CLAUDE.md` del progetto | La direzione delle dipendenze fra layer e la presenza di `.RequireAuthorization` — li verificano i test | in arrivo |
-| **ef-sql-reviewer** | Query che diventano N+1 o caricano colonne inutili; indici mancanti sui filtri; mapping (lunghezze, delete behavior, conversioni); migration che non reggono su una tabella già piena; differenze fra SQL Server e PostgreSQL (`Contains` case-sensitive, tipi, default) | Che le due migration esistano e siano allineate al modello — lo verifica la CI | in arrivo |
+| **architecture-security-reviewer** | Che ogni endpoint abbia il permesso *giusto*; che le regole di business stiano nell'aggregato e non nell'handler; che nessun dato sensibile finisca in una response, in un log o in uno snapshot di audit; che la slice rispetti l'architettura descritta nel `CLAUDE.md` del progetto | La direzione delle dipendenze fra layer — la verificano i test di architettura | in arrivo |
+| **ef-sql-reviewer** | Query che diventano N+1 o caricano colonne inutili; indici mancanti sui filtri; mapping (lunghezze, delete behavior, conversioni); migration che non reggono su una tabella già piena; differenze fra SQL Server e PostgreSQL (`Contains` case-sensitive, tipi, default) | Che le due migration esistano e siano allineate al modello — lo verificherà la CI *(in arrivo)*; fino ad allora è nella checklist di `/review` | in arrivo |
 
 I reviewer **non conoscono l'architettura a memoria**: la leggono dal `CLAUDE.md` del progetto che
 stanno revisionando. È ciò che permette di usarli sia sui progetti generati dal template (Clean
@@ -110,10 +110,10 @@ Come si scrivono e dove va una regola nuova è in [Le istruzioni](istruzioni.md)
 
 | Livello | Che cosa contiene | Quando si carica | Stato |
 |---|---|---|---|
-| `CLAUDE.md` di root | **Come si lavora**: il ciclo, la definizione di "fatto", quando usare plan mode e reviewer, le convenzioni di commit, che cosa non si fa mai | All'avvio di ogni sessione | in arrivo |
+| `CLAUDE.md` di root | **Come si lavora**: il ciclo, la definizione di "fatto", quando usare plan mode e reviewer, le convenzioni di commit, che cosa non si fa mai | All'avvio di ogni sessione | presente |
 | `apps/backend/CLAUDE.md`, `apps/frontend/CLAUDE.md` | **Com'è fatto il codice**: struttura, regole dei layer, convenzioni | Quando Claude legge file in quella cartella | presente |
 | Skill (`.claude/skills/`) | **Procedure**: come si scrive una slice, un'entità, una pagina, un test | Da sole, quando la richiesta corrisponde alla loro descrizione | presente |
-| Comandi (`/new-feature`, `/new-slice`, `/add-field`, `/remove-field`, `/fix`, `/review`) | **Flussi completi** che combinano più skill | Solo quando li invochi tu | presenti, `/new-slice` in arrivo |
+| Comandi (`/new-feature`, `/new-slice`, `/add-field`, `/remove-field`, `/fix`, `/review`) | **Flussi completi** che combinano più skill. Sono skill con `disable-model-invocation: true` | Solo quando li invochi tu | presenti, `/new-slice` in arrivo |
 
 La distinzione fra skill e comandi è voluta. Una skill si attiva da sola perché descrive *come* si
 fa una cosa, e saperlo non fa mai danni. Un comando è un'azione con conseguenze — crea una dozzina
@@ -125,9 +125,9 @@ Permessi e hook, con la loro configurazione, sono descritti in [Permessi e hook]
 
 | Controllo | Che cosa fa | Stato |
 |---|---|---|
-| **Hook prima della modifica** | Bloccano le modifiche che non vanno mai fatte a mano: `api.generated.ts` (è generato), le migration già committate (si corregge con una migration nuova), `appsettings.local.json` e `.env*.local` (contengono segreti) | in arrivo |
-| **Hook dopo la modifica** | Formattano il file appena scritto (Prettier ed ESLint su ts e vue, `dotnet format` su C#), così le differenze di stile non arrivano mai in review | in arrivo |
-| **`pnpm verify`** | Build, test, lint e typecheck di backend e frontend in un comando, con un esito sintetico | in arrivo — oggi gli stessi comandi uno per uno |
+| **Hook prima della modifica** | Bloccano le modifiche che non vanno mai fatte a mano: `api.generated.ts` (è generato), le migration già committate (si corregge con una migration nuova), `appsettings.local.json` e `.env*.local` (contengono segreti) | presente |
+| **Hook dopo la modifica** | Formattano il file appena scritto (Prettier ed ESLint su ts e vue, `dotnet format` su C#), così le differenze di stile non arrivano mai in review | presente |
+| **`pnpm verify`** | Build, test, lint e typecheck di backend e frontend in un comando, con un esito sintetico | presente |
 | **Test** | Domain, Application e architettura; in arrivo i test di integrazione su un database vero, per **entrambi** i provider | presenti, integrazione in arrivo |
 | **CI** | Gli stessi controlli di `verify` su ogni push, più due che in locale si dimenticano: migration mancanti rispetto al modello e tipi TypeScript non rigenerati dopo una modifica all'API | in arrivo |
 
@@ -139,7 +139,7 @@ la scelta non va ridiscussa ogni volta.
 | Scartato | Perché |
 |---|---|
 | **Un subagente che lancia build e test** (es. su Haiku, "riporta solo l'esito") | Uno script con output sintetico fa lo stesso lavoro in modo deterministico, più in fretta e senza poter riassumere male un errore. Il lead deve comunque vedere l'errore per correggerlo |
-| **Un subagente che confronta DTO .NET e tipi TypeScript** | I tipi non si scrivono: si generano dallo schema OpenAPI. Il rischio vero è dimenticarsi di rigenerarli, e lo intercetta la CI confrontando i tipi committati con quelli rigenerati |
+| **Un subagente che confronta DTO .NET e tipi TypeScript** | I tipi non si scrivono: si generano dallo schema OpenAPI. Il rischio vero è dimenticarsi di rigenerarli: lo intercetterà la CI *(in arrivo)* confrontando i tipi committati con quelli rigenerati; fino ad allora è una voce della checklist di `/review` |
 | **Un reviewer dedicato ai componenti Vue/Vuetify** | Le regole del frontend sono quasi tutte meccaniche (testi con `t()`, nessuna chiamata HTTP fuori dai service, dimensione dei componenti) e stanno meglio in ESLint. Il resto è una checklist di `/review` |
 | **Un reviewer con l'architettura scritta dentro** (es. "vertical slice") | I progetti non hanno tutti la stessa architettura. Un reviewer che la legge dal `CLAUDE.md` funziona ovunque; uno che la conosce a memoria va riscritto per ogni progetto |
 | **Più agenti che scrivono codice in parallelo** | Vedi [il principio](#il-principio-un-solo-autore): costa contesto, produce conflitti nei punti di contatto e diluisce la coerenza |

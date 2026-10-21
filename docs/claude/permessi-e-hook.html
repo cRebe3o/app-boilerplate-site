@@ -103,12 +103,13 @@
         <ul>
           <li class="lvl-2"><a href="#i-permessi">I permessi</a></li>
           <li class="lvl-3"><a href="#che-cosa-e-consentito-oggi">Che cosa è consentito oggi</a></li>
-          <li class="lvl-3"><a href="#che-cosa-manca-le-regole-deny-proposta">Che cosa manca: le regole deny *(proposta)*</a></li>
+          <li class="lvl-3"><a href="#le-regole-deny-i-segreti">Le regole deny: i segreti</a></li>
           <li class="lvl-3"><a href="#le-impostazioni-personali">Le impostazioni personali</a></li>
-          <li class="lvl-2"><a href="#gli-hook-in-arrivo">Gli hook *(in arrivo)*</a></li>
+          <li class="lvl-2"><a href="#gli-hook">Gli hook</a></li>
           <li class="lvl-3"><a href="#prima-della-modifica-i-file-che-non-si-toccano">Prima della modifica: i file che non si toccano</a></li>
           <li class="lvl-3"><a href="#dopo-la-modifica-la-formattazione">Dopo la modifica: la formattazione</a></li>
           <li class="lvl-3"><a href="#come-si-configurano">Come si configurano</a></li>
+          <li class="lvl-2"><a href="#la-verifica-pnpm-verify">La verifica: <code>pnpm verify</code></a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
@@ -177,9 +178,17 @@ passa da un controllo dei permessi, con tre esiti:</p>
 <td><code>git status</code>, <code>git diff</code>, <code>git log</code></td>
 <td>Claude deve poter vedere che cosa è cambiato</td>
 </tr>
+<tr>
+<td>Verifica</td>
+<td><code>pnpm verify</code>, <code>node scripts/verify.mjs</code></td>
+<td>È il comando che chiude ogni modifica</td>
+</tr>
 </tbody>
 </table>
 </div>
+<p>Ogni regola c'è due volte, <code>Bash(...)</code> e <code>PowerShell(...)</code>: su Windows Claude usa spesso lo
+strumento PowerShell, e una regola scritta solo per Bash non lo copre, quindi la richiesta di
+conferma arriverebbe lo stesso.</p>
 <p><strong>Che cosa resta su &quot;ask&quot;</strong>, per scelta: tutto il resto, e in particolare <strong>ogni git che scrive</strong>
 (<code>add</code>, <code>commit</code>, <code>push</code>, <code>checkout</code>, <code>reset</code>, …). È la regola
 <a href="come-lavora.html#le-regole-che-valgono-sempre">&quot;Git lo usi tu&quot;</a> resa concreta: anche se Claude
@@ -193,38 +202,34 @@ connessione in uso sulla tua macchina deve puntare a un database di sviluppo, ma
 perché gli script del monorepo sono build, test e lint; chi aggiunge uno script con effetti
 esterni (un deploy, una pubblicazione) deve tenerlo presente.</li>
 </ul>
-<h3 id="che-cosa-manca-le-regole-deny-proposta">Che cosa manca: le regole deny <em>(proposta)</em></h3>
-<p>Oggi il template non ha regole <code>deny</code>. La regola &quot;i segreti non si leggono e non si scrivono&quot; è
-quindi solo un'istruzione. Il modo deterministico di farla rispettare è questo:</p>
+<h3 id="le-regole-deny-i-segreti">Le regole deny: i segreti</h3>
 <pre><code class="language-json"><span class="hljs-punctuation">{</span>
   <span class="hljs-attr">&quot;permissions&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
     <span class="hljs-attr">&quot;deny&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
-      <span class="hljs-string">&quot;Read(./apps/backend/**/appsettings.local.json)&quot;</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-string">&quot;Edit(./apps/backend/**/appsettings.local.json)&quot;</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-string">&quot;Read(./apps/frontend/.env*.local)&quot;</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-string">&quot;Edit(./apps/frontend/.env*.local)&quot;</span>
+      <span class="hljs-string">&quot;Read(**/appsettings.local.json)&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-string">&quot;Edit(**/appsettings.local.json)&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-string">&quot;Read(**/.env*.local)&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-string">&quot;Edit(**/.env*.local)&quot;</span>
     <span class="hljs-punctuation">]</span>
   <span class="hljs-punctuation">}</span>
 <span class="hljs-punctuation">}</span>
 </code></pre>
-<p>Con queste righe Claude non può aprire quei file nemmeno per errore, ad esempio cercando una chiave
-di configurazione. Le chiavi e la loro forma restano documentate in
+<p>Con queste righe Claude non può aprire quei file nemmeno per errore, ad esempio cercando una
+chiave di configurazione, e non può farlo neanche con <code>cat</code> o <code>head</code> da shell: Claude Code
+applica le regole <code>Read</code> anche ai comandi di lettura che riconosce. Le chiavi e la loro forma
+restano documentate in <code>appsettings.local.json.example</code>, <code>.env.local.example</code> e
 <a href="../progetto/configurazione.html">Configurazione</a>, che è ciò che serve per lavorarci.</p>
 <h3 id="le-impostazioni-personali">Le impostazioni personali</h3>
 <p>Ognuno può aggiungere permessi suoi in <strong><code>.claude/settings.local.json</code></strong>: ad esempio consentire
-<code>docker compose</code> o uno strumento che usa solo lui. Quel file è personale e non va committato.</p>
-<blockquote>
-<p><strong>Da sistemare nel template.</strong> <code>.claude/settings.local.json</code> oggi non è nel <code>.gitignore</code> del
-template: va aggiunto, altrimenti i permessi personali di qualcuno finiscono nel repository e
-valgono per tutti.</p>
-</blockquote>
-<h2 id="gli-hook-in-arrivo">Gli hook <em>(in arrivo)</em></h2>
+<code>docker compose</code> o uno strumento che usa solo lui. Il file è nel <code>.gitignore</code> del template,
+quindi i permessi personali non finiscono nel repository.</p>
+<h2 id="gli-hook">Gli hook</h2>
 <p>Un hook è un comando che Claude Code esegue <strong>da sé</strong> in un momento preciso, ad esempio prima o
-dopo che Claude modifichi un file. Claude non lo decide e non può saltarlo. Gli hook previsti sono
-due, già elencati in <a href="come-lavora.html#i-controlli-deterministici">I controlli deterministici</a>.</p>
+dopo che Claude modifichi un file. Claude non lo decide e non può saltarlo. Gli script sono in
+<code>.claude/hooks/</code>.</p>
 <h3 id="prima-della-modifica-i-file-che-non-si-toccano">Prima della modifica: i file che non si toccano</h3>
-<p>Prima di ogni <code>Edit</code> o <code>Write</code>, uno script controlla il percorso del file e <strong>blocca</strong> la modifica
-se è uno di questi:</p>
+<p>Prima di ogni <code>Edit</code> o <code>Write</code>, <code>protect-files.mjs</code> controlla il percorso del file e <strong>blocca</strong>
+la modifica se è uno di questi:</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -248,44 +253,95 @@ se è uno di questi:</p>
 <tr>
 <td><code>appsettings.local.json</code>, <code>.env*.local</code></td>
 <td>Contengono segreti</td>
-<td>Documentare la chiave in <a href="../progetto/configurazione.html">Configurazione</a></td>
+<td>Documentare la chiave nel file <code>.example</code></td>
 </tr>
 </tbody>
 </table>
 </div>
 <p>Quando blocca, lo script spiega il motivo, e il motivo arriva a Claude: invece di un errore muto,
 Claude legge &quot;è generato, usa <code>pnpm gen:api</code>&quot; e cambia strada.</p>
-<p>Una migration &quot;già committata&quot; si riconosce con git: se il file è tracciato e non è fra le
-modifiche in corso, è committato. Una migration appena generata nel lavoro corrente invece si può
-ancora correggere.</p>
+<p>Una migration è &quot;già committata&quot; se esiste nell'ultimo commit (<code>HEAD</code>). Una migration appena
+generata nel lavoro in corso invece si può ancora correggere.</p>
+<p>Lo stesso hook guarda anche i comandi <strong>Bash e PowerShell</strong>: se un comando nomina un file di
+segreti (<code>Get-Content .env.local</code>, <code>copy … appsettings.local.json</code>) lo blocca. Le regole <code>deny</code>
+coprono già <code>cat</code> e simili; questo copre il resto. I file <code>.example</code> restano liberi.</p>
 <h3 id="dopo-la-modifica-la-formattazione">Dopo la modifica: la formattazione</h3>
-<p>Dopo ogni <code>Edit</code> o <code>Write</code>, il file appena scritto viene formattato: Prettier ed ESLint con
-correzione automatica sui <code>.ts</code> e <code>.vue</code>, <code>dotnet format</code> sui <code>.cs</code>. Così le differenze di stile non
-arrivano mai in review, e il diff contiene solo ciò che cambia davvero.</p>
+<p>Dopo ogni <code>Edit</code> o <code>Write</code>, <code>format.mjs</code> formatta il file appena scritto:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Strumento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.ts</code>, <code>.vue</code> sotto <code>apps/frontend</code></td>
+<td>Prettier, poi ESLint con <code>--fix</code></td>
+</tr>
+<tr>
+<td><code>.cs</code> sotto <code>apps/backend</code></td>
+<td><code>dotnet format whitespace</code> sul solo file</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Così le differenze di stile non arrivano mai in review, e il diff contiene solo ciò che cambia
+davvero. Ogni file costa circa due secondi.</p>
+<p>Se ESLint trova un <strong>errore</strong> che non sa correggere da solo, l'hook lo riporta a Claude con riga e
+regola, e Claude lo corregge subito. Gli avvisi, come <code>max-lines</code>, non fermano il lavoro.</p>
+<p>Il codice del template è già tutto formattato con le stesse regole (<code>.prettierrc</code>, con
+<code>arrowParens: &quot;avoid&quot;</code> per lasciare <code>x =&gt; …</code> senza parentesi): toccare un file esistente non
+produce un diff di sola formattazione.</p>
 <h3 id="come-si-configurano">Come si configurano</h3>
-<p>Gli hook stanno nello stesso <code>settings.json</code>, e gli script in <code>.claude/hooks/</code>:</p>
+<p>Gli hook stanno nello stesso <code>settings.json</code>:</p>
 <pre><code class="language-json"><span class="hljs-punctuation">{</span>
   <span class="hljs-attr">&quot;hooks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
     <span class="hljs-attr">&quot;PreToolUse&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
       <span class="hljs-punctuation">{</span>
-        <span class="hljs-attr">&quot;matcher&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Edit|Write&quot;</span><span class="hljs-punctuation">,</span>
-        <span class="hljs-attr">&quot;hooks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;type&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;command&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;command&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;node .claude/hooks/protect-files.mjs&quot;</span> <span class="hljs-punctuation">}</span><span class="hljs-punctuation">]</span>
+        <span class="hljs-attr">&quot;matcher&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell&quot;</span><span class="hljs-punctuation">,</span>
+        <span class="hljs-attr">&quot;hooks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;type&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;command&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;command&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;node&quot;</span><span class="hljs-punctuation">,</span>
+                    <span class="hljs-attr">&quot;args&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;${CLAUDE_PROJECT_DIR}/.claude/hooks/protect-files.mjs&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;timeout&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">10</span> <span class="hljs-punctuation">}</span><span class="hljs-punctuation">]</span>
       <span class="hljs-punctuation">}</span>
     <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
     <span class="hljs-attr">&quot;PostToolUse&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
       <span class="hljs-punctuation">{</span>
-        <span class="hljs-attr">&quot;matcher&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Edit|Write&quot;</span><span class="hljs-punctuation">,</span>
-        <span class="hljs-attr">&quot;hooks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;type&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;command&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;command&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;node .claude/hooks/format.mjs&quot;</span> <span class="hljs-punctuation">}</span><span class="hljs-punctuation">]</span>
+        <span class="hljs-attr">&quot;matcher&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Edit|Write|MultiEdit&quot;</span><span class="hljs-punctuation">,</span>
+        <span class="hljs-attr">&quot;hooks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;type&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;command&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;command&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;node&quot;</span><span class="hljs-punctuation">,</span>
+                    <span class="hljs-attr">&quot;args&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;${CLAUDE_PROJECT_DIR}/.claude/hooks/format.mjs&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;timeout&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">60</span> <span class="hljs-punctuation">}</span><span class="hljs-punctuation">]</span>
       <span class="hljs-punctuation">}</span>
     <span class="hljs-punctuation">]</span>
   <span class="hljs-punctuation">}</span>
 <span class="hljs-punctuation">}</span>
 </code></pre>
-<p>Lo script riceve su stdin un JSON con lo strumento chiamato e i suoi argomenti, fra cui il percorso
-del file. Per bloccare esce con codice <code>2</code> e scrive il motivo su stderr; con codice <code>0</code> la modifica
-procede.</p>
-<p>Gli script sono in Node, non in PowerShell o bash, perché devono funzionare uguale su Windows,
+<p>Con <code>args</code> l'hook gira <strong>senza shell</strong>: Claude Code avvia <code>node</code> direttamente e gli passa il
+percorso dello script. È ciò che lo fa funzionare uguale su Windows (con o senza Git Bash),
 macOS e Linux, e Node c'è già per il frontend.</p>
+<p>Lo script riceve su stdin un JSON con lo strumento chiamato e i suoi argomenti, fra cui il
+percorso del file o il comando. Per bloccare esce con codice <code>2</code> e scrive il motivo su stderr;
+con codice <code>0</code> la modifica procede. Se l'input è inatteso, lascia passare: un hook rotto non
+deve fermare tutto il lavoro.</p>
+<h2 id="la-verifica-pnpm-verify">La verifica: <code>pnpm verify</code></h2>
+<p>Dalla root del monorepo, un comando esegue tutti i controlli che dicono se una modifica è
+&quot;fatta&quot;:</p>
+<pre><code class="language-bash">pnpm verify              <span class="hljs-comment"># backend e frontend</span>
+pnpm verify --backend    <span class="hljs-comment"># build e test .NET</span>
+pnpm verify --frontend   <span class="hljs-comment"># typecheck, lint e test Vue</span>
+</code></pre>
+<pre><code>✓ backend · build (9.9s)
+✓ backend · test (2.9s)
+✓ frontend · typecheck (7.2s)
+✗ frontend · lint (2.9s)
+    src/stores/suppliers.store.ts:12:7 'x' is assigned a value but never used. (@typescript-eslint/no-unused-vars)
+✓ frontend · test (4.6s)
+
+Verifica: 1 passo fallito
+</code></pre>
+<p>Per i passi verdi stampa una riga; per quelli rossi solo le righe d'errore (il test che fallisce
+con il messaggio dell'asserzione, l'errore di compilazione con file e riga). Se la build .NET
+non compila, i test backend vengono saltati. È lo script <code>scripts/verify.mjs</code>, ed è lo stesso
+comando che userà la CI.</p>
 <h2 id="da-qui">Da qui</h2>
 <ul>
 <li><strong><a href="come-lavora.html">Il modello di lavoro</a></strong> — perché un controllo deterministico batte
