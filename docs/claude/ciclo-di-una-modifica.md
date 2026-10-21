@@ -73,7 +73,7 @@ Il lead scrive il codice, seguendo il piano se c'è. Lo strumento giusto dipende
 | Compito | Strumento |
 |---|---|
 | Una nuova entità con il CRUD completo, dal database alla pagina | `/new-feature <Entità>` |
-| Un nuovo caso d'uso su un'entità esistente (un'azione, una query, un report) | `/new-slice` *(in arrivo)* |
+| Un nuovo caso d'uso su un'entità esistente (un'azione, una query, un report) | `/new-slice <caso d'uso>` |
 | Aggiungere o togliere un campo, propagandolo ovunque | `/add-field`, `/remove-field` |
 | Un bug descritto a parole | `/fix` |
 | Tutto il resto | Le skill, che si attivano da sole: `backend-slice`, `db-entity`, `vue-feature`, `pagination`, … |
@@ -115,7 +115,7 @@ le convenzioni del progetto, backend e frontend. Si usa a fine lavoro su qualsia
 banale.
 
 **I reviewer** sono la review specialistica, e si chiamano quando la modifica tocca ciò che sanno
-giudicare *(in arrivo)*:
+giudicare. `/review` li chiama da solo quando servono:
 
 | La modifica tocca… | Reviewer |
 |---|---|
@@ -179,7 +179,7 @@ l'operazione chiesta.
 2. **Pianificare** — sì, ma breve: la regola "un fornitore già disattivato non si disattiva di nuovo"
    va nell'aggregato (`Supplier.Deactivate()`), non nell'handler; le query dei menu a tendina
    filtrano gli attivi.
-3. **Implementare** — `/new-slice` *(in arrivo)*: comando `DeactivateSupplier`, endpoint, permesso,
+3. **Implementare** — `/new-slice disattivare un fornitore`: comando `DeactivateSupplier`, endpoint, permesso,
    azione nello store e pulsante nella pagina.
 4. **Verificare** — più un test dell'invariante in `Domain.Tests`.
 5. **Revisionare** — `architecture-security-reviewer`: un endpoint nuovo con un permesso.

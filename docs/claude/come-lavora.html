@@ -264,13 +264,13 @@ proposta), e il lead decide che cosa farne. Come si chiamano, che cosa ricevono 
 <td><strong>architecture-security-reviewer</strong></td>
 <td>Che ogni endpoint abbia il permesso <em>giusto</em>; che le regole di business stiano nell'aggregato e non nell'handler; che nessun dato sensibile finisca in una response, in un log o in uno snapshot di audit; che la slice rispetti l'architettura descritta nel <code>CLAUDE.md</code> del progetto</td>
 <td>La direzione delle dipendenze fra layer — la verificano i test di architettura</td>
-<td>in arrivo</td>
+<td>presente</td>
 </tr>
 <tr>
 <td><strong>ef-sql-reviewer</strong></td>
 <td>Query che diventano N+1 o caricano colonne inutili; indici mancanti sui filtri; mapping (lunghezze, delete behavior, conversioni); migration che non reggono su una tabella già piena; differenze fra SQL Server e PostgreSQL (<code>Contains</code> case-sensitive, tipi, default)</td>
 <td>Che le due migration esistano e siano allineate al modello — lo verificherà la CI <em>(in arrivo)</em>; fino ad allora è nella checklist di <code>/review</code></td>
-<td>in arrivo</td>
+<td>presente</td>
 </tr>
 </tbody>
 </table>
@@ -313,7 +313,7 @@ Architecture) sia su progetti con un'organizzazione diversa, come una vertical s
 <td>Comandi (<code>/new-feature</code>, <code>/new-slice</code>, <code>/add-field</code>, <code>/remove-field</code>, <code>/fix</code>, <code>/review</code>)</td>
 <td><strong>Flussi completi</strong> che combinano più skill. Sono skill con <code>disable-model-invocation: true</code></td>
 <td>Solo quando li invochi tu</td>
-<td>presenti, <code>/new-slice</code> in arrivo</td>
+<td>presenti</td>
 </tr>
 </tbody>
 </table>

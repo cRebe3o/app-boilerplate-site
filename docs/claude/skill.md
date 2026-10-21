@@ -57,7 +57,7 @@ I test del backend non hanno una skill: le regole sono in `apps/backend/CLAUDE.m
 
 ## I comandi
 
-Oltre alle skill, cinque comandi per le operazioni ricorrenti. Tecnicamente sono skill anche
+Oltre alle skill, sei comandi per le operazioni ricorrenti. Tecnicamente sono skill anche
 loro, in `.claude/skills/`, ma con `disable-model-invocation: true` nell'intestazione: Claude
 non li avvia mai da solo, partono solo quando li scrivi. È la differenza voluta fra *sapere come
 si fa* una cosa (una skill, che si carica da sola) e *farla* (un comando, che crea file e
@@ -66,6 +66,7 @@ genera migration).
 | Comando | Che cosa fa |
 |---|---|
 | `/new-feature <Entità>` | Crea una feature CRUD completa end-to-end, backend e frontend, passando da un piano che approvi tu |
+| `/new-slice <caso d'uso>` | Aggiunge un'operazione a un'entità esistente (un'azione, una query, un report): regola nell'aggregato, slice, endpoint e permesso, e il frontend se serve |
 | `/add-field <Entità>` | Aggiunge un campo a un'entità esistente, lo propaga su tutti i punti che lo richiedono e verifica |
 | `/remove-field <Entità>` | L'operazione inversa: chiede conferma prima della migration che cancella i dati |
 | `/review` | Rilegge le modifiche del branch rispetto a `main` (o i percorsi indicati) contro le convenzioni del progetto, senza modificare file |

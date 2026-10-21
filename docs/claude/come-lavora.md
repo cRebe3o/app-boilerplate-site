@@ -97,8 +97,8 @@ proposta), e il lead decide che cosa farne. Come si chiamano, che cosa ricevono 
 
 | Reviewer | Che cosa guarda | Che cosa **non** guarda | Stato |
 |---|---|---|---|
-| **architecture-security-reviewer** | Che ogni endpoint abbia il permesso *giusto*; che le regole di business stiano nell'aggregato e non nell'handler; che nessun dato sensibile finisca in una response, in un log o in uno snapshot di audit; che la slice rispetti l'architettura descritta nel `CLAUDE.md` del progetto | La direzione delle dipendenze fra layer — la verificano i test di architettura | in arrivo |
-| **ef-sql-reviewer** | Query che diventano N+1 o caricano colonne inutili; indici mancanti sui filtri; mapping (lunghezze, delete behavior, conversioni); migration che non reggono su una tabella già piena; differenze fra SQL Server e PostgreSQL (`Contains` case-sensitive, tipi, default) | Che le due migration esistano e siano allineate al modello — lo verificherà la CI *(in arrivo)*; fino ad allora è nella checklist di `/review` | in arrivo |
+| **architecture-security-reviewer** | Che ogni endpoint abbia il permesso *giusto*; che le regole di business stiano nell'aggregato e non nell'handler; che nessun dato sensibile finisca in una response, in un log o in uno snapshot di audit; che la slice rispetti l'architettura descritta nel `CLAUDE.md` del progetto | La direzione delle dipendenze fra layer — la verificano i test di architettura | presente |
+| **ef-sql-reviewer** | Query che diventano N+1 o caricano colonne inutili; indici mancanti sui filtri; mapping (lunghezze, delete behavior, conversioni); migration che non reggono su una tabella già piena; differenze fra SQL Server e PostgreSQL (`Contains` case-sensitive, tipi, default) | Che le due migration esistano e siano allineate al modello — lo verificherà la CI *(in arrivo)*; fino ad allora è nella checklist di `/review` | presente |
 
 I reviewer **non conoscono l'architettura a memoria**: la leggono dal `CLAUDE.md` del progetto che
 stanno revisionando. È ciò che permette di usarli sia sui progetti generati dal template (Clean
@@ -113,7 +113,7 @@ Come si scrivono e dove va una regola nuova è in [Le istruzioni](istruzioni.md)
 | `CLAUDE.md` di root | **Come si lavora**: il ciclo, la definizione di "fatto", quando usare plan mode e reviewer, le convenzioni di commit, che cosa non si fa mai | All'avvio di ogni sessione | presente |
 | `apps/backend/CLAUDE.md`, `apps/frontend/CLAUDE.md` | **Com'è fatto il codice**: struttura, regole dei layer, convenzioni | Quando Claude legge file in quella cartella | presente |
 | Skill (`.claude/skills/`) | **Procedure**: come si scrive una slice, un'entità, una pagina, un test | Da sole, quando la richiesta corrisponde alla loro descrizione | presente |
-| Comandi (`/new-feature`, `/new-slice`, `/add-field`, `/remove-field`, `/fix`, `/review`) | **Flussi completi** che combinano più skill. Sono skill con `disable-model-invocation: true` | Solo quando li invochi tu | presenti, `/new-slice` in arrivo |
+| Comandi (`/new-feature`, `/new-slice`, `/add-field`, `/remove-field`, `/fix`, `/review`) | **Flussi completi** che combinano più skill. Sono skill con `disable-model-invocation: true` | Solo quando li invochi tu | presenti |
 
 La distinzione fra skill e comandi è voluta. Una skill si attiva da sola perché descrive *come* si
 fa una cosa, e saperlo non fa mai danni. Un comando è un'azione con conseguenze — crea una dozzina

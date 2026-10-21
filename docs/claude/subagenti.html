@@ -113,6 +113,7 @@
           <li class="lvl-3"><a href="#plan">Plan</a></li>
           <li class="lvl-2"><a href="#limiti-e-costi">Limiti e costi</a></li>
           <li class="lvl-2"><a href="#aggiungere-un-subagente">Aggiungere un subagente</a></li>
+          <li class="lvl-3"><a href="#come-sono-stati-provati-i-due-reviewer">Come sono stati provati i due reviewer</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
@@ -120,9 +121,9 @@
 scrivono</strong>. Questa pagina spiega come lavorano in concreto: chi li chiama, che cosa ricevono, che
 cosa restituiscono, come sono definiti e che cosa succede alle loro segnalazioni.</p>
 <blockquote>
-<p><strong>Stato.</strong> Explore e Plan sono integrati in Claude Code e si usano già. I due reviewer
-(<code>architecture-security-reviewer</code> ed <code>ef-sql-reviewer</code>) sono <strong>in arrivo</strong>: questa pagina è la
-loro specifica. Quando entrano nel template, i file descritti qui compaiono in <code>.claude/agents/</code>.</p>
+<p><strong>Stato.</strong> Explore e Plan sono integrati in Claude Code. I due reviewer
+(<code>architecture-security-reviewer</code> ed <code>ef-sql-reviewer</code>) sono in <code>.claude/agents/</code> di ogni
+progetto generato; <code>/review</code> li chiama quando la modifica tocca ciò che sanno giudicare.</p>
 </blockquote>
 <h2 id="che-cos-e-un-subagente">Che cos'è un subagente</h2>
 <p>Un subagente è un'altra istanza di Claude che il lead avvia per un compito circoscritto. Ha tre
@@ -175,7 +176,7 @@ il <strong>rapporto</strong> deve avere un formato che il lead possa valutare pu
 <td>Sonnet</td>
 <td><code>Read</code>, <code>Grep</code>, <code>Glob</code></td>
 <td>Permessi, posto delle regole di business, dati esposti, aderenza all'architettura</td>
-<td>in arrivo</td>
+<td>presente</td>
 </tr>
 <tr>
 <td><strong>ef-sql-reviewer</strong></td>
@@ -183,7 +184,7 @@ il <strong>rapporto</strong> deve avere un formato che il lead possa valutare pu
 <td>Sonnet</td>
 <td><code>Read</code>, <code>Grep</code>, <code>Glob</code></td>
 <td>Query, mapping, migration e differenze fra SQL Server e PostgreSQL</td>
-<td>in arrivo</td>
+<td>presente</td>
 </tr>
 </tbody>
 </table>
@@ -251,9 +252,9 @@ e partita IVA. La partita IVA è univoca (confermato dall&#x27;utente). Hard del
 File:
 - Domain/Suppliers/Supplier.cs (nuovo)
 - Infrastructure/Persistence/Configurations/SupplierConfiguration.cs (nuovo)
-- Infrastructure/Migrations/SqlServer/…_AddSuppliers.cs (nuovo)
-- Infrastructure/Migrations/PostgreSql/…_AddSuppliers.cs (nuovo)
-- Application/Suppliers/GetSuppliers/GetSuppliersQueryHandler.cs (nuovo)
+- Infrastructure/Persistence/Migrations/SqlServer/…_AddSuppliers.cs (nuovo)
+- Infrastructure/Persistence/Migrations/Postgres/…_AddSuppliers.cs (nuovo)
+- Application/Suppliers/GetSuppliers/GetSuppliersHandler.cs (nuovo)
 
 Diff: &lt;diff dei file sopra&gt;
 
@@ -262,7 +263,7 @@ Attenzione in particolare a: la ricerca deve comportarsi allo stesso modo sui du
 <h2 id="il-rapporto-che-cosa-restituiscono">Il rapporto: che cosa restituiscono</h2>
 <p>I reviewer rispondono sempre nello stesso formato, perché il lead deve poter decidere segnalazione
 per segnalazione:</p>
-<pre><code class="language-text">[ALTA] Application/Suppliers/GetSuppliers/GetSuppliersQueryHandler.cs:34
+<pre><code class="language-text">[ALTA] Application/Suppliers/GetSuppliers/GetSuppliersHandler.cs:34
 Problema: la ricerca usa Contains sulla ragione sociale. Su PostgreSQL il confronto
 è case-sensitive, su SQL Server (collation predefinita) no: la stessa ricerca dà
 risultati diversi.
@@ -426,6 +427,73 @@ deve trovare (un endpoint con il permesso sbagliato, una query N+1, una migratio
 colonna piena) e si controlla che li segnali tutti. Poi lo si lancia su una modifica corretta, e si
 controlla che risponda &quot;nessun problema&quot; invece di inventarne. Il subagente entra nel template
 solo se supera entrambe le prove.</p>
+<h3 id="come-sono-stati-provati-i-due-reviewer">Come sono stati provati i due reviewer</h3>
+<p>Su un progetto generato, una modifica plausibile (un campo &quot;reparto&quot; sugli utenti, un export
+degli utenti, un filtro per data sul log di audit) con nove problemi introdotti apposta:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Problema</th>
+<th>Reviewer</th>
+<th>Trovato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Endpoint di export senza permesso (solo login)</td>
+<td>architecture-security</td>
+<td>sì, ALTA</td>
+</tr>
+<tr>
+<td><code>PasswordHash</code> nella risposta dell'export</td>
+<td>architecture-security</td>
+<td>sì, ALTA</td>
+</tr>
+<tr>
+<td>Delete protetta da <code>users.write</code> invece di <code>users.delete</code></td>
+<td>architecture-security</td>
+<td>sì, ALTA</td>
+</tr>
+<tr>
+<td>Regola dei ruoli di sistema spostata dall'aggregato all'handler</td>
+<td>architecture-security</td>
+<td>sì, MEDIA</td>
+</tr>
+<tr>
+<td>Date dalla query string senza <code>DateTime.SpecifyKind</code> (errore su Postgres)</td>
+<td>ef-sql</td>
+<td>sì, ALTA</td>
+</tr>
+<tr>
+<td>Export con entità intere e una query per utente (N+1)</td>
+<td>ef-sql</td>
+<td>sì, ALTA</td>
+</tr>
+<tr>
+<td>Stringa senza <code>HasMaxLength</code></td>
+<td>ef-sql</td>
+<td>sì, MEDIA</td>
+</tr>
+<tr>
+<td>Migration solo SQL Server, NOT NULL senza default su una tabella piena</td>
+<td>ef-sql</td>
+<td>sì, ALTA</td>
+</tr>
+<tr>
+<td><code>Contains</code> non normalizzato (case-sensitive su Postgres)</td>
+<td>ef-sql</td>
+<td>sì, ALTA</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Entrambi hanno trovato anche problemi veri non introdotti apposta (il campo &quot;obbligatorio&quot; non
+garantito dal dominio, la migration scritta a mano senza <code>.Designer.cs</code>).</p>
+<p>Sulla modifica corretta (il solo filtro per data, fatto secondo le regole) non hanno segnalato
+nulla di ALTO: solo tre osservazioni vere e minori (validator che confronta data e ora mentre
+l'handler usa solo la data, descrizione OpenAPI non aggiornata, ordinamento della paginazione
+senza una chiave univoca in coda). Nessuna segnalazione inventata.</p>
 <h2 id="da-qui">Da qui</h2>
 <ul>
 <li><strong><a href="come-lavora.html">Il modello di lavoro</a></strong> — perché i subagenti non scrivono, e i tre livelli di

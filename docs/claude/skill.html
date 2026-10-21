@@ -231,7 +231,7 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 <p>I test del backend non hanno una skill: le regole sono in <code>apps/backend/CLAUDE.md</code> e in
 <a href="../guide/test-backend.html">Testare il backend</a>.</p>
 <h2 id="i-comandi">I comandi</h2>
-<p>Oltre alle skill, cinque comandi per le operazioni ricorrenti. Tecnicamente sono skill anche
+<p>Oltre alle skill, sei comandi per le operazioni ricorrenti. Tecnicamente sono skill anche
 loro, in <code>.claude/skills/</code>, ma con <code>disable-model-invocation: true</code> nell'intestazione: Claude
 non li avvia mai da solo, partono solo quando li scrivi. È la differenza voluta fra <em>sapere come
 si fa</em> una cosa (una skill, che si carica da sola) e <em>farla</em> (un comando, che crea file e
@@ -248,6 +248,10 @@ genera migration).</p>
 <tr>
 <td><code>/new-feature &lt;Entità&gt;</code></td>
 <td>Crea una feature CRUD completa end-to-end, backend e frontend, passando da un piano che approvi tu</td>
+</tr>
+<tr>
+<td><code>/new-slice &lt;caso d'uso&gt;</code></td>
+<td>Aggiunge un'operazione a un'entità esistente (un'azione, una query, un report): regola nell'aggregato, slice, endpoint e permesso, e il frontend se serve</td>
 </tr>
 <tr>
 <td><code>/add-field &lt;Entità&gt;</code></td>

@@ -14,7 +14,7 @@ male, riempie il progetto di istruzioni duplicate e contraddittorie.
 | `apps/frontend/CLAUDE.md` | **Com'è fatto il frontend**: struttura, tipi generati, flusso di una feature, store e pagine tipo, router, i18n, permessi, verifica | Quando Claude legge file sotto `apps/frontend/` | presente |
 | `.claude/skills/*/SKILL.md` | **Procedure** per un compito preciso | Quando la richiesta corrisponde alla `description` della skill | presente |
 | `.claude/skills/*/SKILL.md` con `disable-model-invocation: true` | **Comandi**: flussi completi che combinano più skill | Solo quando li invochi (`/new-feature`, `/fix`, …) | presente |
-| `.claude/agents/*.md` | **Prompt dei reviewer** | Quando il lead chiama il subagente | in arrivo |
+| `.claude/agents/*.md` | **Prompt dei reviewer** | Quando il lead chiama il subagente | presente |
 
 Due conseguenze pratiche:
 

@@ -233,7 +233,7 @@ cercando file dimenticati, rischi e alternative più semplici.</p>
 </tr>
 <tr>
 <td>Un nuovo caso d'uso su un'entità esistente (un'azione, una query, un report)</td>
-<td><code>/new-slice</code> <em>(in arrivo)</em></td>
+<td><code>/new-slice &lt;caso d'uso&gt;</code></td>
 </tr>
 <tr>
 <td>Aggiungere o togliere un campo, propagandolo ovunque</td>
@@ -275,7 +275,7 @@ dichiarare finito.</p>
 le convenzioni del progetto, backend e frontend. Si usa a fine lavoro su qualsiasi modifica non
 banale.</p>
 <p><strong>I reviewer</strong> sono la review specialistica, e si chiamano quando la modifica tocca ciò che sanno
-giudicare <em>(in arrivo)</em>:</p>
+giudicare. <code>/review</code> li chiama da solo quando servono:</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -359,7 +359,7 @@ univoco (ef-sql) e ci sono endpoint e permessi nuovi (architecture-security).</l
 <li><strong>Pianificare</strong> — sì, ma breve: la regola &quot;un fornitore già disattivato non si disattiva di nuovo&quot;
 va nell'aggregato (<code>Supplier.Deactivate()</code>), non nell'handler; le query dei menu a tendina
 filtrano gli attivi.</li>
-<li><strong>Implementare</strong> — <code>/new-slice</code> <em>(in arrivo)</em>: comando <code>DeactivateSupplier</code>, endpoint, permesso,
+<li><strong>Implementare</strong> — <code>/new-slice disattivare un fornitore</code>: comando <code>DeactivateSupplier</code>, endpoint, permesso,
 azione nello store e pulsante nella pagina.</li>
 <li><strong>Verificare</strong> — più un test dell'invariante in <code>Domain.Tests</code>.</li>
 <li><strong>Revisionare</strong> — <code>architecture-security-reviewer</code>: un endpoint nuovo con un permesso.

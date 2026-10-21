@@ -4,9 +4,9 @@ Il [modello di lavoro](come-lavora.md) stabilisce che i subagenti **guardano e c
 scrivono**. Questa pagina spiega come lavorano in concreto: chi li chiama, che cosa ricevono, che
 cosa restituiscono, come sono definiti e che cosa succede alle loro segnalazioni.
 
-> **Stato.** Explore e Plan sono integrati in Claude Code e si usano già. I due reviewer
-> (`architecture-security-reviewer` ed `ef-sql-reviewer`) sono **in arrivo**: questa pagina è la
-> loro specifica. Quando entrano nel template, i file descritti qui compaiono in `.claude/agents/`.
+> **Stato.** Explore e Plan sono integrati in Claude Code. I due reviewer
+> (`architecture-security-reviewer` ed `ef-sql-reviewer`) sono in `.claude/agents/` di ogni
+> progetto generato; `/review` li chiama quando la modifica tocca ciò che sanno giudicare.
 
 ## Che cos'è un subagente
 
@@ -31,8 +31,8 @@ il **rapporto** deve avere un formato che il lead possa valutare punto per punto
 |---|---|---|---|---|---|
 | **Explore** | integrato | quello predefinito | sola lettura | Ricerca a ventaglio: trova dove sta qualcosa e restituisce la conclusione | presente |
 | **Plan** | integrato | quello del lead | sola lettura | Critica un piano già scritto: file dimenticati, rischi, alternative più semplici | presente |
-| **architecture-security-reviewer** | del progetto | Sonnet | `Read`, `Grep`, `Glob` | Permessi, posto delle regole di business, dati esposti, aderenza all'architettura | in arrivo |
-| **ef-sql-reviewer** | del progetto | Sonnet | `Read`, `Grep`, `Glob` | Query, mapping, migration e differenze fra SQL Server e PostgreSQL | in arrivo |
+| **architecture-security-reviewer** | del progetto | Sonnet | `Read`, `Grep`, `Glob` | Permessi, posto delle regole di business, dati esposti, aderenza all'architettura | presente |
+| **ef-sql-reviewer** | del progetto | Sonnet | `Read`, `Grep`, `Glob` | Query, mapping, migration e differenze fra SQL Server e PostgreSQL | presente |
 
 Che cosa guarda ciascun reviewer, e che cosa lascia ai test, è descritto in
 [I reviewer](come-lavora.md#i-reviewer).
@@ -82,9 +82,9 @@ e partita IVA. La partita IVA è univoca (confermato dall'utente). Hard delete.
 File:
 - Domain/Suppliers/Supplier.cs (nuovo)
 - Infrastructure/Persistence/Configurations/SupplierConfiguration.cs (nuovo)
-- Infrastructure/Migrations/SqlServer/…_AddSuppliers.cs (nuovo)
-- Infrastructure/Migrations/PostgreSql/…_AddSuppliers.cs (nuovo)
-- Application/Suppliers/GetSuppliers/GetSuppliersQueryHandler.cs (nuovo)
+- Infrastructure/Persistence/Migrations/SqlServer/…_AddSuppliers.cs (nuovo)
+- Infrastructure/Persistence/Migrations/Postgres/…_AddSuppliers.cs (nuovo)
+- Application/Suppliers/GetSuppliers/GetSuppliersHandler.cs (nuovo)
 
 Diff: <diff dei file sopra>
 
@@ -97,7 +97,7 @@ I reviewer rispondono sempre nello stesso formato, perché il lead deve poter de
 per segnalazione:
 
 ```text
-[ALTA] Application/Suppliers/GetSuppliers/GetSuppliersQueryHandler.cs:34
+[ALTA] Application/Suppliers/GetSuppliers/GetSuppliersHandler.cs:34
 Problema: la ricerca usa Contains sulla ragione sociale. Su PostgreSQL il confronto
 è case-sensitive, su SQL Server (collation predefinita) no: la stessa ricerca dà
 risultati diversi.
@@ -236,6 +236,31 @@ deve trovare (un endpoint con il permesso sbagliato, una query N+1, una migratio
 colonna piena) e si controlla che li segnali tutti. Poi lo si lancia su una modifica corretta, e si
 controlla che risponda "nessun problema" invece di inventarne. Il subagente entra nel template
 solo se supera entrambe le prove.
+
+### Come sono stati provati i due reviewer
+
+Su un progetto generato, una modifica plausibile (un campo "reparto" sugli utenti, un export
+degli utenti, un filtro per data sul log di audit) con nove problemi introdotti apposta:
+
+| Problema | Reviewer | Trovato |
+|---|---|---|
+| Endpoint di export senza permesso (solo login) | architecture-security | sì, ALTA |
+| `PasswordHash` nella risposta dell'export | architecture-security | sì, ALTA |
+| Delete protetta da `users.write` invece di `users.delete` | architecture-security | sì, ALTA |
+| Regola dei ruoli di sistema spostata dall'aggregato all'handler | architecture-security | sì, MEDIA |
+| Date dalla query string senza `DateTime.SpecifyKind` (errore su Postgres) | ef-sql | sì, ALTA |
+| Export con entità intere e una query per utente (N+1) | ef-sql | sì, ALTA |
+| Stringa senza `HasMaxLength` | ef-sql | sì, MEDIA |
+| Migration solo SQL Server, NOT NULL senza default su una tabella piena | ef-sql | sì, ALTA |
+| `Contains` non normalizzato (case-sensitive su Postgres) | ef-sql | sì, ALTA |
+
+Entrambi hanno trovato anche problemi veri non introdotti apposta (il campo "obbligatorio" non
+garantito dal dominio, la migration scritta a mano senza `.Designer.cs`).
+
+Sulla modifica corretta (il solo filtro per data, fatto secondo le regole) non hanno segnalato
+nulla di ALTO: solo tre osservazioni vere e minori (validator che confronta data e ora mentre
+l'handler usa solo la data, descrizione OpenAPI non aggiornata, ordinamento della paginazione
+senza una chiave univoca in coda). Nessuna segnalazione inventata.
 
 ## Da qui
 
