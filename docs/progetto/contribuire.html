@@ -251,8 +251,9 @@ tag — <code>copier update</code> lavora sui tag, e senza tag i progetti genera
 cui aggiornarsi.</li>
 </ol>
 <pre><code class="language-bash">git tag -a v1.1.0 -m <span class="hljs-string">&quot;v1.1.0&quot;</span>
-git push --tags
+git push --atomic origin main v1.1.0
 </code></pre>
+<p><code>--atomic</code> pubblica il commit e il suo tag insieme, o nessuno dei due.</p>
 <p><code>major</code> quando un progetto generato deve intervenire a mano per aggiornarsi (rinomine, migration
 dell'impianto, skill rimosse), <code>minor</code> per funzionalità nuove compatibili, <code>patch</code> per correzioni.</p>
 <h3 id="7-riportare-anche-su-app-demo">7. Riportare anche su app-demo</h3>

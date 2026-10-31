@@ -128,8 +128,10 @@ Poi:
 
 ```bash
 git tag -a v1.1.0 -m "v1.1.0"
-git push --tags
+git push --atomic origin main v1.1.0
 ```
+
+`--atomic` pubblica il commit e il suo tag insieme, o nessuno dei due.
 
 `major` quando un progetto generato deve intervenire a mano per aggiornarsi (rinomine, migration
 dell'impianto, skill rimosse), `minor` per funzionalità nuove compatibili, `patch` per correzioni.
