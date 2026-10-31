@@ -297,8 +297,8 @@ stesso comportamento fra le tre strategie di autenticazione.
 | File | Che cosa configura |
 |---|---|
 | `axios.ts` | L'istanza `api`: `baseURL`, `withCredentials` (per il cookie del refresh token), header `Authorization` e `Accept-Language` su ogni richiesta; su **401** un tentativo di refresh e la ripetizione della richiesta, poi logout; su **5xx** l'invio di un `ErrorLog` al backend; il timer del banner di riattivazione |
-| `i18n.ts` | vue-i18n con `it` ed `en`, lingua ripristinata da `localStorage` |
-| `vuetify.ts` | Tema chiaro e scuro (colori delle barre inclusi), `defaults` dei componenti: `outlined` + `compact` per gli input, `rounded: 0` ovunque |
+| `i18n.ts` | vue-i18n con `it` ed `en`, lingua ripristinata da `localStorage`; contiene anche i testi dei componenti Vuetify, sotto `$vuetify` |
+| `vuetify.ts` | Tema chiaro e scuro (colori delle barre inclusi), `defaults` dei componenti: `outlined` + `compact` per gli input, `rounded: 0` ovunque; l'adapter che fa seguire ai componenti la lingua di vue-i18n |
 | `msal.ts` | L'istanza MSAL, creata solo con la strategia `msal` |
 
 **Quando si toccano.** Quasi mai. Un colore del tema nuovo va in `vuetify.ts`; un header da
@@ -358,8 +358,8 @@ codice; ciò che deve essere servito tale e quale (favicon, `_redirects` per l'h
 | `tsconfig.json` | `strict`, `noUnusedLocals`, `noUnusedParameters`; alias `@/*` | quasi mai |
 | `eslint.config.js` | Flat config: regole JS, TypeScript, Vue, Prettier; globali browser per `src/`, Node per test e `scripts/`; `max-lines` 300 per le pagine e 200 per i componenti, come avviso | per una regola nuova |
 | `.prettierrc` | Niente `;`, virgolette singole, 120 colonne, `x => …` senza parentesi. Lo applica l'hook di formattazione a ogni modifica di Claude; `pnpm format` riformatta tutto `src/` | mai |
-| `vitest.config.ts` | jsdom, `globals`, `vitest.setup.ts`, soglie di coverage (sotto `thresholds`, altrimenti vengono ignorate) | per alzare le soglie |
-| `vitest.setup.ts` | i18n minimale, Pinia, mock di `matchMedia` e `localStorage` | per un mock globale nuovo |
+| `vitest.config.ts` | jsdom, `globals`, `vitest.setup.ts`, `vuetify` elaborato da Vite (i suoi componenti importano CSS), soglie di coverage (sotto `thresholds`, altrimenti vengono ignorate) | per alzare le soglie |
+| `vitest.setup.ts` | i18n minimale, Pinia, mock di `matchMedia`, `ResizeObserver` e `localStorage` | per un mock globale nuovo |
 | `.env` · `.env.local.example` · `.env.production` | Le variabili `VITE_*`. `.env.local` è gitignored ed è dove si mettono i valori locali | per una variabile nuova |
 | `project.json` | I target Nx: `build`, `serve`, `test`, `lint`, `typecheck`. Sono ciò che `pnpm build`, `pnpm lint:frontend` e `pnpm typecheck:frontend` dalla radice invocano | per un target nuovo |
 | `scripts/generate-api-types.mjs` | `pnpm gen:api`: legge lo schema dal backend avviato e scrive `api.generated.ts` | mai |

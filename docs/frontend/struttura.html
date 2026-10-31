@@ -504,11 +504,11 @@ stesso comportamento fra le tre strategie di autenticazione.</p>
 </tr>
 <tr>
 <td><code>i18n.ts</code></td>
-<td>vue-i18n con <code>it</code> ed <code>en</code>, lingua ripristinata da <code>localStorage</code></td>
+<td>vue-i18n con <code>it</code> ed <code>en</code>, lingua ripristinata da <code>localStorage</code>; contiene anche i testi dei componenti Vuetify, sotto <code>$vuetify</code></td>
 </tr>
 <tr>
 <td><code>vuetify.ts</code></td>
-<td>Tema chiaro e scuro (colori delle barre inclusi), <code>defaults</code> dei componenti: <code>outlined</code> + <code>compact</code> per gli input, <code>rounded: 0</code> ovunque</td>
+<td>Tema chiaro e scuro (colori delle barre inclusi), <code>defaults</code> dei componenti: <code>outlined</code> + <code>compact</code> per gli input, <code>rounded: 0</code> ovunque; l'adapter che fa seguire ai componenti la lingua di vue-i18n</td>
 </tr>
 <tr>
 <td><code>msal.ts</code></td>
@@ -634,12 +634,12 @@ codice; ciò che deve essere servito tale e quale (favicon, <code>_redirects</co
 </tr>
 <tr>
 <td><code>vitest.config.ts</code></td>
-<td>jsdom, <code>globals</code>, <code>vitest.setup.ts</code>, soglie di coverage (sotto <code>thresholds</code>, altrimenti vengono ignorate)</td>
+<td>jsdom, <code>globals</code>, <code>vitest.setup.ts</code>, <code>vuetify</code> elaborato da Vite (i suoi componenti importano CSS), soglie di coverage (sotto <code>thresholds</code>, altrimenti vengono ignorate)</td>
 <td>per alzare le soglie</td>
 </tr>
 <tr>
 <td><code>vitest.setup.ts</code></td>
-<td>i18n minimale, Pinia, mock di <code>matchMedia</code> e <code>localStorage</code></td>
+<td>i18n minimale, Pinia, mock di <code>matchMedia</code>, <code>ResizeObserver</code> e <code>localStorage</code></td>
 <td>per un mock globale nuovo</td>
 </tr>
 <tr>

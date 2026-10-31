@@ -435,6 +435,9 @@ aggiornano da soli.</p>
 <li>Layout <code>v-container</code> → <code>v-row</code> → <code>v-col</code>; su mobile si controlla <code>useDisplay().mobile</code>.</li>
 <li>I <code>defaults</code> in <code>plugins/vuetify.ts</code> fissano <code>outlined</code> + <code>compact</code> per gli input e <code>rounded: 0</code>:
 non si ripetono nei componenti.</li>
+<li>I testi dei componenti (&quot;Elementi per pagina&quot;, &quot;1-2 di 2&quot;) seguono la lingua di vue-i18n, tramite
+l'adapter in <code>plugins/vuetify.ts</code>. Una lingua nuova va aggiunta anche ai messaggi <code>$vuetify</code> in
+<code>plugins/i18n.ts</code>.</li>
 <li>Slot con il punto nel nome (<code>#item.actions</code> di <code>v-data-table</code>) sono ammessi: ESLint è configurato
 per accettarli.</li>
 </ul>
@@ -473,7 +476,7 @@ un refresh;</li>
 <p>Nessuna chiamata <code>axios</code> o <code>fetch</code> fuori dai service.</p>
 <h2 id="test">Test</h2>
 <p>Vitest + jsdom, test <strong>accanto al file</strong> (<code>users.store.test.ts</code>, <code>RolePermissionsPicker.test.ts</code>).
-<code>vitest.setup.ts</code> registra i18n minimale, Pinia e i mock di <code>matchMedia</code> e <code>localStorage</code>.</p>
+<code>vitest.setup.ts</code> registra i18n minimale, Pinia e i mock di <code>matchMedia</code>, <code>ResizeObserver</code> e <code>localStorage</code>.</p>
 <p>La regola: <strong>si mocka il service, mai la rete</strong>. Lo store si testa reale, con risposte controllate:</p>
 <pre><code class="language-typescript">vi.<span class="hljs-title function_">mock</span>(<span class="hljs-string">&#x27;@/services/suppliers.service&#x27;</span>, <span class="hljs-function">() =&gt;</span> ({
   <span class="hljs-attr">suppliersService</span>: { <span class="hljs-attr">getAll</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">getById</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">create</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">update</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">delete</span>: vi.<span class="hljs-title function_">fn</span>() },

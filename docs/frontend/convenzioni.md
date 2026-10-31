@@ -266,6 +266,9 @@ aggiornano da soli.
 - Layout `v-container` → `v-row` → `v-col`; su mobile si controlla `useDisplay().mobile`.
 - I `defaults` in `plugins/vuetify.ts` fissano `outlined` + `compact` per gli input e `rounded: 0`:
   non si ripetono nei componenti.
+- I testi dei componenti ("Elementi per pagina", "1-2 di 2") seguono la lingua di vue-i18n, tramite
+  l'adapter in `plugins/vuetify.ts`. Una lingua nuova va aggiunta anche ai messaggi `$vuetify` in
+  `plugins/i18n.ts`.
 - Slot con il punto nel nome (`#item.actions` di `v-data-table`) sono ammessi: ESLint è configurato
   per accettarli.
 
@@ -315,7 +318,7 @@ Nessuna chiamata `axios` o `fetch` fuori dai service.
 ## Test
 
 Vitest + jsdom, test **accanto al file** (`users.store.test.ts`, `RolePermissionsPicker.test.ts`).
-`vitest.setup.ts` registra i18n minimale, Pinia e i mock di `matchMedia` e `localStorage`.
+`vitest.setup.ts` registra i18n minimale, Pinia e i mock di `matchMedia`, `ResizeObserver` e `localStorage`.
 
 La regola: **si mocka il service, mai la rete**. Lo store si testa reale, con risposte controllate:
 
