@@ -99,7 +99,8 @@ Dopo il merge, una ricerca di `Rental`, `Equipment`, `Customer`, `Noleggi`, `App
 ### 5. Verificare generando un progetto
 
 Il template non compila: lo si verifica **generando** un progetto in una cartella temporanea e
-facendo girare tutto.
+facendo girare tutto. La skill `/rilascio-template`, alla radice di `app-boilerplate`, esegue questo
+passo e i successivi su entrambi i provider.
 
 ```bash
 copier copy --trust -f -d project_name=Prova -d project_slug=Prova \

@@ -127,7 +127,7 @@ Permessi e hook, con la loro configurazione, sono descritti in [Permessi e hook]
 |---|---|---|
 | **Hook prima della modifica** | Bloccano le modifiche che non vanno mai fatte a mano: `api.generated.ts` (è generato), le migration già committate (si corregge con una migration nuova), `appsettings.local.json` e `.env*.local` (contengono segreti) | presente |
 | **Hook dopo la modifica** | Formattano il file appena scritto (Prettier ed ESLint su ts e vue, `dotnet format` su C#), così le differenze di stile non arrivano mai in review | presente |
-| **`pnpm verify`** | Build, test, lint e typecheck di backend e frontend in un comando, con un esito sintetico | presente |
+| **`pnpm verify`** | Build, test, lint, typecheck e vulnerabilità di backend e frontend in un comando, con un esito sintetico | presente |
 | **Test** | Domain, Application e architettura; in arrivo i test di integrazione su un database vero, per **entrambi** i provider | presenti, integrazione in arrivo |
 | **CI** | Gli stessi controlli di `verify` su ogni push, più due che in locale si dimenticano: migration mancanti rispetto al modello e tipi TypeScript non rigenerati dopo una modifica all'API | in arrivo |
 

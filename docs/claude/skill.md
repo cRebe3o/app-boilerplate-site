@@ -57,7 +57,7 @@ I test del backend non hanno una skill: le regole sono in `apps/backend/CLAUDE.m
 
 ## I comandi
 
-Oltre alle skill, sei comandi per le operazioni ricorrenti. Tecnicamente sono skill anche
+Oltre alle skill, sette comandi per le operazioni ricorrenti. Tecnicamente sono skill anche
 loro, in `.claude/skills/`, ma con `disable-model-invocation: true` nell'intestazione: Claude
 non li avvia mai da solo, partono solo quando li scrivi. È la differenza voluta fra *sapere come
 si fa* una cosa (una skill, che si carica da sola) e *farla* (un comando, che crea file e
@@ -71,6 +71,13 @@ genera migration).
 | `/remove-field <Entità>` | L'operazione inversa: chiede conferma prima della migration che cancella i dati |
 | `/review` | Rilegge le modifiche del branch rispetto a `main` (o i percorsi indicati) contro le convenzioni del progetto, senza modificare file |
 | `/fix <descrizione>` | Trova la causa di un bug, la dimostra con un test, la corregge e verifica; segnala lo stesso errore se lo trova altrove |
+| `/aggiorna-dal-template [versione]` | Porta nel progetto una versione nuova del template: `copier update` su un branch nuovo, conflitti risolti conservando il codice del progetto, dipendenze ripristinate, `pnpm verify`. Merge e push solo dopo una conferma. Copre anche un `.copier-answers.yml` mancante e la scelta del suo `_commit` |
+
+Chi mantiene il template ha un comando in più, `/rilascio-template [versione]`, che sta nella
+`.claude/` alla radice di `app-boilerplate` e quindi non arriva ai progetti generati: verifica una
+modifica generando un progetto per provider, controlla con un errore introdotto apposta che i test
+lo vedano, poi rilascia. Il giro è descritto in
+[Contribuire al template](../progetto/contribuire.md).
 
 ## Le combinazioni che ricorrono
 

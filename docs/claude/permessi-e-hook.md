@@ -163,8 +163,8 @@ Dalla root del monorepo, un comando esegue tutti i controlli che dicono se una m
 
 ```bash
 pnpm verify              # backend e frontend
-pnpm verify --backend    # build e test .NET
-pnpm verify --frontend   # typecheck, lint e test Vue
+pnpm verify --backend    # build, test, migration e vulnerabilità .NET
+pnpm verify --frontend   # typecheck, lint, test e vulnerabilità Vue
 ```
 
 ```
@@ -182,6 +182,13 @@ Per i passi verdi stampa una riga; per quelli rossi solo le righe d'errore (il t
 con il messaggio dell'asserzione, l'errore di compilazione con file e riga). Se la build .NET
 non compila, i test backend vengono saltati. È lo script `scripts/verify.mjs`, ed è lo stesso
 comando che userà la CI.
+
+I passi `backend · vulnerabilità` e `frontend · vulnerabilità` falliscono sui pacchetti con advisory
+alti o critici, anche transitivi (`dotnet list package --vulnerable`, `pnpm audit`). Sono gli unici
+a usare la rete. Senza, stampano un avviso `⚠ vulnerabilità non verificate` e il riepilogo non dice
+"tutto verde"; con la variabile `CI` impostata è un errore, perché un elenco non letto non vuol dire
+nessun problema. Un advisory nuovo può quindi far fallire la verifica senza che il codice sia
+cambiato.
 
 ## Da qui
 

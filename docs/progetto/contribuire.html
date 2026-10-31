@@ -227,7 +227,8 @@ elencati qui sotto.</p>
 è il controllo più rapido.</p>
 <h3 id="5-verificare-generando-un-progetto">5. Verificare generando un progetto</h3>
 <p>Il template non compila: lo si verifica <strong>generando</strong> un progetto in una cartella temporanea e
-facendo girare tutto.</p>
+facendo girare tutto. La skill <code>/rilascio-template</code>, alla radice di <code>app-boilerplate</code>, esegue questo
+passo e i successivi su entrambi i provider.</p>
 <pre><code class="language-bash">copier copy --trust -f -d project_name=Prova -d project_slug=Prova \
   -d api_port=5090 -d frontend_port=5174 -d db_provider=SqlServer \
   -d access_mode=public -d include_docker=<span class="hljs-literal">true</span> -r HEAD C:\repos\app-boilerplate C:\tmp\prova

@@ -326,8 +326,8 @@ deve fermare tutto il lavoro.</p>
 <p>Dalla root del monorepo, un comando esegue tutti i controlli che dicono se una modifica è
 &quot;fatta&quot;:</p>
 <pre><code class="language-bash">pnpm verify              <span class="hljs-comment"># backend e frontend</span>
-pnpm verify --backend    <span class="hljs-comment"># build e test .NET</span>
-pnpm verify --frontend   <span class="hljs-comment"># typecheck, lint e test Vue</span>
+pnpm verify --backend    <span class="hljs-comment"># build, test, migration e vulnerabilità .NET</span>
+pnpm verify --frontend   <span class="hljs-comment"># typecheck, lint, test e vulnerabilità Vue</span>
 </code></pre>
 <pre><code>✓ backend · build (9.9s)
 ✓ backend · test (2.9s)
@@ -342,6 +342,12 @@ Verifica: 1 passo fallito
 con il messaggio dell'asserzione, l'errore di compilazione con file e riga). Se la build .NET
 non compila, i test backend vengono saltati. È lo script <code>scripts/verify.mjs</code>, ed è lo stesso
 comando che userà la CI.</p>
+<p>I passi <code>backend · vulnerabilità</code> e <code>frontend · vulnerabilità</code> falliscono sui pacchetti con advisory
+alti o critici, anche transitivi (<code>dotnet list package --vulnerable</code>, <code>pnpm audit</code>). Sono gli unici
+a usare la rete. Senza, stampano un avviso <code>⚠ vulnerabilità non verificate</code> e il riepilogo non dice
+&quot;tutto verde&quot;; con la variabile <code>CI</code> impostata è un errore, perché un elenco non letto non vuol dire
+nessun problema. Un advisory nuovo può quindi far fallire la verifica senza che il codice sia
+cambiato.</p>
 <h2 id="da-qui">Da qui</h2>
 <ul>
 <li><strong><a href="come-lavora.html">Il modello di lavoro</a></strong> — perché un controllo deterministico batte

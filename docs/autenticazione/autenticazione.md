@@ -460,11 +460,12 @@ openssl rand -base64 32
 ### Il pacchetto Negotiate e la versione
 
 L'autenticazione Windows dipende da `Microsoft.AspNetCore.Authentication.Negotiate`, pinnato nel
-template a **10.0.11** — la stessa patch di tutti gli altri pacchetti `Microsoft.*`, che vanno
+template a **10.0.14** — la stessa patch di tutti gli altri pacchetti `Microsoft.*`, che vanno
 aggiornati insieme. Le versioni `10.0.0`–`10.0.9` sono soggette a due avvisi di sicurezza di
 gravità alta (`GHSA-8prm-248r-h957`, `GHSA-2p3q-h3hg-jcqq`) che riguardano l'uso di Negotiate con
-LDAP per il recupero dei ruoli: `dotnet build` li segnala come `NU1903`. Dalla 10.0.10 sono chiusi —
-non abbassare quella versione.
+LDAP per il recupero dei ruoli: `dotnet build` li segnala come `NU1903`. Dalla 10.0.10 sono chiusi.
+Le versioni fino alla 10.0.12 hanno un altro avviso alto (`GHSA-vrrp-6v32-2p8g`), chiuso dalla
+10.0.13 — non scendere sotto quella versione. `pnpm verify` fallisce se accade.
 
 ## Simulare l'autenticazione Windows in locale
 
