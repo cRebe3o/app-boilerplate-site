@@ -1,25 +1,30 @@
 # Testare il backend
 
-Il backend ha **tre progetti di test**, uno per layer, e ciascuno verifica una cosa diversa con
-strumenti diversi. Questa pagina dice che cosa si testa dove, come sono fatti i test già presenti
+Il backend ha **cinque progetti di test**, uno per layer più quello delle regole di architettura, e
+ciascuno verifica una cosa diversa con strumenti diversi. Questa pagina dice che cosa si testa dove, come sono fatti i test già presenti
 nel template e come se ne scrive uno nuovo per una feature.
 
 ```bash
-dotnet test apps/backend/<Progetto>.sln      # tutti e tre, è anche `pnpm test:backend`
+dotnet test apps/backend/<Progetto>.sln      # tutti, è anche `pnpm test:backend`
 ```
 
 | Progetto | Che cosa verifica | Con che cosa | Quando fallisce |
 |---|---|---|---|
 | `<Progetto>.Domain.Tests` | Invarianti di aggregati e value object | `new` e basta: nessun mock, nessun database | Una regola di business è sbagliata o aggirabile |
 | `<Progetto>.Application.Tests` | Gli handler: orchestrazione, eccezioni, cosa viene salvato | NSubstitute sulle astrazioni (`IUserRepository`, `IUnitOfWork`, …) | Un handler salva due volte, non lancia il 404, non normalizza l'input |
+| `<Progetto>.Infrastructure.Tests` | Ciò che si vede solo davanti a EF: value object ricostruiti dal database, specification tradotte in SQL, seed | SQLite in memoria, con EF Core vero | Un valore non si rilegge, un predicato non si traduce, il seed non aggiunge un permesso nuovo |
+| `<Progetto>.Api.Tests` | Il middleware degli errori: che cosa diventa un 500 e finisce in `ErrorLog` | NSubstitute | Un errore del client viene scritto come errore del server |
 | `<Progetto>.Architecture.Tests` | La direzione delle dipendenze e le convenzioni del modello | Reflection sugli assembly compilati | Un `using` sbagliato, un setter pubblico, una `List<T>` esposta |
 
-Tutti e tre usano **xUnit**; i nomi dei test sono frasi in italiano con gli underscore
+Tutti usano **xUnit**; i nomi dei test sono frasi in italiano con gli underscore
 (`Rifiuta_un_username_gia_in_uso`), così l'output di `dotnet test` si legge come una specifica.
 
-> **Non c'è un progetto di test di integrazione con il database.** È una scelta: il dominio si
-> testa senza infrastruttura, gli handler con i sostituti delle astrazioni, e l'infrastruttura EF è
-> coperta dalle migration che si applicano all'avvio. `Program` è comunque `public partial`, quindi
+> **Il database nei test è SQLite in memoria, e solo dove serve.** Il dominio si testa senza
+> infrastruttura e gli handler con i sostituti delle astrazioni. `Infrastructure.Tests` copre ciò che
+> da lì non si vede: `SystemConfigPersistenceTests`, per esempio, salva e rilegge
+> `LogRetentionConfig`, che non ha costruttore vuoto né setter, quindi EF deve ricostruirlo dal
+> costruttore con i parametri. Non sostituisce un database vero: SQL Server e PostgreSQL non girano
+> nei test, e le migration si applicano all'avvio. `Program` è comunque `public partial`, quindi
 > `WebApplicationFactory<Program>` è pronta se un progetto ne avrà bisogno.
 
 ## Domain.Tests: il dominio si testa con `new`
@@ -210,8 +215,10 @@ domain service ha i **suoi** test nel progetto Domain, senza mock.
 
 ## Che cosa non testare
 
-- **Il mapping EF** (configuration, migration): lo verifica l'avvio dell'applicazione, e un test
-  con un database in memoria non replicherebbe le differenze fra i due provider.
+- **Il mapping EF di routine** (configuration, migration): lo verifica l'avvio dell'applicazione, e
+  un test con un database in memoria non replicherebbe le differenze fra i due provider. Fa eccezione
+  un value object che EF deve ricostruire dal costruttore: lì un salvataggio e una rilettura su SQLite
+  provano ciò che il dominio da solo non può vedere.
 - **Gli interceptor** in isolamento: audit e timestamp sono già coperti dal fatto che ogni
   salvataggio li attraversa; se serve un test, va fatto con un database vero.
 - **I validator FluentValidation** riga per riga: un test per regola non banale (formato, range)

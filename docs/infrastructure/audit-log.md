@@ -153,8 +153,9 @@ L'audit si consulta dalla pagina **Audit Log** dell'area di sistema (`/api/audit
 riga.
 
 La retention è configurabile dalla pagina **Configurazione** (`SystemConfig.AuditLogs`): abilitato
-sì/no e numero massimo di record. Il reset (`audit.write`) cancella i record oltre la soglia
-configurata. I record non si modificano né si cancellano uno per uno.
+sì/no e numero massimo di record, da 1 a 100.000. Il reset (`audit.write`) cancella i record oltre
+la soglia configurata: il taglio avviene solo così, non in automatico. I record non si modificano
+né si cancellano uno per uno.
 
 ## Errori comuni
 

@@ -160,7 +160,9 @@ e.HasOne<Parent>().WithMany().HasForeignKey(x => x.ParentId)
 > **I value object** si mappano con `OwnsOne` (per i tipi composti come `Money` o un periodo) o
 > con una conversione (per quelli che avvolgono un solo valore, come `Username`). Nel template
 > l'esempio è `UserConfiguration`; per i tipi composti, le configuration della sezione Noleggi di
-> `app-demo`.
+> `app-demo`. Un composto senza indici può usare `ComplexProperty`, come `SystemConfigConfiguration`:
+> ogni proprietà in sola lettura va dichiarata nel mapping, anche se il nome della colonna non cambia,
+> altrimenti il primo uso del DbContext fallisce con `No suitable constructor`.
 
 ## 3. Le due migration
 

@@ -71,6 +71,8 @@ apps/backend/
 └── tests/
     ├── <Progetto>.Domain.Tests/         # il dominio, senza database né mock
     ├── <Progetto>.Application.Tests/    # gli handler, con fake delle astrazioni
+    ├── <Progetto>.Infrastructure.Tests/ # ciò che si vede solo davanti a EF, su SQLite in memoria
+    ├── <Progetto>.Api.Tests/            # il middleware degli errori
     └── <Progetto>.Architecture.Tests/   # le regole dei layer, verificate dalla build
 ```
 

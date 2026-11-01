@@ -110,10 +110,10 @@
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
-<p>Il backend ha <strong>tre progetti di test</strong>, uno per layer, e ciascuno verifica una cosa diversa con
-strumenti diversi. Questa pagina dice che cosa si testa dove, come sono fatti i test già presenti
+<p>Il backend ha <strong>cinque progetti di test</strong>, uno per layer più quello delle regole di architettura, e
+ciascuno verifica una cosa diversa con strumenti diversi. Questa pagina dice che cosa si testa dove, come sono fatti i test già presenti
 nel template e come se ne scrive uno nuovo per una feature.</p>
-<pre><code class="language-bash">dotnet <span class="hljs-built_in">test</span> apps/backend/&lt;Progetto&gt;.sln      <span class="hljs-comment"># tutti e tre, è anche `pnpm test:backend`</span>
+<pre><code class="language-bash">dotnet <span class="hljs-built_in">test</span> apps/backend/&lt;Progetto&gt;.sln      <span class="hljs-comment"># tutti, è anche `pnpm test:backend`</span>
 </code></pre>
 <div class="table-wrap">
 <table>
@@ -139,6 +139,18 @@ nel template e come se ne scrive uno nuovo per una feature.</p>
 <td>Un handler salva due volte, non lancia il 404, non normalizza l'input</td>
 </tr>
 <tr>
+<td><code>&lt;Progetto&gt;.Infrastructure.Tests</code></td>
+<td>Ciò che si vede solo davanti a EF: value object ricostruiti dal database, specification tradotte in SQL, seed</td>
+<td>SQLite in memoria, con EF Core vero</td>
+<td>Un valore non si rilegge, un predicato non si traduce, il seed non aggiunge un permesso nuovo</td>
+</tr>
+<tr>
+<td><code>&lt;Progetto&gt;.Api.Tests</code></td>
+<td>Il middleware degli errori: che cosa diventa un 500 e finisce in <code>ErrorLog</code></td>
+<td>NSubstitute</td>
+<td>Un errore del client viene scritto come errore del server</td>
+</tr>
+<tr>
 <td><code>&lt;Progetto&gt;.Architecture.Tests</code></td>
 <td>La direzione delle dipendenze e le convenzioni del modello</td>
 <td>Reflection sugli assembly compilati</td>
@@ -147,12 +159,15 @@ nel template e come se ne scrive uno nuovo per una feature.</p>
 </tbody>
 </table>
 </div>
-<p>Tutti e tre usano <strong>xUnit</strong>; i nomi dei test sono frasi in italiano con gli underscore
+<p>Tutti usano <strong>xUnit</strong>; i nomi dei test sono frasi in italiano con gli underscore
 (<code>Rifiuta_un_username_gia_in_uso</code>), così l'output di <code>dotnet test</code> si legge come una specifica.</p>
 <blockquote>
-<p><strong>Non c'è un progetto di test di integrazione con il database.</strong> È una scelta: il dominio si
-testa senza infrastruttura, gli handler con i sostituti delle astrazioni, e l'infrastruttura EF è
-coperta dalle migration che si applicano all'avvio. <code>Program</code> è comunque <code>public partial</code>, quindi
+<p><strong>Il database nei test è SQLite in memoria, e solo dove serve.</strong> Il dominio si testa senza
+infrastruttura e gli handler con i sostituti delle astrazioni. <code>Infrastructure.Tests</code> copre ciò che
+da lì non si vede: <code>SystemConfigPersistenceTests</code>, per esempio, salva e rilegge
+<code>LogRetentionConfig</code>, che non ha costruttore vuoto né setter, quindi EF deve ricostruirlo dal
+costruttore con i parametri. Non sostituisce un database vero: SQL Server e PostgreSQL non girano
+nei test, e le migration si applicano all'avvio. <code>Program</code> è comunque <code>public partial</code>, quindi
 <code>WebApplicationFactory&lt;Program&gt;</code> è pronta se un progetto ne avrà bisogno.</p>
 </blockquote>
 <h2 id="domaintests-il-dominio-si-testa-con-new">Domain.Tests: il dominio si testa con <code>new</code></h2>
@@ -373,8 +388,10 @@ statico e puro, quindi il test dell'handler verifica che venga chiamato con i da
 domain service ha i <strong>suoi</strong> test nel progetto Domain, senza mock.</p>
 <h2 id="che-cosa-non-testare">Che cosa non testare</h2>
 <ul>
-<li><strong>Il mapping EF</strong> (configuration, migration): lo verifica l'avvio dell'applicazione, e un test
-con un database in memoria non replicherebbe le differenze fra i due provider.</li>
+<li><strong>Il mapping EF di routine</strong> (configuration, migration): lo verifica l'avvio dell'applicazione, e
+un test con un database in memoria non replicherebbe le differenze fra i due provider. Fa eccezione
+un value object che EF deve ricostruire dal costruttore: lì un salvataggio e una rilettura su SQLite
+provano ciò che il dominio da solo non può vedere.</li>
 <li><strong>Gli interceptor</strong> in isolamento: audit e timestamp sono già coperti dal fatto che ogni
 salvataggio li attraversa; se serve un test, va fatto con un database vero.</li>
 <li><strong>I validator FluentValidation</strong> riga per riga: un test per regola non banale (formato, range)

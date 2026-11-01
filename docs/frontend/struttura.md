@@ -319,6 +319,11 @@ Due file, `it.ts` ed `en.ts`, **entrambi obbligatori** e sempre aggiornati insie
 
 Nei template si scrive sempre `t('chiave')`: nessun testo fisso, nemmeno un'etichetta.
 
+`locales.test.ts` controlla che le due lingue abbiano le stesse chiavi e gli stessi segnaposto, e che
+ogni chiave usata nel codice con testo fisso (`t('...')`, `$t('...')`, `i18n.global.t('...')`) esista
+in entrambe. Legge i sorgenti come testo: conta anche gli esempi nei commenti e non vede le chiavi
+calcolate, come `t(item.titleKey)`.
+
 ## `types/` — generati, non scritti
 
 | File | Origine | Si modifica? |

@@ -316,8 +316,9 @@ documenta il motivo. È l'eccezione.</p>
 <code>audit.read</code>), con filtri per tipo di entità e azione, e con <code>Before</code>/<code>After</code> leggibili riga per
 riga.</p>
 <p>La retention è configurabile dalla pagina <strong>Configurazione</strong> (<code>SystemConfig.AuditLogs</code>): abilitato
-sì/no e numero massimo di record. Il reset (<code>audit.write</code>) cancella i record oltre la soglia
-configurata. I record non si modificano né si cancellano uno per uno.</p>
+sì/no e numero massimo di record, da 1 a 100.000. Il reset (<code>audit.write</code>) cancella i record oltre
+la soglia configurata: il taglio avviene solo così, non in automatico. I record non si modificano
+né si cancellano uno per uno.</p>
 <h2 id="errori-comuni">Errori comuni</h2>
 <div class="table-wrap">
 <table>

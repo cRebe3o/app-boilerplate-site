@@ -322,16 +322,30 @@ e.Property(x =&gt; x.Source).HasConversion&lt;<span class="hljs-built_in">string
 <p>Il valore nel DB resta leggibile (<code>&quot;Error&quot;</code>, <code>&quot;Frontend&quot;</code>) e non si rompe se un domani cambia
 l'ordine dei membri dell'enum.</p>
 <h3 id="systemconfig-oggetti-annidati-senza-tabella-extra"><code>SystemConfig</code>: oggetti annidati senza tabella extra</h3>
-<pre><code class="language-csharp">mb.Entity&lt;SystemConfigEntity&gt;(e =&gt;
+<pre><code class="language-csharp">e.ToTable(<span class="hljs-string">&quot;SystemConfigs&quot;</span>);
+e.HasKey(x =&gt; x.Id);
+
+e.ComplexProperty(x =&gt; x.ErrorLogs, b =&gt;
 {
-    e.ToTable(<span class="hljs-string">&quot;SystemConfigs&quot;</span>);
-    e.ComplexProperty(x =&gt; x.ErrorLogs);
-    e.ComplexProperty(x =&gt; x.AuditLogs);
+    b.Property(p =&gt; p.Enabled);
+    b.Property(p =&gt; p.MaxRecordsKept).HasColumnName(<span class="hljs-string">&quot;ErrorLogs_MaxRecords&quot;</span>);
+});
+e.ComplexProperty(x =&gt; x.AuditLogs, b =&gt;
+{
+    b.Property(p =&gt; p.Enabled);
+    b.Property(p =&gt; p.MaxRecordsKept).HasColumnName(<span class="hljs-string">&quot;AuditLogs_MaxRecords&quot;</span>);
 });
 </code></pre>
 <p>I due <code>LogRetentionConfig</code> sono <strong>valori, non entità</strong>: <code>ComplexProperty</code> li appiattisce in colonne
-della stessa tabella (<code>ErrorLogs_Enabled</code>, <code>AuditLogs_Enabled</code>, …). Nessuna tabella extra, nessuna
+della stessa tabella (<code>ErrorLogs_Enabled</code>, <code>AuditLogs_MaxRecords</code>, …). Nessuna tabella extra, nessuna
 chiave da gestire.</p>
+<p><code>LogRetentionConfig</code> non ha costruttore vuoto né setter: EF lo ricostruisce dal costruttore con i
+parametri, che devono chiamarsi come le proprietà. Per questo <code>Enabled</code> va dichiarata anche se il
+nome della colonna non cambia: una proprietà in sola lettura EF non la mappa da solo, e il primo uso
+del DbContext fallirebbe con <code>No suitable constructor</code>.</p>
+<p>Il limite dei record sta in una costante sola, <code>LogRetentionConfig.MaxRecords</code> (100.000), usata anche
+da <code>UpdateSystemConfigValidator</code>. Il frontend non può leggerla e la ripete in <code>ConfigurationPage.vue</code>
+e in <code>validation.maxRecordsRange</code>: cambiandola, va cambiata anche lì.</p>
 <h2 id="3-la-pipeline-mediatr">3. La pipeline MediatR</h2>
 <p>Un'unica extension registra MediatR, i behavior e tutti i validator dell'assembly:</p>
 <pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> IServiceCollection <span class="hljs-title">AddMediatRWithBehaviors</span>(<span class="hljs-params"><span class="hljs-keyword">this</span> IServiceCollection services</span>)</span>

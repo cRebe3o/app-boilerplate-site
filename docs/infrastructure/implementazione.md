@@ -225,17 +225,33 @@ l'ordine dei membri dell'enum.
 ### `SystemConfig`: oggetti annidati senza tabella extra
 
 ```csharp
-mb.Entity<SystemConfigEntity>(e =>
+e.ToTable("SystemConfigs");
+e.HasKey(x => x.Id);
+
+e.ComplexProperty(x => x.ErrorLogs, b =>
 {
-    e.ToTable("SystemConfigs");
-    e.ComplexProperty(x => x.ErrorLogs);
-    e.ComplexProperty(x => x.AuditLogs);
+    b.Property(p => p.Enabled);
+    b.Property(p => p.MaxRecordsKept).HasColumnName("ErrorLogs_MaxRecords");
+});
+e.ComplexProperty(x => x.AuditLogs, b =>
+{
+    b.Property(p => p.Enabled);
+    b.Property(p => p.MaxRecordsKept).HasColumnName("AuditLogs_MaxRecords");
 });
 ```
 
 I due `LogRetentionConfig` sono **valori, non entità**: `ComplexProperty` li appiattisce in colonne
-della stessa tabella (`ErrorLogs_Enabled`, `AuditLogs_Enabled`, …). Nessuna tabella extra, nessuna
+della stessa tabella (`ErrorLogs_Enabled`, `AuditLogs_MaxRecords`, …). Nessuna tabella extra, nessuna
 chiave da gestire.
+
+`LogRetentionConfig` non ha costruttore vuoto né setter: EF lo ricostruisce dal costruttore con i
+parametri, che devono chiamarsi come le proprietà. Per questo `Enabled` va dichiarata anche se il
+nome della colonna non cambia: una proprietà in sola lettura EF non la mappa da solo, e il primo uso
+del DbContext fallirebbe con `No suitable constructor`.
+
+Il limite dei record sta in una costante sola, `LogRetentionConfig.MaxRecords` (100.000), usata anche
+da `UpdateSystemConfigValidator`. Il frontend non può leggerla e la ripete in `ConfigurationPage.vue`
+e in `validation.maxRecordsRange`: cambiandola, va cambiata anche lì.
 
 ## 3. La pipeline MediatR
 

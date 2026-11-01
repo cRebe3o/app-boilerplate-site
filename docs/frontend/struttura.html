@@ -555,6 +555,10 @@ aggiungere a tutte le richieste va in <code>axios.ts</code>. Non contengono logi
 </table>
 </div>
 <p>Nei template si scrive sempre <code>t('chiave')</code>: nessun testo fisso, nemmeno un'etichetta.</p>
+<p><code>locales.test.ts</code> controlla che le due lingue abbiano le stesse chiavi e gli stessi segnaposto, e che
+ogni chiave usata nel codice con testo fisso (<code>t('...')</code>, <code>$t('...')</code>, <code>i18n.global.t('...')</code>) esista
+in entrambe. Legge i sorgenti come testo: conta anche gli esempi nei commenti e non vede le chiavi
+calcolate, come <code>t(item.titleKey)</code>.</p>
 <h2 id="types-generati-non-scritti"><code>types/</code> — generati, non scritti</h2>
 <div class="table-wrap">
 <table>

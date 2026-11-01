@@ -310,7 +310,9 @@ vincolo del database e quello dell'aggregato non possono divergere.</p>
 <p><strong>I value object</strong> si mappano con <code>OwnsOne</code> (per i tipi composti come <code>Money</code> o un periodo) o
 con una conversione (per quelli che avvolgono un solo valore, come <code>Username</code>). Nel template
 l'esempio è <code>UserConfiguration</code>; per i tipi composti, le configuration della sezione Noleggi di
-<code>app-demo</code>.</p>
+<code>app-demo</code>. Un composto senza indici può usare <code>ComplexProperty</code>, come <code>SystemConfigConfiguration</code>:
+ogni proprietà in sola lettura va dichiarata nel mapping, anche se il nome della colonna non cambia,
+altrimenti il primo uso del DbContext fallisce con <code>No suitable constructor</code>.</p>
 </blockquote>
 <h2 id="3-le-due-migration">3. Le due migration</h2>
 <pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/backend/&lt;Progetto&gt;.Api

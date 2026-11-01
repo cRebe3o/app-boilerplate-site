@@ -210,6 +210,8 @@ verso l'interno:</p>
 └── tests/
     ├── &lt;Progetto&gt;.Domain.Tests/         # il dominio, senza database né mock
     ├── &lt;Progetto&gt;.Application.Tests/    # gli handler, con fake delle astrazioni
+    ├── &lt;Progetto&gt;.Infrastructure.Tests/ # ciò che si vede solo davanti a EF, su SQLite in memoria
+    ├── &lt;Progetto&gt;.Api.Tests/            # il middleware degli errori
     └── &lt;Progetto&gt;.Architecture.Tests/   # le regole dei layer, verificate dalla build
 </code></pre>
 <pre><code>Api  →  Infrastructure  →  Application  →  Domain
