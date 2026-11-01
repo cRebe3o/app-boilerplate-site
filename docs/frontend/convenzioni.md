@@ -259,6 +259,21 @@ Una **sezione nuova** è un oggetto in `SECTIONS` con `id`, `labelKey`, `icon`, 
 `items`; le sue rotte usano quell'`id` in `meta.section`. Tab, drawer e dashboard di sezione si
 aggiornano da soli.
 
+**Un numero accanto a un testo usa sempre le forme singolare e plurale di vue-i18n**, mai
+un'etichetta fissa, che con 1 direbbe "1 ordini":
+
+```typescript
+// locales/it.ts (e en.ts)
+suppliers: { orderCount: '{count} ordine | {count} ordini' },
+
+// nel template: il numero sceglie la forma e riempie {count}
+t('suppliers.orderCount', item.orderCount)
+```
+
+Con due forme lo 0 prende la seconda ("0 ordini"); se ha un testo suo si scrivono tre forme. La
+regola non serve per un numero fisso ("almeno 8 caratteri"). Nei testi tradotti niente abbreviazioni
+italiane come `gg`: si scrive la parola intera, `/giorno` e `/day`.
+
 ## Vuetify
 
 - Componenti Vuetify per tutto: niente CSS custom se esiste un componente. Icone `mdi-*`.
@@ -352,6 +367,10 @@ Che cosa testare, per tipo di file:
 | componente | prop, eventi, `v-model`, slot; per un dialog con form: non valido, salvataggio riuscito (si chiude), fallito (resta aperto con il messaggio del backend) | `frontend-testing` |
 | pagina | mount con router in memoria, service mockato, store reale; caricamento, un'interazione, l'errore visibile, la ricarica dopo una scrittura. `flushPromises()`, mai `setTimeout` | `frontend-testing` |
 
+Un testo con un numero si prova con 0, 1 e più, in entrambe le lingue, caricando le traduzioni vere:
+`vitest.setup.ts` ha solo poche chiavi, e una chiave assente resta una chiave. La ricetta è nella
+skill `vue-feature`.
+
 Le soglie di coverage in `vitest.config.ts` sono il livello raggiunto: impediscono di peggiorare e
 vanno alzate man mano.
 
@@ -378,6 +397,7 @@ Dalla radice del monorepo gli stessi comandi sono `pnpm typecheck:frontend`, `pn
 - Tipo dell'API scritto a mano invece di generato (di solito perché manca `.Produces<T>()` nel backend).
 - `import.meta.env` fuori da `app.config.ts`; `axios` fuori dai service.
 - Testo fisso nel template, o una chiave presente in `it.ts` ma non in `en.ts`.
+- Un numero accanto a un'etichetta fissa invece delle forme singolare e plurale; abbreviazioni italiane come `gg`.
 - Pulsante di scrittura senza `v-if="can(...)"`; voce di menu aggiunta in `AppNav` invece che in `sections.config.ts`.
 - Pulsante indietro cablato sulla lista invece di `useBackNavigation`.
 

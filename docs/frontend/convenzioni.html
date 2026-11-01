@@ -428,6 +428,17 @@ nel browser. E nascondere un pulsante è cortesia: a <strong>negare</strong> è 
 <p>Una <strong>sezione nuova</strong> è un oggetto in <code>SECTIONS</code> con <code>id</code>, <code>labelKey</code>, <code>icon</code>, <code>dashboardTo</code> e
 <code>items</code>; le sue rotte usano quell'<code>id</code> in <code>meta.section</code>. Tab, drawer e dashboard di sezione si
 aggiornano da soli.</p>
+<p><strong>Un numero accanto a un testo usa sempre le forme singolare e plurale di vue-i18n</strong>, mai
+un'etichetta fissa, che con 1 direbbe &quot;1 ordini&quot;:</p>
+<pre><code class="language-typescript"><span class="hljs-comment">// locales/it.ts (e en.ts)</span>
+<span class="hljs-attr">suppliers</span>: { <span class="hljs-attr">orderCount</span>: <span class="hljs-string">&#x27;{count} ordine | {count} ordini&#x27;</span> },
+
+<span class="hljs-comment">// nel template: il numero sceglie la forma e riempie {count}</span>
+<span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;suppliers.orderCount&#x27;</span>, item.<span class="hljs-property">orderCount</span>)
+</code></pre>
+<p>Con due forme lo 0 prende la seconda (&quot;0 ordini&quot;); se ha un testo suo si scrivono tre forme. La
+regola non serve per un numero fisso (&quot;almeno 8 caratteri&quot;). Nei testi tradotti niente abbreviazioni
+italiane come <code>gg</code>: si scrive la parola intera, <code>/giorno</code> e <code>/day</code>.</p>
 <h2 id="vuetify">Vuetify</h2>
 <ul>
 <li>Componenti Vuetify per tutto: niente CSS custom se esiste un componente. Icone <code>mdi-*</code>.</li>
@@ -530,6 +541,9 @@ parte.</p>
 </tbody>
 </table>
 </div>
+<p>Un testo con un numero si prova con 0, 1 e più, in entrambe le lingue, caricando le traduzioni vere:
+<code>vitest.setup.ts</code> ha solo poche chiavi, e una chiave assente resta una chiave. La ricetta è nella
+skill <code>vue-feature</code>.</p>
 <p>Le soglie di coverage in <code>vitest.config.ts</code> sono il livello raggiunto: impediscono di peggiorare e
 vanno alzate man mano.</p>
 <h2 id="verifica">Verifica</h2>
@@ -550,6 +564,7 @@ pnpm build                <span class="hljs-comment"># vue-tsc + vite build, lo 
 <li>Tipo dell'API scritto a mano invece di generato (di solito perché manca <code>.Produces&lt;T&gt;()</code> nel backend).</li>
 <li><code>import.meta.env</code> fuori da <code>app.config.ts</code>; <code>axios</code> fuori dai service.</li>
 <li>Testo fisso nel template, o una chiave presente in <code>it.ts</code> ma non in <code>en.ts</code>.</li>
+<li>Un numero accanto a un'etichetta fissa invece delle forme singolare e plurale; abbreviazioni italiane come <code>gg</code>.</li>
 <li>Pulsante di scrittura senza <code>v-if=&quot;can(...)&quot;</code>; voce di menu aggiunta in <code>AppNav</code> invece che in <code>sections.config.ts</code>.</li>
 <li>Pulsante indietro cablato sulla lista invece di <code>useBackNavigation</code>.</li>
 </ul>

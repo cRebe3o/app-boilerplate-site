@@ -81,6 +81,14 @@ Quattro cose da notare:
 - **`clock.UtcNow`** al posto di `DateTime.UtcNow`: un test può fissare "adesso".
 - **`Add` e `SaveChangesAsync` sono separati**: il repository accumula, l'unit of work committa.
 
+I messaggi di rifiuto arrivano all'utente: un numero che varia ha il testo giusto per 1 e quello per
+gli altri numeri, mai un'etichetta fissa, e il test copre 0, 1 e più.
+
+```csharp
+var ordini = count == 1 ? "1 ordine" : $"{count} ordini";
+throw new ConflictException($"Impossibile eliminare: usato in {ordini}.");
+```
+
 ### I repository
 
 Un'interfaccia per aggregato, in `Application/Abstractions/Persistence/`; l'implementazione in

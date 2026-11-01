@@ -216,6 +216,11 @@ template.</p>
 <li><strong><code>clock.UtcNow</code></strong> al posto di <code>DateTime.UtcNow</code>: un test può fissare &quot;adesso&quot;.</li>
 <li><strong><code>Add</code> e <code>SaveChangesAsync</code> sono separati</strong>: il repository accumula, l'unit of work committa.</li>
 </ul>
+<p>I messaggi di rifiuto arrivano all'utente: un numero che varia ha il testo giusto per 1 e quello per
+gli altri numeri, mai un'etichetta fissa, e il test copre 0, 1 e più.</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">var</span> ordini = count == <span class="hljs-number">1</span> ? <span class="hljs-string">&quot;1 ordine&quot;</span> : <span class="hljs-string">$&quot;<span class="hljs-subst">{count}</span> ordini&quot;</span>;
+<span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(<span class="hljs-string">$&quot;Impossibile eliminare: usato in <span class="hljs-subst">{ordini}</span>.&quot;</span>);
+</code></pre>
 <h3 id="i-repository">I repository</h3>
 <p>Un'interfaccia per aggregato, in <code>Application/Abstractions/Persistence/</code>; l'implementazione in
 <code>Infrastructure/Persistence/Repositories/</code>.</p>
