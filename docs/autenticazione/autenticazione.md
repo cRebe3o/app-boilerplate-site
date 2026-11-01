@@ -62,9 +62,8 @@ public sealed record Username
 {
     public const int MaxLength = 256;
 
-    public string Value { get; private set; } = string.Empty;
+    public string Value { get; }
 
-    private Username() { }                       // per EF (materializzazione)
     private Username(string value) => Value = value;
 
     /// <summary>Crea l'username normalizzato. Lancia se vuoto o troppo lungo.</summary>

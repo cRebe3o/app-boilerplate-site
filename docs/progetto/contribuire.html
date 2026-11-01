@@ -149,7 +149,7 @@ il template con le stesse risposte di app-demo</strong> e confronta il risultato
 <pre><code class="language-bash">copier copy --trust --skip-tasks -f \
   -d project_name=AppDemo -d project_slug=AppDemo \
   -d api_port=5080 -d frontend_port=5173 \
-  -d db_provider=SqlServer -d access_mode=public -d include_docker=<span class="hljs-literal">false</span> \
+  -d db_provider=SqlServer -d access_mode=public -d include_docker=<span class="hljs-literal">true</span> \
   -r HEAD C:\repos\app-boilerplate C:\tmp\render
 
 diff -rq --strip-trailing-cr \
@@ -180,6 +180,9 @@ git merge-file -L template -L base -L app-demo template/&lt;file-normalizzato&gt
 <p>I conflitti restano con i marcatori <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> e si risolvono a mano. Sono quasi sempre nei punti
 elencati qui sotto.</p>
 <h3 id="4-che-cosa-resta-diverso-sempre">4. Che cosa resta diverso, sempre</h3>
+<p>L'elenco che fa fede è <code>docs/differenze-app-demo.yml</code>, nel repository del template. Il comando
+<code>node scripts/confronta-app-demo.mjs</code> genera il progetto dalla versione registrata in app-demo e
+mostra solo ciò che esce da quell'elenco. La tabella qui sotto ne spiega il senso.</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -199,11 +202,6 @@ elencati qui sotto.</p>
 <td>Nessuna sezione Noleggi: né entità, né endpoint, né pagine, né permessi, né dati demo, né migration <code>AddRentalsSection</code></td>
 <td>tutta la sezione</td>
 <td>Il template non porta un dominio</td>
-</tr>
-<tr>
-<td>Seed con <code>admin</code> / <code>Administrator</code> e <code>Seed:*</code> vuoti</td>
-<td>identità reali</td>
-<td>Niente account personali nel template</td>
 </tr>
 <tr>
 <td>Migration: solo <code>InitialCreate</code></td>

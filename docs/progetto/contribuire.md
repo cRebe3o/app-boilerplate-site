@@ -46,7 +46,7 @@ il template con le stesse risposte di app-demo** e confronta il risultato.
 copier copy --trust --skip-tasks -f \
   -d project_name=AppDemo -d project_slug=AppDemo \
   -d api_port=5080 -d frontend_port=5173 \
-  -d db_provider=SqlServer -d access_mode=public -d include_docker=false \
+  -d db_provider=SqlServer -d access_mode=public -d include_docker=true \
   -r HEAD C:\repos\app-boilerplate C:\tmp\render
 
 diff -rq --strip-trailing-cr \
@@ -84,11 +84,14 @@ elencati qui sotto.
 
 ### 4. Che cosa resta diverso, sempre
 
+L'elenco che fa fede è `docs/differenze-app-demo.yml`, nel repository del template. Il comando
+`node scripts/confronta-app-demo.mjs` genera il progetto dalla versione registrata in app-demo e
+mostra solo ciò che esce da quell'elenco. La tabella qui sotto ne spiega il senso.
+
 | Nel template | In app-demo | Perché |
 |---|---|---|
 | `[[ project_slug ]]`, `[[ api_port ]]`, `[[ access_mode ]]`, `[[ db_provider ]]`, blocchi `[% if include_docker %]` | valori concreti | Sono le variabili Copier: i file di configurazione si modificano **in place**, non si copiano |
 | Nessuna sezione Noleggi: né entità, né endpoint, né pagine, né permessi, né dati demo, né migration `AddRentalsSection` | tutta la sezione | Il template non porta un dominio |
-| Seed con `admin` / `Administrator` e `Seed:*` vuoti | identità reali | Niente account personali nel template |
 | Migration: solo `InitialCreate` | anche quelle del dominio | Le migration del dominio sono del progetto |
 | Esempi nelle skill e nei `CLAUDE.md` con nomi neutri (`Supplier`, `Prenotazione`) | esempi con `Equipment`, `RentalContract` | Un progetto generato non deve trovare riferimenti a codice che non ha |
 | `appsettings.local.json` assente, `coverage/` ignorata | presenti in locale | Sono gitignored da entrambe le parti |

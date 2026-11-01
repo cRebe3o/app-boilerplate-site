@@ -190,9 +190,8 @@ object</strong>, e la garanzia è per costruzione:</p>
 {
     <span class="hljs-keyword">public</span> <span class="hljs-keyword">const</span> <span class="hljs-built_in">int</span> MaxLength = <span class="hljs-number">256</span>;
 
-    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Value { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">private</span> <span class="hljs-keyword">set</span>; } = <span class="hljs-built_in">string</span>.Empty;
+    <span class="hljs-keyword">public</span> <span class="hljs-built_in">string</span> Value { <span class="hljs-keyword">get</span>; }
 
-    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-title">Username</span>()</span> { }                       <span class="hljs-comment">// per EF (materializzazione)</span>
     <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-title">Username</span>(<span class="hljs-params"><span class="hljs-built_in">string</span> <span class="hljs-keyword">value</span></span>)</span> =&gt; Value = <span class="hljs-keyword">value</span>;
 
     <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Crea l&#x27;username normalizzato. Lancia se vuoto o troppo lungo.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
