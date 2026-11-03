@@ -380,8 +380,9 @@ handler <strong>lanciano</strong> e non catturano:</p>
 </code></pre>
 <p>Le eccezioni di dominio vivono in <code>&lt;Progetto&gt;.Domain/Exceptions/</code> — <code>NotFoundException</code>,
 <code>ConflictException</code>, <code>InvariantViolationException</code>, <code>ForbiddenException</code>, <code>UnauthorizedException</code> —
-e il middleware le mappa su 404, 409, 422, 403, 401. Tutto il resto è un 500, con il dettaglio nel
-log e non nella risposta.</p>
+e il middleware le mappa su 404, 409, 409, 403, 401. Un'invariante violata è un 409 come un
+conflitto: la richiesta è formalmente valida, ma incompatibile con lo stato attuale della risorsa.
+Tutto il resto è un 500, con il dettaglio nel log e non nella risposta.</p>
 <p>Fa eccezione la richiesta annullata dal client, che ha chiuso la pagina o interrotto la chiamata:
 un <code>OperationCanceledException</code> con <code>RequestAborted</code> già scattato non è un guasto del server. Il
 middleware lo registra a livello <code>Debug</code>, risponde 499 senza corpo e non scrive in <code>ErrorLogs</code>. Un

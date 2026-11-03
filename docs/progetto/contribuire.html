@@ -102,23 +102,25 @@
         <p class="toc-title">In questa pagina</p>
         <ul>
           <li class="lvl-2"><a href="#app-demo-il-progetto-di-riferimento"><code>app-demo</code>: il progetto di riferimento</a></li>
-          <li class="lvl-2"><a href="#il-giro-da-app-demo-al-template">Il giro: da app-demo al template</a></li>
-          <li class="lvl-3"><a href="#1-lavorare-in-app-demo">1. Lavorare in app-demo</a></li>
-          <li class="lvl-3"><a href="#2-confrontare-normalizzando-lo-slug">2. Confrontare, normalizzando lo slug</a></li>
-          <li class="lvl-3"><a href="#3-riportare-le-modifiche">3. Riportare le modifiche</a></li>
-          <li class="lvl-3"><a href="#4-che-cosa-resta-diverso-sempre">4. Che cosa resta diverso, sempre</a></li>
-          <li class="lvl-3"><a href="#5-verificare-generando-un-progetto">5. Verificare generando un progetto</a></li>
-          <li class="lvl-3"><a href="#6-committare-aggiornare-il-changelog-taggare">6. Committare, aggiornare il changelog, taggare</a></li>
-          <li class="lvl-3"><a href="#7-riportare-anche-su-app-demo">7. Riportare anche su app-demo</a></li>
+          <li class="lvl-2"><a href="#da-dove-si-parte-il-backlog">Da dove si parte: il backlog</a></li>
+          <li class="lvl-2"><a href="#dove-si-lavora">Dove si lavora</a></li>
+          <li class="lvl-2"><a href="#portare-una-modifica-da-app-demo-al-template">Portare una modifica da app-demo al template</a></li>
+          <li class="lvl-3"><a href="#1-confrontare-normalizzando-lo-slug">1. Confrontare, normalizzando lo slug</a></li>
+          <li class="lvl-3"><a href="#2-riportare-le-modifiche">2. Riportare le modifiche</a></li>
+          <li class="lvl-3"><a href="#3-che-cosa-resta-diverso-sempre">3. Che cosa resta diverso, sempre</a></li>
+          <li class="lvl-2"><a href="#verificare">Verificare</a></li>
+          <li class="lvl-3"><a href="#la-action">La Action</a></li>
+          <li class="lvl-2"><a href="#rilasciare-a-lotti">Rilasciare a lotti</a></li>
+          <li class="lvl-3"><a href="#l-ordine-template-app-demo-sito">L'ordine: template → app-demo → sito</a></li>
           <li class="lvl-2"><a href="#aggiornare-questo-sito">Aggiornare questo sito</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
-<p>Il template non si sviluppa dentro il template. Si sviluppa in un <strong>progetto generato</strong>, dove il
-codice compila, gira e si prova; poi le modifiche che si rivelano generali si riportano in
-<code>app-boilerplate</code>. Questa pagina descrive quel giro: che cos'è <code>app-demo</code>, come si riportano le
-modifiche, che cosa deve restare diverso, come si rilascia una versione e come si tiene aggiornato
-questo sito.</p>
+<p>Il lavoro sul template segue poche regole, scritte nel <code>CLAUDE.md</code> alla radice di
+<code>app-boilerplate</code>: si riparte da un backlog, una modifica che si vede si prova prima in <code>app-demo</code>
+su un branch, si rilascia a lotti. Questa pagina descrive il giro: che cos'è <code>app-demo</code>, dove si
+lavora, come si porta una modifica nel template, come si verifica e si rilascia, e come si tiene
+aggiornato questo sito.</p>
 <h2 id="app-demo-il-progetto-di-riferimento"><code>app-demo</code>: il progetto di riferimento</h2>
 <p><code>app-demo</code> è un progetto generato dal template e tenuto <strong>allineato</strong> ad esso: stesso codice
 dell'impianto, con lo slug <code>AppDemo</code> al posto di <code>[[ project_slug ]]</code>. In più ha una sezione di
@@ -133,15 +135,47 @@ descrivono.</li>
 </ul>
 <p>La regola: <strong>il template porta l'impianto, app-demo porta anche un dominio</strong>. Tutto ciò che è
 impianto va in entrambi; tutto ciò che è Noleggi resta in app-demo.</p>
-<h2 id="il-giro-da-app-demo-al-template">Il giro: da app-demo al template</h2>
-<pre><code>app-demo (branch di lavoro)            app-boilerplate/template
-  modifica → build → test → commit  ──►  diff normalizzato → merge → verifica → commit → tag
+<h2 id="da-dove-si-parte-il-backlog">Da dove si parte: il backlog</h2>
+<p>I lavori aperti stanno in <code>docs/backlog.md</code>, nel repository del template. Ogni voce dice che cosa,
+perché, dove (template, app-demo, sito), la priorità, le decisioni già prese ed eventualmente che
+cosa la blocca.</p>
+<ul>
+<li>Si riparte dalla voce con priorità più alta che non sia bloccata.</li>
+<li>Ciò che emerge per strada e non si fa subito diventa una voce nuova.</li>
+<li>Una voce finita si toglie: la storia sta nel <code>CHANGELOG.md</code>.</li>
+<li>Le decisioni già scritte in una voce non si ridiscutono: chi la riprende parte da lì.</li>
+</ul>
+<h2 id="dove-si-lavora">Dove si lavora</h2>
+<p>Dipende da una domanda: <strong>la modifica si vede?</strong></p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>La modifica</th>
+<th>Dove si lavora</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>non si vede: una skill, uno script, un test, una regola di lint, una correzione del backend senza effetti sull'interfaccia</td>
+<td>direttamente nel template, verificando con un progetto generato</td>
+</tr>
+<tr>
+<td>si vede: una pagina, un componente, un comportamento dell'app</td>
+<td>in <code>app-demo</code> <strong>su un branch</strong>, poi si porta nel template e il branch si butta</td>
+</tr>
+</tbody>
+</table>
+</div>
+<pre><code>app-demo, branch di prova  ──►  template  ──►  rilascio (tag)  ──►  app-demo main
+   (alla fine si butta)                                              con /aggiorna-dal-template
 </code></pre>
-<h3 id="1-lavorare-in-app-demo">1. Lavorare in app-demo</h3>
-<p>Si sviluppa e si committa in <code>app-demo</code> come in qualsiasi progetto. Conviene tenere le modifiche
-dell'impianto in commit separati da quelle del dominio Noleggi: al momento di riportarle, il
-confine è già tracciato.</p>
-<h3 id="2-confrontare-normalizzando-lo-slug">2. Confrontare, normalizzando lo slug</h3>
+<p>Il branch di prova si butta perché in <code>app-demo</code> la modifica deve arrivare <strong>dal rilascio</strong>, con
+<code>/aggiorna-dal-template</code>, come arriva a qualsiasi progetto generato. Così l'update prova il tag
+vero, e un conflitto o un passo a mano che toccherà agli altri progetti si vede prima su
+<code>app-demo</code>.</p>
+<h2 id="portare-una-modifica-da-app-demo-al-template">Portare una modifica da app-demo al template</h2>
+<h3 id="1-confrontare-normalizzando-lo-slug">1. Confrontare, normalizzando lo slug</h3>
 <p>I due repository differiscono per lo slug in <strong>percorsi e contenuti</strong>: <code>apps/backend/AppDemo.Api</code>
 contro <code>apps/backend/[[ project_slug ]].Api</code>, <code>namespace AppDemo.Domain</code> contro
 <code>namespace [[ project_slug ]].Domain</code>. Il confronto più affidabile non sostituisce stringhe: <strong>rende
@@ -165,21 +199,21 @@ confrontare il template mentre lo si sta modificando.</li>
 <li><code>--strip-trailing-cr</code>, perché con <code>core.autocrlf</code> alcuni file del working tree sono CRLF e
 senza quell'opzione ogni file risulta diverso.</li>
 </ul>
-<h3 id="3-riportare-le-modifiche">3. Riportare le modifiche</h3>
-<p>Per pochi file si copia a mano, sostituendo <code>AppDemo</code> → <code>[[ project_slug ]]</code>. Per un intervallo di
-commit conviene un <strong>merge a tre vie</strong> per file, che applica al template solo il delta di app-demo
-e lascia intatto ciò che nel template è diverso di proposito:</p>
-<pre><code class="language-bash"><span class="hljs-comment"># base   = app-demo prima delle modifiche, slug normalizzato</span>
-<span class="hljs-comment"># theirs = app-demo dopo,                  slug normalizzato</span>
+<h3 id="2-riportare-le-modifiche">2. Riportare le modifiche</h3>
+<p>Per pochi file si copia a mano, sostituendo <code>AppDemo</code> → <code>[[ project_slug ]]</code>. Per più commit del
+branch di prova conviene un <strong>merge a tre vie</strong> per file, che applica al template solo il delta del
+branch e lascia intatto ciò che nel template è diverso di proposito:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># base   = app-demo main, prima del branch, slug normalizzato</span>
+<span class="hljs-comment"># theirs = la punta del branch di prova,   slug normalizzato</span>
 <span class="hljs-comment"># ours   = il file del template (dal blob HEAD, per evitare i falsi conflitti CRLF)</span>
-git -C C:\repos\app-demo show &lt;prima&gt;:&lt;file&gt; | sed <span class="hljs-string">&#x27;s/AppDemo/[[ project_slug ]]/g&#x27;</span> &gt; base
-git -C C:\repos\app-demo show &lt;dopo&gt;:&lt;file&gt;  | sed <span class="hljs-string">&#x27;s/AppDemo/[[ project_slug ]]/g&#x27;</span> &gt; theirs
+git -C C:\repos\app-demo show main:&lt;file&gt;     | sed <span class="hljs-string">&#x27;s/AppDemo/[[ project_slug ]]/g&#x27;</span> &gt; base
+git -C C:\repos\app-demo show &lt;branch&gt;:&lt;file&gt; | sed <span class="hljs-string">&#x27;s/AppDemo/[[ project_slug ]]/g&#x27;</span> &gt; theirs
 git show HEAD:template/&lt;file-normalizzato&gt; &gt; template/&lt;file-normalizzato&gt;
 git merge-file -L template -L base -L app-demo template/&lt;file-normalizzato&gt; base theirs
 </code></pre>
 <p>I conflitti restano con i marcatori <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> e si risolvono a mano. Sono quasi sempre nei punti
-elencati qui sotto.</p>
-<h3 id="4-che-cosa-resta-diverso-sempre">4. Che cosa resta diverso, sempre</h3>
+elencati qui sotto. Finito il merge, il branch di prova si cancella.</p>
+<h3 id="3-che-cosa-resta-diverso-sempre">3. Che cosa resta diverso, sempre</h3>
 <p>L'elenco che fa fede è <code>docs/differenze-app-demo.yml</code>, nel repository del template. Il comando
 <code>node scripts/confronta-app-demo.mjs</code> genera il progetto dalla versione registrata in app-demo e
 mostra solo ciò che esce da quell'elenco. La tabella qui sotto ne spiega il senso.</p>
@@ -223,49 +257,61 @@ mostra solo ciò che esce da quell'elenco. La tabella qui sotto ne spiega il sen
 </div>
 <p>Dopo il merge, una ricerca di <code>Rental</code>, <code>Equipment</code>, <code>Customer</code>, <code>Noleggi</code>, <code>AppDemo</code> nel template
 è il controllo più rapido.</p>
-<h3 id="5-verificare-generando-un-progetto">5. Verificare generando un progetto</h3>
+<h2 id="verificare">Verificare</h2>
 <p>Il template non compila: lo si verifica <strong>generando</strong> un progetto in una cartella temporanea e
-facendo girare tutto. La skill <code>/rilascio-template</code>, alla radice di <code>app-boilerplate</code>, esegue questo
-passo e i successivi su entrambi i provider.</p>
-<pre><code class="language-bash">copier copy --trust -f -d project_name=Prova -d project_slug=Prova \
-  -d api_port=5090 -d frontend_port=5174 -d db_provider=SqlServer \
-  -d access_mode=public -d include_docker=<span class="hljs-literal">true</span> -r HEAD C:\repos\app-boilerplate C:\tmp\prova
-
-<span class="hljs-built_in">cd</span> C:\tmp\prova\apps\backend  &amp;&amp; dotnet build Prova.sln &amp;&amp; dotnet <span class="hljs-built_in">test</span> Prova.sln
-<span class="hljs-built_in">cd</span> C:\tmp\prova\apps\frontend &amp;&amp; pnpm vue-tsc --noEmit &amp;&amp; pnpm eslint . &amp;&amp; pnpm vitest run &amp;&amp; pnpm build
-</code></pre>
+lanciando <code>pnpm verify</code>. La parte di verifica di <code>/rilascio-template</code>, alla radice di
+<code>app-boilerplate</code>, si può usare a ogni modifica: genera un progetto per provider (SQL Server e
+PostgreSQL) dal commit corrente, lancia <code>pnpm verify</code> su entrambi e poi introduce apposta un errore,
+per provare che il controllo sappia diventare rosso.</p>
 <blockquote>
 <p><strong>Percorsi brevi.</strong> Su Windows una cartella temporanea con un percorso lungo fa fallire pnpm in
 modo silenzioso: i link dentro <code>node_modules/.pnpm</code> superano i 260 caratteri e Vitest o Vite non
 trovano più i pacchetti. <code>C:\tmp\prova</code> va bene; una cartella annidata sotto <code>AppData</code> no.</p>
 </blockquote>
-<p>Poi il confronto del punto 2, di nuovo: devono restare <strong>solo</strong> le differenze della tabella sopra.</p>
-<h3 id="6-committare-aggiornare-il-changelog-taggare">6. Committare, aggiornare il changelog, taggare</h3>
-<p>Il commit sul template descrive le modifiche per area (backend, frontend, skill, documentazione).
-Poi:</p>
-<ol>
-<li>Una voce in <code>CHANGELOG.md</code> sotto <em>Non rilasciato</em>.</li>
-<li>Quando si rilascia: si sposta il blocco sotto un numero di versione con la data, e si crea il
-tag — <code>copier update</code> lavora sui tag, e senza tag i progetti generati non hanno una versione a
-cui aggiornarsi.</li>
-</ol>
-<pre><code class="language-bash">git tag -a v1.1.0 -m <span class="hljs-string">&quot;v1.1.0&quot;</span>
-git push --atomic origin main v1.1.0
+<h3 id="la-action">La Action</h3>
+<p><code>.github/workflows/verify.yml</code> fa la stessa cosa su GitHub a ogni push su <code>main</code> e a ogni pull
+request: genera i due progetti e lancia <code>pnpm verify</code> su ciascuno. Non parte quando cambiano solo
+<code>docs/**</code>, <code>CHANGELOG.md</code> e il <code>CLAUDE.md</code> della radice, che non entrano nei progetti generati.</p>
+<p><code>/rilascio-template</code> legge il suo esito: se riguarda esattamente ciò che si sta rilasciando, e i due
+job sono verdi, non ripete in locale la verifica dei due progetti. Un job rosso è un rosso anche se
+in locale passa. La Action gira su Linux: non prova Windows, ma vede le maiuscole nei percorsi, il
+fuso orario e i fine riga, che contano per chi fa il deploy su Linux.</p>
+<h2 id="rilasciare-a-lotti">Rilasciare a lotti</h2>
+<ul>
+<li>Una correzione resta sotto <em>Non rilasciato</em> nel <code>CHANGELOG.md</code>, scritta per chi aggiorna un
+progetto: che cosa cambia e che cosa deve fare.</li>
+<li>Si rilascia a lotti, quando ce n'è abbastanza da valere un update. Subito solo per una
+vulnerabilità o un bug grave.</li>
+<li>Il rilascio lo avvia chi mantiene il template, con <code>/rilascio-template [versione]</code>. Claude dice
+quando il lotto è pronto o quando c'è un caso urgente, ma non lo avvia da solo.</li>
+</ul>
+<p>La skill verifica, sceglie il numero, sposta la voce del CHANGELOG sotto la versione con la data, poi
+crea commit e tag. Prima di pubblicare chiede una conferma, che vale anche per app-demo e il sito:</p>
+<pre><code class="language-bash">git push --atomic origin main v1.4.0
 </code></pre>
-<p><code>--atomic</code> pubblica il commit e il suo tag insieme, o nessuno dei due.</p>
+<p><code>--atomic</code> pubblica il commit e il suo tag insieme, o nessuno dei due: <code>copier update</code> lavora sui
+tag, e senza tag i progetti generati non hanno una versione a cui aggiornarsi.</p>
 <p><code>major</code> quando un progetto generato deve intervenire a mano per aggiornarsi (rinomine, migration
 dell'impianto, skill rimosse), <code>minor</code> per funzionalità nuove compatibili, <code>patch</code> per correzioni.</p>
-<h3 id="7-riportare-anche-su-app-demo">7. Riportare anche su app-demo</h3>
-<p>Se durante il merge si sono fatte pulizie o correzioni <strong>solo nel template</strong>, vanno riportate in
-app-demo con lo stesso metodo al contrario, altrimenti al giro successivo ricompaiono come
-differenze. Il criterio è sempre lo stesso: i due repository devono differire solo per la tabella
-del punto 4.</p>
+<h3 id="l-ordine-template-app-demo-sito">L'ordine: template → app-demo → sito</h3>
+<ol>
+<li><strong>Template</strong>: rilasciato, con il tag.</li>
+<li><strong>app-demo</strong>: si aggiorna al nuovo tag con <code>/aggiorna-dal-template</code>, poi
+<code>node scripts/confronta-app-demo.mjs</code> deve finire con <code>Nessuna differenza inattesa.</code> Una
+correzione fatta solo nel template e non arrivata con l'update si riporta in app-demo,
+altrimenti al giro dopo ricompare come differenza; una differenza voluta si aggiunge
+all'elenco, con il motivo.</li>
+<li><strong>Sito</strong>: si aggiornano le pagine toccate, secondo la mappa qui sotto.</li>
+</ol>
+<p>In quest'ordine perché ogni passo documenta quello prima: app-demo prova il tag vero, e il sito
+descrive ciò che è stato rilasciato e provato.</p>
 <h2 id="aggiornare-questo-sito">Aggiornare questo sito</h2>
 <p>Il sito vive in <code>app-boilerplate-site</code>: i Markdown in <code>docs/</code> sono la fonte, <code>npm run build</code>
-genera gli HTML, e si committano entrambi (GitHub Pages serve i file statici).</p>
+genera gli HTML, e si committano entrambi (GitHub Pages serve i file statici, e una GitHub Action
+fallisce se Markdown e HTML divergono).</p>
 <p>Quando il template cambia in modo visibile — una convenzione, una chiave di configurazione, una
-skill, un pacchetto pinnato — la pagina corrispondente va aggiornata <strong>nello stesso giro</strong>, non
-dopo. La mappa:</p>
+skill, un pacchetto pinnato — la pagina corrispondente va aggiornata <strong>nello stesso giro</strong>, dopo il
+rilascio. La mappa:</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -302,6 +348,10 @@ dopo. La mappa:</p>
 <tr>
 <td>una scelta di progetto</td>
 <td><a href="../infrastructure/decisioni.html">Decisioni</a></td>
+</tr>
+<tr>
+<td>il modo di lavorare sul template</td>
+<td>questa pagina</td>
 </tr>
 </tbody>
 </table>

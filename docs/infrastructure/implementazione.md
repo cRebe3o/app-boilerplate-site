@@ -296,8 +296,9 @@ var group = await groups.GetByIdAsync(request.Id, ct)
 
 Le eccezioni di dominio vivono in `<Progetto>.Domain/Exceptions/` — `NotFoundException`,
 `ConflictException`, `InvariantViolationException`, `ForbiddenException`, `UnauthorizedException` —
-e il middleware le mappa su 404, 409, 422, 403, 401. Tutto il resto è un 500, con il dettaglio nel
-log e non nella risposta.
+e il middleware le mappa su 404, 409, 409, 403, 401. Un'invariante violata è un 409 come un
+conflitto: la richiesta è formalmente valida, ma incompatibile con lo stato attuale della risorsa.
+Tutto il resto è un 500, con il dettaglio nel log e non nella risposta.
 
 Fa eccezione la richiesta annullata dal client, che ha chiuso la pagina o interrotto la chiamata:
 un `OperationCanceledException` con `RequestAborted` già scattato non è un guasto del server. Il

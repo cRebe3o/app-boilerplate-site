@@ -252,7 +252,7 @@ in modo deterministico. Iniettando l'orologio, un test può fissare "adesso".
 - **Nel validator**: ciò che si giudica guardando solo l'input — obbligatorietà, lunghezze,
   formati, range. Produce `400`.
 - **Nel dominio**: ciò che riguarda lo stato del sistema — invarianti, transizioni, unicità.
-  Produce `409` o `422`.
+  Produce `409`.
 
 I due si sovrappongono di proposito su alcune cose, e va bene: il validator dà un messaggio
 gentile su tutti i campi in una volta, il dominio garantisce che la regola non sia aggirabile da
