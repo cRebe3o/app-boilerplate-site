@@ -382,6 +382,10 @@ handler <strong>lanciano</strong> e non catturano:</p>
 <code>ConflictException</code>, <code>InvariantViolationException</code>, <code>ForbiddenException</code>, <code>UnauthorizedException</code> —
 e il middleware le mappa su 404, 409, 422, 403, 401. Tutto il resto è un 500, con il dettaglio nel
 log e non nella risposta.</p>
+<p>Fa eccezione la richiesta annullata dal client, che ha chiuso la pagina o interrotto la chiamata:
+un <code>OperationCanceledException</code> con <code>RequestAborted</code> già scattato non è un guasto del server. Il
+middleware lo registra a livello <code>Debug</code>, risponde 499 senza corpo e non scrive in <code>ErrorLogs</code>. Un
+annullamento senza <code>RequestAborted</code>, come un timeout interno, resta un 500.</p>
 <p>Che stiano nel <strong>dominio</strong> e non in un progetto di utilità è coerente con il resto: un contratto
 confermato che rifiuta una modifica sta esprimendo una regola di business, non un errore tecnico.</p>
 <p>Il formato è sempre <strong>ProblemDetails</strong> (RFC 7807), quindi il frontend può tradurre ogni errore con

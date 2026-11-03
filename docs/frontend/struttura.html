@@ -628,7 +628,7 @@ codice; ciò che deve essere servito tale e quale (favicon, <code>_redirects</co
 </tr>
 <tr>
 <td><code>eslint.config.js</code></td>
-<td>Flat config: regole JS, TypeScript, Vue, Prettier; globali browser per <code>src/</code>, Node per test e <code>scripts/</code>; <code>max-lines</code> 300 per le pagine e 200 per i componenti, come avviso</td>
+<td>Flat config: regole JS, TypeScript, Vue, Prettier; globali browser per <code>src/</code>, Node per test e <code>scripts/</code>; <code>max-lines</code> 300 per le pagine e 200 per i componenti, come avviso; <code>vue/no-undef-components</code>, perché un tag senza import fa fallire il lint</td>
 <td>per una regola nuova</td>
 </tr>
 <tr>
@@ -638,12 +638,12 @@ codice; ciò che deve essere servito tale e quale (favicon, <code>_redirects</co
 </tr>
 <tr>
 <td><code>vitest.config.ts</code></td>
-<td>jsdom, <code>globals</code>, <code>vitest.setup.ts</code>, <code>vuetify</code> elaborato da Vite (i suoi componenti importano CSS), soglie di coverage (sotto <code>thresholds</code>, altrimenti vengono ignorate)</td>
+<td>jsdom, <code>globals</code>, <code>vitest.setup.ts</code>, auto-import di Vuetify come in <code>vite.config.ts</code>, <code>vuetify</code> elaborato da Vite (i suoi componenti importano CSS), soglie di coverage (sotto <code>thresholds</code>, altrimenti vengono ignorate)</td>
 <td>per alzare le soglie</td>
 </tr>
 <tr>
 <td><code>vitest.setup.ts</code></td>
-<td>i18n minimale, Pinia, mock di <code>matchMedia</code>, <code>ResizeObserver</code> e <code>localStorage</code></td>
+<td>i plugin i18n e Vuetify dell'app, mock di <code>matchMedia</code>, <code>ResizeObserver</code> e <code>localStorage</code>; un errore non gestito o un <code>[Vue warn]</code> fa fallire il test</td>
 <td>per un mock globale nuovo</td>
 </tr>
 <tr>

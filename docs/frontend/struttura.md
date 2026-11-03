@@ -361,10 +361,10 @@ codice; ciò che deve essere servito tale e quale (favicon, `_redirects` per l'h
 |---|---|---|
 | `vite.config.ts` | Plugin Vue e Vuetify (auto-import), alias `@` → `src`, porta del dev server (variabile `frontend_port` del template) | quasi mai |
 | `tsconfig.json` | `strict`, `noUnusedLocals`, `noUnusedParameters`; alias `@/*` | quasi mai |
-| `eslint.config.js` | Flat config: regole JS, TypeScript, Vue, Prettier; globali browser per `src/`, Node per test e `scripts/`; `max-lines` 300 per le pagine e 200 per i componenti, come avviso | per una regola nuova |
+| `eslint.config.js` | Flat config: regole JS, TypeScript, Vue, Prettier; globali browser per `src/`, Node per test e `scripts/`; `max-lines` 300 per le pagine e 200 per i componenti, come avviso; `vue/no-undef-components`, perché un tag senza import fa fallire il lint | per una regola nuova |
 | `.prettierrc` | Niente `;`, virgolette singole, 120 colonne, `x => …` senza parentesi. Lo applica l'hook di formattazione a ogni modifica di Claude; `pnpm format` riformatta tutto `src/` | mai |
-| `vitest.config.ts` | jsdom, `globals`, `vitest.setup.ts`, `vuetify` elaborato da Vite (i suoi componenti importano CSS), soglie di coverage (sotto `thresholds`, altrimenti vengono ignorate) | per alzare le soglie |
-| `vitest.setup.ts` | i18n minimale, Pinia, mock di `matchMedia`, `ResizeObserver` e `localStorage` | per un mock globale nuovo |
+| `vitest.config.ts` | jsdom, `globals`, `vitest.setup.ts`, auto-import di Vuetify come in `vite.config.ts`, `vuetify` elaborato da Vite (i suoi componenti importano CSS), soglie di coverage (sotto `thresholds`, altrimenti vengono ignorate) | per alzare le soglie |
+| `vitest.setup.ts` | i plugin i18n e Vuetify dell'app, mock di `matchMedia`, `ResizeObserver` e `localStorage`; un errore non gestito o un `[Vue warn]` fa fallire il test | per un mock globale nuovo |
 | `.env` · `.env.local.example` · `.env.production` | Le variabili `VITE_*`. `.env.local` è gitignored ed è dove si mettono i valori locali | per una variabile nuova |
 | `project.json` | I target Nx: `build`, `serve`, `test`, `lint`, `typecheck`. Sono ciò che `pnpm build`, `pnpm lint:frontend` e `pnpm typecheck:frontend` dalla radice invocano | per un target nuovo |
 | `scripts/generate-api-types.mjs` | `pnpm gen:api`: legge lo schema dal backend avviato e scrive `api.generated.ts` | mai |

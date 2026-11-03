@@ -299,6 +299,11 @@ Le eccezioni di dominio vivono in `<Progetto>.Domain/Exceptions/` — `NotFoundE
 e il middleware le mappa su 404, 409, 422, 403, 401. Tutto il resto è un 500, con il dettaglio nel
 log e non nella risposta.
 
+Fa eccezione la richiesta annullata dal client, che ha chiuso la pagina o interrotto la chiamata:
+un `OperationCanceledException` con `RequestAborted` già scattato non è un guasto del server. Il
+middleware lo registra a livello `Debug`, risponde 499 senza corpo e non scrive in `ErrorLogs`. Un
+annullamento senza `RequestAborted`, come un timeout interno, resta un 500.
+
 Che stiano nel **dominio** e non in un progetto di utilità è coerente con il resto: un contratto
 confermato che rifiuta una modifica sta esprimendo una regola di business, non un errore tecnico.
 

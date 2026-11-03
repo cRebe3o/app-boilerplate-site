@@ -487,7 +487,11 @@ un refresh;</li>
 <p>Nessuna chiamata <code>axios</code> o <code>fetch</code> fuori dai service.</p>
 <h2 id="test">Test</h2>
 <p>Vitest + jsdom, test <strong>accanto al file</strong> (<code>users.store.test.ts</code>, <code>RolePermissionsPicker.test.ts</code>).
-<code>vitest.setup.ts</code> registra i18n minimale, Pinia e i mock di <code>matchMedia</code>, <code>ResizeObserver</code> e <code>localStorage</code>.</p>
+<code>vitest.setup.ts</code> installa a ogni <code>mount</code> i plugin i18n e Vuetify dell'app, quindi i <code>v-*</code> si
+montano veri e i testi sono quelli di <code>it.ts</code>, e aggiunge i mock di <code>matchMedia</code>, <code>ResizeObserver</code> e
+<code>localStorage</code>. Pinia no: ogni test la crea nel <code>beforeEach</code>, così lo stato non passa da un test
+all'altro. Un errore non gestito o un <code>[Vue warn]</code> fa fallire il test in cui compare: per esempio un
+tag che non trova il suo componente.</p>
 <p>La regola: <strong>si mocka il service, mai la rete</strong>. Lo store si testa reale, con risposte controllate:</p>
 <pre><code class="language-typescript">vi.<span class="hljs-title function_">mock</span>(<span class="hljs-string">&#x27;@/services/suppliers.service&#x27;</span>, <span class="hljs-function">() =&gt;</span> ({
   <span class="hljs-attr">suppliersService</span>: { <span class="hljs-attr">getAll</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">getById</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">create</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">update</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">delete</span>: vi.<span class="hljs-title function_">fn</span>() },
@@ -541,9 +545,8 @@ parte.</p>
 </tbody>
 </table>
 </div>
-<p>Un testo con un numero si prova con 0, 1 e più, in entrambe le lingue, caricando le traduzioni vere:
-<code>vitest.setup.ts</code> ha solo poche chiavi, e una chiave assente resta una chiave. La ricetta è nella
-skill <code>vue-feature</code>.</p>
+<p>Un testo con un numero si prova con 0, 1 e più, in entrambe le lingue: le traduzioni sono già quelle
+vere, si sceglie la lingua con <code>i18n.global.locale.value</code>. La ricetta è nella skill <code>vue-feature</code>.</p>
 <p>Le soglie di coverage in <code>vitest.config.ts</code> sono il livello raggiunto: impediscono di peggiorare e
 vanno alzate man mano.</p>
 <h2 id="verifica">Verifica</h2>

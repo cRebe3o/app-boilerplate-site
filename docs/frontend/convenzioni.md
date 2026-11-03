@@ -333,7 +333,11 @@ Nessuna chiamata `axios` o `fetch` fuori dai service.
 ## Test
 
 Vitest + jsdom, test **accanto al file** (`users.store.test.ts`, `RolePermissionsPicker.test.ts`).
-`vitest.setup.ts` registra i18n minimale, Pinia e i mock di `matchMedia`, `ResizeObserver` e `localStorage`.
+`vitest.setup.ts` installa a ogni `mount` i plugin i18n e Vuetify dell'app, quindi i `v-*` si
+montano veri e i testi sono quelli di `it.ts`, e aggiunge i mock di `matchMedia`, `ResizeObserver` e
+`localStorage`. Pinia no: ogni test la crea nel `beforeEach`, così lo stato non passa da un test
+all'altro. Un errore non gestito o un `[Vue warn]` fa fallire il test in cui compare: per esempio un
+tag che non trova il suo componente.
 
 La regola: **si mocka il service, mai la rete**. Lo store si testa reale, con risposte controllate:
 
@@ -367,9 +371,8 @@ Che cosa testare, per tipo di file:
 | componente | prop, eventi, `v-model`, slot; per un dialog con form: non valido, salvataggio riuscito (si chiude), fallito (resta aperto con il messaggio del backend) | `frontend-testing` |
 | pagina | mount con router in memoria, service mockato, store reale; caricamento, un'interazione, l'errore visibile, la ricarica dopo una scrittura. `flushPromises()`, mai `setTimeout` | `frontend-testing` |
 
-Un testo con un numero si prova con 0, 1 e più, in entrambe le lingue, caricando le traduzioni vere:
-`vitest.setup.ts` ha solo poche chiavi, e una chiave assente resta una chiave. La ricetta è nella
-skill `vue-feature`.
+Un testo con un numero si prova con 0, 1 e più, in entrambe le lingue: le traduzioni sono già quelle
+vere, si sceglie la lingua con `i18n.global.locale.value`. La ricetta è nella skill `vue-feature`.
 
 Le soglie di coverage in `vitest.config.ts` sono il livello raggiunto: impediscono di peggiorare e
 vanno alzate man mano.

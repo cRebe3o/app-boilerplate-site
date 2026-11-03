@@ -13,7 +13,7 @@ dotnet test apps/backend/<Progetto>.sln      # tutti, è anche `pnpm test:backen
 | `<Progetto>.Domain.Tests` | Invarianti di aggregati e value object | `new` e basta: nessun mock, nessun database | Una regola di business è sbagliata o aggirabile |
 | `<Progetto>.Application.Tests` | Gli handler: orchestrazione, eccezioni, cosa viene salvato | NSubstitute sulle astrazioni (`IUserRepository`, `IUnitOfWork`, …) | Un handler salva due volte, non lancia il 404, non normalizza l'input |
 | `<Progetto>.Infrastructure.Tests` | Ciò che si vede solo davanti a EF: value object ricostruiti dal database, specification tradotte in SQL, seed | SQLite in memoria, con EF Core vero | Un valore non si rilegge, un predicato non si traduce, il seed non aggiunge un permesso nuovo |
-| `<Progetto>.Api.Tests` | Il middleware degli errori: che cosa diventa un 500 e finisce in `ErrorLog` | NSubstitute | Un errore del client viene scritto come errore del server |
+| `<Progetto>.Api.Tests` | Il middleware degli errori: che cosa diventa un 500 e finisce in `ErrorLog` | NSubstitute | Un errore del client, o una richiesta che il client ha annullato, viene scritto come errore del server |
 | `<Progetto>.Architecture.Tests` | La direzione delle dipendenze e le convenzioni del modello | Reflection sugli assembly compilati | Un `using` sbagliato, un setter pubblico, una `List<T>` esposta |
 
 Tutti usano **xUnit**; i nomi dei test sono frasi in italiano con gli underscore
