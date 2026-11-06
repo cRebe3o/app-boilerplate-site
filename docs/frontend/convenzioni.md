@@ -349,25 +349,38 @@ tag che non trova il suo componente.
 La regola: **si mocka il service, mai la rete**. Lo store si testa reale, con risposte controllate:
 
 ```typescript
-vi.mock('@/services/suppliers.service', () => ({
-  suppliersService: { getAll: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+vi.mock('@/services/customers.service', () => ({
+  customersService: { getAll: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
 }))
-const service = vi.mocked(suppliersService)
+const service = vi.mocked(customersService)
 
 beforeEach(() => { setActivePinia(createPinia()); vi.clearAllMocks() })
 
-it('una scrittura fallita registra l\'errore E rilancia', async () => {
-  service.create.mockRejectedValue({ response: { status: 409, data: { detail: 'Partita IVA già presente.' } } })
-  const store = useSuppliersStore()
+it('una scrittura fallita registra l'errore E rilancia', async () => {
+  service.create.mockRejectedValue({
+    response: {
+      status: 409,
+      data: {
+        code: 'TaxCodeTaken',
+        params: { taxCode: '00743110157' },
+        detail: 'A customer with tax code 00743110157 already exists.',
+      },
+    },
+  })
+  const store = useCustomersStore()
 
-  await expect(store.create({ name: 'X', vatNumber: '00743110157' })).rejects.toBeDefined()
-  expect(store.error).toBe('Partita IVA già presente.')      // il detail del backend, non il fallback
+  await expect(
+    store.create({ name: 'X', taxCode: '00743110157', creditLimit: 0, email: null, phone: null })
+  ).rejects.toBeDefined()
+  // il codice tradotto da errors.codes, non il detail inglese né il fallback
+  expect(store.error).toBe('Esiste già un cliente con codice fiscale 00743110157')
 })
 ```
 
 Gli errori simulati hanno la forma di un AxiosError, `{ response: { status, data } }`: è ciò che
-legge `extractApiError`. Un `new Error('x')` fa scattare il fallback i18n, ed è un caso da testare a
-parte.
+legge `extractApiError`. Con un `code` mostra la sua traduzione in `errors.codes`, riempita con i
+`params`; il `detail` inglese serve solo quando il codice manca. Un `new Error('x')` fa scattare il
+fallback i18n, ed è un caso da testare a parte.
 
 Che cosa testare, per tipo di file:
 

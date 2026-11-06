@@ -500,24 +500,37 @@ montano veri e i testi sono quelli di <code>it.ts</code>, e aggiunge i mock di <
 all'altro. Un errore non gestito o un <code>[Vue warn]</code> fa fallire il test in cui compare: per esempio un
 tag che non trova il suo componente.</p>
 <p>La regola: <strong>si mocka il service, mai la rete</strong>. Lo store si testa reale, con risposte controllate:</p>
-<pre><code class="language-typescript">vi.<span class="hljs-title function_">mock</span>(<span class="hljs-string">&#x27;@/services/suppliers.service&#x27;</span>, <span class="hljs-function">() =&gt;</span> ({
-  <span class="hljs-attr">suppliersService</span>: { <span class="hljs-attr">getAll</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">getById</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">create</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">update</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">delete</span>: vi.<span class="hljs-title function_">fn</span>() },
+<pre><code class="language-typescript">vi.<span class="hljs-title function_">mock</span>(<span class="hljs-string">&#x27;@/services/customers.service&#x27;</span>, <span class="hljs-function">() =&gt;</span> ({
+  <span class="hljs-attr">customersService</span>: { <span class="hljs-attr">getAll</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">getById</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">create</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">update</span>: vi.<span class="hljs-title function_">fn</span>(), <span class="hljs-attr">delete</span>: vi.<span class="hljs-title function_">fn</span>() },
 }))
-<span class="hljs-keyword">const</span> service = vi.<span class="hljs-title function_">mocked</span>(suppliersService)
+<span class="hljs-keyword">const</span> service = vi.<span class="hljs-title function_">mocked</span>(customersService)
 
 <span class="hljs-title function_">beforeEach</span>(<span class="hljs-function">() =&gt;</span> { <span class="hljs-title function_">setActivePinia</span>(<span class="hljs-title function_">createPinia</span>()); vi.<span class="hljs-title function_">clearAllMocks</span>() })
 
-<span class="hljs-title function_">it</span>(<span class="hljs-string">&#x27;una scrittura fallita registra l\&#x27;errore E rilancia&#x27;</span>, <span class="hljs-title function_">async</span> () =&gt; {
-  service.<span class="hljs-property">create</span>.<span class="hljs-title function_">mockRejectedValue</span>({ <span class="hljs-attr">response</span>: { <span class="hljs-attr">status</span>: <span class="hljs-number">409</span>, <span class="hljs-attr">data</span>: { <span class="hljs-attr">detail</span>: <span class="hljs-string">&#x27;Partita IVA già presente.&#x27;</span> } } })
-  <span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useSuppliersStore</span>()
+<span class="hljs-title function_">it</span>(<span class="hljs-string">&#x27;una scrittura fallita registra l&#x27;</span>errore E rilancia<span class="hljs-string">&#x27;, async () =&gt; {
+  service.create.mockRejectedValue({
+    response: {
+      status: 409,
+      data: {
+        code: &#x27;</span><span class="hljs-title class_">TaxCodeTaken</span><span class="hljs-string">&#x27;,
+        params: { taxCode: &#x27;</span><span class="hljs-number">00743110157</span><span class="hljs-string">&#x27; },
+        detail: &#x27;</span>A customer <span class="hljs-keyword">with</span> tax code <span class="hljs-number">00743110157</span> already exists.<span class="hljs-string">&#x27;,
+      },
+    },
+  })
+  const store = useCustomersStore()
 
-  <span class="hljs-keyword">await</span> <span class="hljs-title function_">expect</span>(store.<span class="hljs-title function_">create</span>({ <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;X&#x27;</span>, <span class="hljs-attr">vatNumber</span>: <span class="hljs-string">&#x27;00743110157&#x27;</span> })).<span class="hljs-property">rejects</span>.<span class="hljs-title function_">toBeDefined</span>()
-  <span class="hljs-title function_">expect</span>(store.<span class="hljs-property">error</span>).<span class="hljs-title function_">toBe</span>(<span class="hljs-string">&#x27;Partita IVA già presente.&#x27;</span>)      <span class="hljs-comment">// il detail del backend, non il fallback</span>
+  await expect(
+    store.create({ name: &#x27;</span>X<span class="hljs-string">&#x27;, taxCode: &#x27;</span><span class="hljs-number">00743110157</span><span class="hljs-string">&#x27;, creditLimit: 0, email: null, phone: null })
+  ).rejects.toBeDefined()
+  // il codice tradotto da errors.codes, non il detail inglese né il fallback
+  expect(store.error).toBe(&#x27;</span><span class="hljs-title class_">Esiste</span> già un cliente con codice fiscale <span class="hljs-number">00743110157</span><span class="hljs-string">&#x27;)
 })
-</code></pre>
+</span></code></pre>
 <p>Gli errori simulati hanno la forma di un AxiosError, <code>{ response: { status, data } }</code>: è ciò che
-legge <code>extractApiError</code>. Un <code>new Error('x')</code> fa scattare il fallback i18n, ed è un caso da testare a
-parte.</p>
+legge <code>extractApiError</code>. Con un <code>code</code> mostra la sua traduzione in <code>errors.codes</code>, riempita con i
+<code>params</code>; il <code>detail</code> inglese serve solo quando il codice manca. Un <code>new Error('x')</code> fa scattare il
+fallback i18n, ed è un caso da testare a parte.</p>
 <p>Che cosa testare, per tipo di file:</p>
 <div class="table-wrap">
 <table>
