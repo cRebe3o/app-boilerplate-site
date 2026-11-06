@@ -297,6 +297,12 @@ var group = await groups.GetByIdAsync(request.Id, ct)
 Un'eccezione porta un **codice** (`ErrorCode`, in `Domain/Exceptions/`), un messaggio inglese per i
 log e di riserva, e i parametri del testo. Il testo che vede l'utente lo scrive il frontend.
 
+`ErrorCode` è un `readonly partial record struct` diviso in due file: `ErrorCode.cs` con i codici
+del template, che si aggiorna con il template, ed `ErrorCode.Project.cs` con quelli del progetto,
+che Copier crea vuoto e non sovrascrive più. Così un codice nuovo del template e uno del progetto
+non finiscono nello stesso file. `ErrorCode.All` elenca i codici dei due file per lo schema OpenAPI,
+e `api.generated.ts` li riceve come un elenco di stringhe.
+
 Le eccezioni di dominio vivono in `<Progetto>.Domain/Exceptions/` — `NotFoundException`,
 `ConflictException`, `InvariantViolationException`, `ForbiddenException`, `UnauthorizedException` —
 e il middleware le mappa su 404, 409, 409, 403, 401. Un'invariante violata è un 409 come un

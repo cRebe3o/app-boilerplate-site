@@ -379,6 +379,10 @@ committato, e va committato di nuovo dopo ogni update.</p>
 </div>
 <p>Opzioni utili: <code>--pretend</code> mostra che cosa succederebbe senza scrivere nulla, <code>--vcs-ref v1.2.0</code>
 aggiorna a una versione precisa invece che all'ultima.</p>
+<p><strong>Alcuni file sono del progetto dopo la generazione</strong>: il template li crea e l'update non li
+sovrascrive più (<code>_skip_if_exists</code> in <code>copier.yml</code>). Oggi è uno solo,
+<code>Domain/Exceptions/ErrorCode.Project.cs</code>, con i codici di errore del progetto; quelli del template
+stanno in <code>ErrorCode.cs</code>, che invece si aggiorna.</p>
 <p><strong>Il template deve avere dei tag di versione</strong> (<code>v1.0.0</code>, <code>v1.1.0</code>, …): Copier aggiorna &quot;all'ultimo
 tag&quot;, e senza tag non ha una versione a cui puntare.</p>
 <blockquote>

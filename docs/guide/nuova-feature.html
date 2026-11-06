@@ -466,9 +466,18 @@ factory <code>Category.Create</code> impedisce che la regola sia aggirabile da u
 <li><strong><code>CreatedAt</code>/<code>UpdatedAt</code> non compaiono</strong>: li imposta <code>TimestampInterceptor</code>.</li>
 <li><strong>L'handler non costruisce l'entità con un object initializer</strong>: chiama il factory, che valida.</li>
 </ul>
-<p><strong>I codici di errore.</strong> Ogni eccezione porta un valore di <code>ErrorCode</code>
-(<code>Domain/Exceptions/ErrorCode.cs</code>, con i parametri nel commento), un messaggio <strong>inglese</strong>, che
-serve per i log e di riserva, e i parametri. Il testo che vede l'utente lo scrive il frontend, in
+<p><strong>I codici di errore.</strong> Ogni eccezione porta un valore di <code>ErrorCode</code>, un messaggio <strong>inglese</strong>,
+che serve per i log e di riserva, e i parametri. I codici del progetto si scrivono in
+<code>Domain/Exceptions/ErrorCode.Project.cs</code>, uno per campo, con i parametri nel commento:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">readonly</span> <span class="hljs-keyword">partial</span> <span class="hljs-keyword">record</span> <span class="hljs-title">struct</span> <span class="hljs-title">ErrorCode</span>
+{
+    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Parametri: id.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> ErrorCode CategoryNotFound = <span class="hljs-keyword">new</span>(<span class="hljs-keyword">nameof</span>(CategoryNotFound));
+}
+</code></pre>
+<p><code>ErrorCode.cs</code>, accanto, ha i codici del template e si aggiorna con il template: lì non si scrive.
+Il valore di un codice è il nome del campo, e non si ripete: lo controlla un test di architettura
+(<code>ErrorCodeTests</code>). Il testo che vede l'utente lo scrive il frontend, in
 <code>errors.codes.&lt;Codice&gt;</code> (vedi il punto 12). Nei validator <code>NotEmpty</code>, <code>NotNull</code>, <code>MinimumLength</code>,
 <code>MaximumLength</code> ed <code>EmailAddress</code> hanno già un codice generico (<code>Required</code>, <code>TooShort</code>, <code>TooLong</code>,
 <code>InvalidEmail</code>): niente <code>WithMessage</code>. Le altre regole usano <code>WithErrorCode(ErrorCode.X, (&quot;max&quot;, 100))</code>.
@@ -857,7 +866,7 @@ si propaga anche <code>fromQuery</code>, altrimenti il nuovo dettaglio perde l'o
   <span class="hljs-attr">loadCategories</span>: <span class="hljs-string">&#x27;Errore nel caricamento delle categorie&#x27;</span>,
   <span class="hljs-attr">createCategory</span>: <span class="hljs-string">&#x27;Errore nella creazione della categoria&#x27;</span>,
   <span class="hljs-attr">deleteCategory</span>: <span class="hljs-string">&#x27;Errore nell\&#x27;eliminazione della categoria&#x27;</span>,
-  <span class="hljs-comment">// un testo per ogni codice nuovo di ErrorCode, con i parametri come segnaposto</span>
+  <span class="hljs-comment">// un testo per ogni codice nuovo di ErrorCode.Project.cs, con i parametri come segnaposto</span>
   <span class="hljs-attr">codes</span>: {
     <span class="hljs-title class_">CategoryNotFound</span>: <span class="hljs-string">&#x27;Categoria con id {id} non trovata&#x27;</span>,
     <span class="hljs-title class_">CategoryAlreadyExists</span>: <span class="hljs-string">&quot;Esiste già una categoria &#x27;{name}&#x27;&quot;</span>,

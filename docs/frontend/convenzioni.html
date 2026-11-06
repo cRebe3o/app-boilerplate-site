@@ -244,7 +244,7 @@ l'errore in un punto solo. Tre modi, per tre esigenze:</p>
 <span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> <span class="hljs-title function_">attempt</span>(<span class="hljs-function">() =&gt;</span> store.<span class="hljs-title function_">confirm</span>(id), <span class="hljs-string">&#x27;errors.confirmOrder&#x27;</span>)) dialog.<span class="hljs-property">value</span> = <span class="hljs-literal">false</span>
 </code></pre>
 <p><strong>Il messaggio lo dice il backend, il testo lo scrive il frontend.</strong> Il ProblemDetails porta un
-<code>code</code> (un valore dell'enum <code>ErrorCode</code>) e i suoi <code>params</code>: <code>extractApiError</code> lo traduce con
+<code>code</code> (un codice di <code>ErrorCode</code>, del template o del progetto) e i suoi <code>params</code>: <code>extractApiError</code> lo traduce con
 <code>errors.codes.&lt;code&gt;</code> — &quot;Username 'mario' già in uso&quot;, &quot;I ruoli di sistema non possono essere
 eliminati&quot;. Un errore senza codice, o con un codice senza traduzione, mostra il <code>detail</code>, che il
 backend scrive in inglese. La chiave i18n passata a <code>run</code>/<code>runOrThrow</code> è solo il <strong>fallback</strong> per un

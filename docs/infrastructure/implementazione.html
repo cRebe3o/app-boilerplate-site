@@ -380,6 +380,11 @@ handler <strong>lanciano</strong> e non catturano:</p>
 </code></pre>
 <p>Un'eccezione porta un <strong>codice</strong> (<code>ErrorCode</code>, in <code>Domain/Exceptions/</code>), un messaggio inglese per i
 log e di riserva, e i parametri del testo. Il testo che vede l'utente lo scrive il frontend.</p>
+<p><code>ErrorCode</code> è un <code>readonly partial record struct</code> diviso in due file: <code>ErrorCode.cs</code> con i codici
+del template, che si aggiorna con il template, ed <code>ErrorCode.Project.cs</code> con quelli del progetto,
+che Copier crea vuoto e non sovrascrive più. Così un codice nuovo del template e uno del progetto
+non finiscono nello stesso file. <code>ErrorCode.All</code> elenca i codici dei due file per lo schema OpenAPI,
+e <code>api.generated.ts</code> li riceve come un elenco di stringhe.</p>
 <p>Le eccezioni di dominio vivono in <code>&lt;Progetto&gt;.Domain/Exceptions/</code> — <code>NotFoundException</code>,
 <code>ConflictException</code>, <code>InvariantViolationException</code>, <code>ForbiddenException</code>, <code>UnauthorizedException</code> —
 e il middleware le mappa su 404, 409, 409, 403, 401. Un'invariante violata è un 409 come un

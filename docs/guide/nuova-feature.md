@@ -343,9 +343,21 @@ Tre punti da non perdere:
 - **`CreatedAt`/`UpdatedAt` non compaiono**: li imposta `TimestampInterceptor`.
 - **L'handler non costruisce l'entità con un object initializer**: chiama il factory, che valida.
 
-**I codici di errore.** Ogni eccezione porta un valore di `ErrorCode`
-(`Domain/Exceptions/ErrorCode.cs`, con i parametri nel commento), un messaggio **inglese**, che
-serve per i log e di riserva, e i parametri. Il testo che vede l'utente lo scrive il frontend, in
+**I codici di errore.** Ogni eccezione porta un valore di `ErrorCode`, un messaggio **inglese**,
+che serve per i log e di riserva, e i parametri. I codici del progetto si scrivono in
+`Domain/Exceptions/ErrorCode.Project.cs`, uno per campo, con i parametri nel commento:
+
+```csharp
+public readonly partial record struct ErrorCode
+{
+    /// <summary>Parametri: id.</summary>
+    public static readonly ErrorCode CategoryNotFound = new(nameof(CategoryNotFound));
+}
+```
+
+`ErrorCode.cs`, accanto, ha i codici del template e si aggiorna con il template: lì non si scrive.
+Il valore di un codice è il nome del campo, e non si ripete: lo controlla un test di architettura
+(`ErrorCodeTests`). Il testo che vede l'utente lo scrive il frontend, in
 `errors.codes.<Codice>` (vedi il punto 12). Nei validator `NotEmpty`, `NotNull`, `MinimumLength`,
 `MaximumLength` ed `EmailAddress` hanno già un codice generico (`Required`, `TooShort`, `TooLong`,
 `InvalidEmail`): niente `WithMessage`. Le altre regole usano `WithErrorCode(ErrorCode.X, ("max", 100))`.
@@ -777,7 +789,7 @@ errors: {
   loadCategories: 'Errore nel caricamento delle categorie',
   createCategory: 'Errore nella creazione della categoria',
   deleteCategory: 'Errore nell\'eliminazione della categoria',
-  // un testo per ogni codice nuovo di ErrorCode, con i parametri come segnaposto
+  // un testo per ogni codice nuovo di ErrorCode.Project.cs, con i parametri come segnaposto
   codes: {
     CategoryNotFound: 'Categoria con id {id} non trovata',
     CategoryAlreadyExists: "Esiste già una categoria '{name}'",
