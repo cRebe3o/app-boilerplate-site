@@ -374,6 +374,10 @@ al più tardi dopo un'ora, senza bisogno che l'utente rifaccia il login.
 non c'è più, non è un errore. L'access token già emesso resta tecnicamente valido fino alla scadenza —
 è la natura dei JWT — ma il frontend lo elimina e senza refresh token non se ne ottengono altri.
 
+Il frontend chiama `/api/auth/logout` solo quando l'utente preme "Esci". Una sessione scaduta esce
+solo in locale, senza revocare niente: il cookie che il browser ha in quel momento potrebbe essere
+quello appena rinnovato da un'altra scheda (vedi [Sul frontend](#sul-frontend)).
+
 ## Come si risolvono i permessi
 
 È la stessa identica sequenza in tutti gli handler (login, msal-login, windows-login, refresh):
@@ -560,20 +564,21 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// 401 → un solo refresh condiviso, poi si ripete la richiesta; logout solo se la sessione è persa
+// 401 → un solo refresh condiviso, poi si ripete la richiesta; si esce solo se la sessione è persa
 api.interceptors.response.use(
   res => res,
   async error => {
     if (error.response?.status === 401 && !isLoggingOut && !isAuthRequest) {
       if (!originalRequest._retry) {
         originalRequest._retry = true
-        refreshPromise ??= authStore.refresh().finally(() => { refreshPromise = null })
+        const failedToken = /* il token che il server ha rifiutato, dall'header Authorization */
+        refreshPromise ??= authStore.refresh({ failedToken }).finally(() => { refreshPromise = null })
         const result = await refreshPromise
         if (result.outcome === 'refreshed') return api(originalRequest)
         if (result.outcome === 'unavailable')                     // rete assente, 5xx, 429…
           return Promise.reject(extractServerFailure(result.error) ? result.error : new SessionNotRenewedError(result.error))
       }
-      await authStore.logout()                                    // refresh token non più valido
+      await authStore.expireSession()                             // sessione persa: uscita solo in locale
     }
     return Promise.reject(error)
   },
@@ -588,14 +593,36 @@ la sessione resta e fallisce solo la richiesta: rete assente e 5xx hanno il loro
 diventa `SessionNotRenewedError`, "Non è stato possibile rinnovare la sessione. Riprova tra poco."
 Nessun toast: lo mostra l'avviso della pagina.
 
+Quando la sessione è persa, `authStore.expireSession()` la svuota solo in locale e porta alla
+pagina di login, che dice "La sessione è scaduta: accedi di nuovo." Non chiama `/api/auth/logout`.
+
+**Più schede.** Le schede dello stesso browser condividono `localStorage` e il cookie di refresh, che
+cambia a ogni rinnovo. Se due schede rinnovassero insieme, la seconda manderebbe un cookie già
+revocato e riceverebbe 401. Per questo `authStore.refresh` rinnova una scheda alla volta, con
+`navigator.locks`. La scheda che arriva per seconda trova in `localStorage` un token diverso da
+quello rifiutato e usa quello, senza chiamare il server. Nei browser senza `navigator.locks`, dopo
+un 401 il rinnovo aspetta un momento un token nuovo scritto da un'altra scheda. Le schede si
+allineano con l'evento `storage`:
+
+| In una scheda | Nelle altre |
+|---|---|
+| rinnovo | usano il token nuovo |
+| "Esci" | escono anche loro e tornano alla home, senza messaggio |
+| sessione scaduta | escono e vanno al login, con il messaggio |
+
+Il motivo dell'uscita sta in `localStorage`, nella chiave `sessionEnd`.
+
 Dopo un salvataggio che può cambiare i permessi dell'utente corrente (gruppi, ruoli, utenti), la
 pagina chiama `authStore.refreshAfterSave()`, che rinnova la sessione per avere i permessi nuovi e
-dice "Salvato". Se il rinnovo non riesce, l'avviso dice che i permessi si aggiorneranno al prossimo
-accesso; se la sessione è scaduta, l'utente esce come per ogni 401.
+dice "Salvato". Il rinnovo chiama sempre il server, anche se un'altra scheda ha appena rinnovato.
+Se non riesce, l'avviso dice che i permessi si aggiorneranno al prossimo accesso. Se la sessione è
+scaduta, il toast dice "Salvato. La sessione è scaduta: accedi di nuovo." e l'utente va al login,
+senza un secondo messaggio.
 
 Lo store `auth.store.ts` conserva in `localStorage` token, scadenza, `username`, `email` (se presente),
 gli altri dati dell'utente e i permessi. Le azioni di login sono tre: `login()`, `loginWithMsal()`,
-`loginWithWindows()`. Il navigation guard del router controlla `meta.requiresAuth` e `meta.permission`
+`loginWithWindows()`. Si esce con `logout()` ("Esci", che revoca il cookie) o con `expireSession()`
+(sessione scaduta). Il navigation guard del router controlla `meta.requiresAuth` e `meta.permission`
 prima di ogni navigazione, e il composable `usePermission` espone `can('permesso')` per i template.
 
 Nella gestione utenti il campo obbligatorio è **Username** (con un suggerimento su cosa scriverci:

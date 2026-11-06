@@ -499,6 +499,9 @@ al più tardi dopo un'ora, senza bisogno che l'utente rifaccia il login.</p>
 <p><code>POST /api/auth/logout</code> revoca il refresh token e cancella il cookie. È <strong>idempotente</strong>: se il token
 non c'è più, non è un errore. L'access token già emesso resta tecnicamente valido fino alla scadenza —
 è la natura dei JWT — ma il frontend lo elimina e senza refresh token non se ne ottengono altri.</p>
+<p>Il frontend chiama <code>/api/auth/logout</code> solo quando l'utente preme &quot;Esci&quot;. Una sessione scaduta esce
+solo in locale, senza revocare niente: il cookie che il browser ha in quel momento potrebbe essere
+quello appena rinnovato da un'altra scheda (vedi <a href="#sul-frontend">Sul frontend</a>).</p>
 <h2 id="come-si-risolvono-i-permessi">Come si risolvono i permessi</h2>
 <p>È la stessa identica sequenza in tutti gli handler (login, msal-login, windows-login, refresh):</p>
 <pre><code>     Utente
@@ -704,20 +707,21 @@ api.<span class="hljs-property">interceptors</span>.<span class="hljs-property">
   <span class="hljs-keyword">return</span> config
 })
 
-<span class="hljs-comment">// 401 → un solo refresh condiviso, poi si ripete la richiesta; logout solo se la sessione è persa</span>
+<span class="hljs-comment">// 401 → un solo refresh condiviso, poi si ripete la richiesta; si esce solo se la sessione è persa</span>
 api.<span class="hljs-property">interceptors</span>.<span class="hljs-property">response</span>.<span class="hljs-title function_">use</span>(
   <span class="hljs-function"><span class="hljs-params">res</span> =&gt;</span> res,
   <span class="hljs-keyword">async</span> error =&gt; {
     <span class="hljs-keyword">if</span> (error.<span class="hljs-property">response</span>?.<span class="hljs-property">status</span> === <span class="hljs-number">401</span> &amp;&amp; !isLoggingOut &amp;&amp; !isAuthRequest) {
       <span class="hljs-keyword">if</span> (!originalRequest.<span class="hljs-property">_retry</span>) {
         originalRequest.<span class="hljs-property">_retry</span> = <span class="hljs-literal">true</span>
-        refreshPromise ??= authStore.<span class="hljs-title function_">refresh</span>().<span class="hljs-title function_">finally</span>(<span class="hljs-function">() =&gt;</span> { refreshPromise = <span class="hljs-literal">null</span> })
+        <span class="hljs-keyword">const</span> failedToken = <span class="hljs-comment">/* il token che il server ha rifiutato, dall&#x27;header Authorization */</span>
+        refreshPromise ??= authStore.<span class="hljs-title function_">refresh</span>({ failedToken }).<span class="hljs-title function_">finally</span>(<span class="hljs-function">() =&gt;</span> { refreshPromise = <span class="hljs-literal">null</span> })
         <span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> refreshPromise
         <span class="hljs-keyword">if</span> (result.<span class="hljs-property">outcome</span> === <span class="hljs-string">&#x27;refreshed&#x27;</span>) <span class="hljs-keyword">return</span> <span class="hljs-title function_">api</span>(originalRequest)
         <span class="hljs-keyword">if</span> (result.<span class="hljs-property">outcome</span> === <span class="hljs-string">&#x27;unavailable&#x27;</span>)                     <span class="hljs-comment">// rete assente, 5xx, 429…</span>
           <span class="hljs-keyword">return</span> <span class="hljs-title class_">Promise</span>.<span class="hljs-title function_">reject</span>(<span class="hljs-title function_">extractServerFailure</span>(result.<span class="hljs-property">error</span>) ? result.<span class="hljs-property">error</span> : <span class="hljs-keyword">new</span> <span class="hljs-title class_">SessionNotRenewedError</span>(result.<span class="hljs-property">error</span>))
       }
-      <span class="hljs-keyword">await</span> authStore.<span class="hljs-title function_">logout</span>()                                    <span class="hljs-comment">// refresh token non più valido</span>
+      <span class="hljs-keyword">await</span> authStore.<span class="hljs-title function_">expireSession</span>()                             <span class="hljs-comment">// sessione persa: uscita solo in locale</span>
     }
     <span class="hljs-keyword">return</span> <span class="hljs-title class_">Promise</span>.<span class="hljs-title function_">reject</span>(error)
   },
@@ -730,13 +734,50 @@ risponde, risponde con un 5xx o rifiuta il rinnovo con un altro 4xx (di solito 4
 la sessione resta e fallisce solo la richiesta: rete assente e 5xx hanno il loro messaggio, il 4xx
 diventa <code>SessionNotRenewedError</code>, &quot;Non è stato possibile rinnovare la sessione. Riprova tra poco.&quot;
 Nessun toast: lo mostra l'avviso della pagina.</p>
+<p>Quando la sessione è persa, <code>authStore.expireSession()</code> la svuota solo in locale e porta alla
+pagina di login, che dice &quot;La sessione è scaduta: accedi di nuovo.&quot; Non chiama <code>/api/auth/logout</code>.</p>
+<p><strong>Più schede.</strong> Le schede dello stesso browser condividono <code>localStorage</code> e il cookie di refresh, che
+cambia a ogni rinnovo. Se due schede rinnovassero insieme, la seconda manderebbe un cookie già
+revocato e riceverebbe 401. Per questo <code>authStore.refresh</code> rinnova una scheda alla volta, con
+<code>navigator.locks</code>. La scheda che arriva per seconda trova in <code>localStorage</code> un token diverso da
+quello rifiutato e usa quello, senza chiamare il server. Nei browser senza <code>navigator.locks</code>, dopo
+un 401 il rinnovo aspetta un momento un token nuovo scritto da un'altra scheda. Le schede si
+allineano con l'evento <code>storage</code>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>In una scheda</th>
+<th>Nelle altre</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>rinnovo</td>
+<td>usano il token nuovo</td>
+</tr>
+<tr>
+<td>&quot;Esci&quot;</td>
+<td>escono anche loro e tornano alla home, senza messaggio</td>
+</tr>
+<tr>
+<td>sessione scaduta</td>
+<td>escono e vanno al login, con il messaggio</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il motivo dell'uscita sta in <code>localStorage</code>, nella chiave <code>sessionEnd</code>.</p>
 <p>Dopo un salvataggio che può cambiare i permessi dell'utente corrente (gruppi, ruoli, utenti), la
 pagina chiama <code>authStore.refreshAfterSave()</code>, che rinnova la sessione per avere i permessi nuovi e
-dice &quot;Salvato&quot;. Se il rinnovo non riesce, l'avviso dice che i permessi si aggiorneranno al prossimo
-accesso; se la sessione è scaduta, l'utente esce come per ogni 401.</p>
+dice &quot;Salvato&quot;. Il rinnovo chiama sempre il server, anche se un'altra scheda ha appena rinnovato.
+Se non riesce, l'avviso dice che i permessi si aggiorneranno al prossimo accesso. Se la sessione è
+scaduta, il toast dice &quot;Salvato. La sessione è scaduta: accedi di nuovo.&quot; e l'utente va al login,
+senza un secondo messaggio.</p>
 <p>Lo store <code>auth.store.ts</code> conserva in <code>localStorage</code> token, scadenza, <code>username</code>, <code>email</code> (se presente),
 gli altri dati dell'utente e i permessi. Le azioni di login sono tre: <code>login()</code>, <code>loginWithMsal()</code>,
-<code>loginWithWindows()</code>. Il navigation guard del router controlla <code>meta.requiresAuth</code> e <code>meta.permission</code>
+<code>loginWithWindows()</code>. Si esce con <code>logout()</code> (&quot;Esci&quot;, che revoca il cookie) o con <code>expireSession()</code>
+(sessione scaduta). Il navigation guard del router controlla <code>meta.requiresAuth</code> e <code>meta.permission</code>
 prima di ogni navigazione, e il composable <code>usePermission</code> espone <code>can('permesso')</code> per i template.</p>
 <p>Nella gestione utenti il campo obbligatorio è <strong>Username</strong> (con un suggerimento su cosa scriverci:
 username locale, email per MSAL, <code>DOMINIO\utente</code> per Windows); <strong>Email</strong> è facoltativo.</p>
