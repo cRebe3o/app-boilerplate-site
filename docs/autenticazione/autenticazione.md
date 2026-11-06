@@ -72,9 +72,10 @@ public sealed record Username
         var normalized = (value ?? string.Empty).Trim().ToLowerInvariant();
 
         if (normalized.Length == 0)
-            throw new InvariantViolationException("Username obbligatorio.");
+            throw new InvariantViolationException(ErrorCode.UsernameRequired, "Username is required.");
         if (normalized.Length > MaxLength)
-            throw new InvariantViolationException($"Username troppo lungo (max {MaxLength} caratteri).");
+            throw new InvariantViolationException(ErrorCode.UsernameTooLong,
+                $"Username too long (max {MaxLength} characters).", ("maxLength", MaxLength));
 
         return new Username(normalized);
     }

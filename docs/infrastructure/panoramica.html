@@ -318,7 +318,7 @@ droppa a mano.</p>
 <p><strong>Gli handler non vedono EF Core.</strong> I comandi passano dai repository, le query da <code>IReadDbContext</code>:</p>
 <pre><code class="language-csharp"><span class="hljs-comment">// Comando — l&#x27;aggregato si carica intero, si modifica, si salva.</span>
 <span class="hljs-keyword">var</span> contract = <span class="hljs-keyword">await</span> contracts.GetByIdAsync(request.Id, ct)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Contratto con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.RentalContractNotFound, <span class="hljs-string">$&quot;Rental contract <span class="hljs-subst">{request.Id}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, request.Id));
 
 contract.Confirm(clock.UtcNow);
 <span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(ct);

@@ -290,7 +290,8 @@ l'accoppiamento che il confine di aggregato serve a impedire.</p>
     Status.EnsureCanTransitionTo(RentalStatus.Confirmed);
 
     <span class="hljs-keyword">if</span> (_lines.Count == <span class="hljs-number">0</span>)
-        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">&quot;Non si può confermare un contratto senza attrezzature.&quot;</span>);
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(ErrorCode.RentalContractWithoutLines,
+            <span class="hljs-string">&quot;A contract without equipment cannot be confirmed.&quot;</span>);
 
     Status = RentalStatus.Confirmed;
     ConfirmedAt = now;
@@ -423,11 +424,15 @@ specification è per una regola di dominio <strong>con un nome</strong>, riusata
 </tbody>
 </table>
 </div>
-<p>I messaggi sono scritti per essere <strong>letti da chi usa l'applicazione</strong>, con i numeri in chiaro:</p>
-<pre><code class="language-csharp"><span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(
-    <span class="hljs-string">$&quot;Fido insufficiente per il cliente <span class="hljs-subst">{customer.Name}</span>: &quot;</span> +
-    <span class="hljs-string">$&quot;l&#x27;importo di <span class="hljs-subst">{amount}</span> supera il credito residuo di <span class="hljs-subst">{available}</span> &quot;</span> +
-    <span class="hljs-string">$&quot;(massimale <span class="hljs-subst">{customer.CreditLimit}</span>, esposizione attuale <span class="hljs-subst">{CurrentExposure(contracts)}</span>).&quot;</span>);
+<p>Ogni eccezione porta un <strong>codice di errore</strong> e i <strong>parametri</strong> con i numeri in chiaro; il messaggio
+inglese resta per i log. Il testo che legge chi usa l'applicazione lo scrive il frontend, partendo
+dal codice e riempiendolo con i parametri:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(ErrorCode.CreditLimitExceeded,
+    <span class="hljs-string">$&quot;Insufficient credit for customer <span class="hljs-subst">{customer.Name}</span>: &quot;</span> +
+    <span class="hljs-string">$&quot;the amount of <span class="hljs-subst">{amount}</span> exceeds the available credit of <span class="hljs-subst">{available}</span> &quot;</span> +
+    <span class="hljs-string">$&quot;(limit <span class="hljs-subst">{customer.CreditLimit}</span>, current exposure <span class="hljs-subst">{exposure}</span>).&quot;</span>,
+    (<span class="hljs-string">&quot;name&quot;</span>, customer.Name), (<span class="hljs-string">&quot;amount&quot;</span>, amount.ToString()), (<span class="hljs-string">&quot;available&quot;</span>, available.ToString()),
+    (<span class="hljs-string">&quot;creditLimit&quot;</span>, customer.CreditLimit.ToString()), (<span class="hljs-string">&quot;exposure&quot;</span>, exposure.ToString()));
 </code></pre>
 <p>Un &quot;operazione non consentita&quot; secco costringerebbe l'operatore a indovinare quale delle regole ha
 incontrato.</p>

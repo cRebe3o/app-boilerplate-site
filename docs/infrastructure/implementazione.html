@@ -455,10 +455,10 @@ template: nel template la forma è la stessa (vedi <code>CreateUserHandler</code
         ConfirmRentalContractCommand request, CancellationToken ct</span>)</span>
     {
         <span class="hljs-keyword">var</span> contract = <span class="hljs-keyword">await</span> contracts.GetByIdAsync(request.Id, ct)
-            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Contratto con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.RentalContractNotFound, <span class="hljs-string">$&quot;Rental contract <span class="hljs-subst">{request.Id}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, request.Id));
 
         <span class="hljs-keyword">var</span> customer = <span class="hljs-keyword">await</span> customers.GetByIdAsync(contract.CustomerId, ct)
-            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Cliente con id <span class="hljs-subst">{contract.CustomerId}</span> non trovato.&quot;</span>);
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.CustomerNotFound, <span class="hljs-string">$&quot;Customer <span class="hljs-subst">{contract.CustomerId}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, contract.CustomerId));
 
         <span class="hljs-comment">// L&#x27;handler CARICA i dati, il domain service DECIDE.</span>
         <span class="hljs-keyword">var</span> active = <span class="hljs-keyword">await</span> contracts.GetActiveByCustomerAsync(customer.Id, ct);
@@ -503,14 +503,15 @@ si pubblicano <strong>dopo</strong> il commit (un evento dice che un fatto <em>�
     <span class="hljs-comment">// Un contratto confermato o chiuso è un documento commerciale: si annulla, non si</span>
     <span class="hljs-comment">// cancella. Farlo sparire toglierebbe la traccia di un impegno realmente assunto.</span>
     <span class="hljs-keyword">if</span> (Status != RentalStatus.Draft)
-        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(
-            <span class="hljs-string">$&quot;Solo i contratti in bozza si possono eliminare: <span class="hljs-subst">{Reference}</span> è in stato <span class="hljs-subst">{Status}</span>. &quot;</span> +
-            <span class="hljs-string">&quot;Usa l&#x27;annullamento per interrompere un contratto già confermato.&quot;</span>);
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(ErrorCode.RentalContractNotDeletable,
+            <span class="hljs-string">$&quot;Only draft contracts can be deleted: <span class="hljs-subst">{Reference}</span> is <span class="hljs-subst">{Status}</span>. &quot;</span> +
+            <span class="hljs-string">&quot;Cancel a confirmed contract instead.&quot;</span>,
+            (<span class="hljs-string">&quot;reference&quot;</span>, Reference), (<span class="hljs-string">&quot;status&quot;</span>, Status.Code));
 }
 </code></pre>
 <pre><code class="language-csharp"><span class="hljs-comment">// L&#x27;handler la chiama soltanto.</span>
 <span class="hljs-keyword">var</span> contract = <span class="hljs-keyword">await</span> contracts.GetByIdAsync(request.Id, ct)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Contratto con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.RentalContractNotFound, <span class="hljs-string">$&quot;Rental contract <span class="hljs-subst">{request.Id}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, request.Id));
 
 contract.EnsureDeletable();
 

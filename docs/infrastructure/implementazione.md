@@ -371,10 +371,10 @@ public class ConfirmRentalContractHandler(
         ConfirmRentalContractCommand request, CancellationToken ct)
     {
         var contract = await contracts.GetByIdAsync(request.Id, ct)
-            ?? throw new NotFoundException($"Contratto con id {request.Id} non trovato.");
+            ?? throw new NotFoundException(ErrorCode.RentalContractNotFound, $"Rental contract {request.Id} not found.", ("id", request.Id));
 
         var customer = await customers.GetByIdAsync(contract.CustomerId, ct)
-            ?? throw new NotFoundException($"Cliente con id {contract.CustomerId} non trovato.");
+            ?? throw new NotFoundException(ErrorCode.CustomerNotFound, $"Customer {contract.CustomerId} not found.", ("id", contract.CustomerId));
 
         // L'handler CARICA i dati, il domain service DECIDE.
         var active = await contracts.GetActiveByCustomerAsync(customer.Id, ct);
@@ -429,16 +429,17 @@ public void EnsureDeletable()
     // Un contratto confermato o chiuso è un documento commerciale: si annulla, non si
     // cancella. Farlo sparire toglierebbe la traccia di un impegno realmente assunto.
     if (Status != RentalStatus.Draft)
-        throw new ConflictException(
-            $"Solo i contratti in bozza si possono eliminare: {Reference} è in stato {Status}. " +
-            "Usa l'annullamento per interrompere un contratto già confermato.");
+        throw new ConflictException(ErrorCode.RentalContractNotDeletable,
+            $"Only draft contracts can be deleted: {Reference} is {Status}. " +
+            "Cancel a confirmed contract instead.",
+            ("reference", Reference), ("status", Status.Code));
 }
 ```
 
 ```csharp
 // L'handler la chiama soltanto.
 var contract = await contracts.GetByIdAsync(request.Id, ct)
-    ?? throw new NotFoundException($"Contratto con id {request.Id} non trovato.");
+    ?? throw new NotFoundException(ErrorCode.RentalContractNotFound, $"Rental contract {request.Id} not found.", ("id", request.Id));
 
 contract.EnsureDeletable();
 

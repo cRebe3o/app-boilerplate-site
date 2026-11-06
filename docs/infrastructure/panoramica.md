@@ -175,7 +175,7 @@ lascerebbe dati parziali che il gate al riavvio non riconoscerebbe come "databas
 ```csharp
 // Comando — l'aggregato si carica intero, si modifica, si salva.
 var contract = await contracts.GetByIdAsync(request.Id, ct)
-    ?? throw new NotFoundException($"Contratto con id {request.Id} non trovato.");
+    ?? throw new NotFoundException(ErrorCode.RentalContractNotFound, $"Rental contract {request.Id} not found.", ("id", request.Id));
 
 contract.Confirm(clock.UtcNow);
 await unitOfWork.SaveChangesAsync(ct);

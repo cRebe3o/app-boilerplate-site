@@ -206,7 +206,8 @@ public void Confirm(DateTime now)
     Status.EnsureCanTransitionTo(RentalStatus.Confirmed);
 
     if (_lines.Count == 0)
-        throw new InvariantViolationException("Non si può confermare un contratto senza attrezzature.");
+        throw new InvariantViolationException(ErrorCode.RentalContractWithoutLines,
+            "A contract without equipment cannot be confirmed.");
 
     Status = RentalStatus.Confirmed;
     ConfirmedAt = now;
@@ -332,13 +333,17 @@ Il dominio lancia; il middleware traduce. Nessun handler cattura.
 | `ValidationException` (FluentValidation) | 400 | La forma dell'input è sbagliata |
 | `UnauthorizedException` / `ForbiddenException` | 401 / 403 | Accesso |
 
-I messaggi sono scritti per essere **letti da chi usa l'applicazione**, con i numeri in chiaro:
+Ogni eccezione porta un **codice di errore** e i **parametri** con i numeri in chiaro; il messaggio
+inglese resta per i log. Il testo che legge chi usa l'applicazione lo scrive il frontend, partendo
+dal codice e riempiendolo con i parametri:
 
 ```csharp
-throw new ConflictException(
-    $"Fido insufficiente per il cliente {customer.Name}: " +
-    $"l'importo di {amount} supera il credito residuo di {available} " +
-    $"(massimale {customer.CreditLimit}, esposizione attuale {CurrentExposure(contracts)}).");
+throw new ConflictException(ErrorCode.CreditLimitExceeded,
+    $"Insufficient credit for customer {customer.Name}: " +
+    $"the amount of {amount} exceeds the available credit of {available} " +
+    $"(limit {customer.CreditLimit}, current exposure {exposure}).",
+    ("name", customer.Name), ("amount", amount.ToString()), ("available", available.ToString()),
+    ("creditLimit", customer.CreditLimit.ToString()), ("exposure", exposure.ToString()));
 ```
 
 Un "operazione non consentita" secco costringerebbe l'operatore a indovinare quale delle regole ha

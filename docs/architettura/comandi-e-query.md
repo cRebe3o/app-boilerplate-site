@@ -51,7 +51,7 @@ public class CreateRentalContractHandler(
         CreateRentalContractCommand request, CancellationToken cancellationToken)
     {
         var customer = await customers.GetByIdAsync(request.CustomerId, cancellationToken)
-            ?? throw new NotFoundException($"Cliente con id {request.CustomerId} non trovato.");
+            ?? throw new NotFoundException(ErrorCode.CustomerNotFound, $"Customer {request.CustomerId} not found.", ("id", request.CustomerId));
 
         // Regola dell'aggregato Customer: qui si chiama soltanto.
         customer.EnsureCanRent();
@@ -81,12 +81,16 @@ Quattro cose da notare:
 - **`clock.UtcNow`** al posto di `DateTime.UtcNow`: un test può fissare "adesso".
 - **`Add` e `SaveChangesAsync` sono separati**: il repository accumula, l'unit of work committa.
 
-I messaggi di rifiuto arrivano all'utente: un numero che varia ha il testo giusto per 1 e quello per
-gli altri numeri, mai un'etichetta fissa, e il test copre 0, 1 e più.
+Un rifiuto porta un codice di errore, un messaggio inglese per i log e i parametri: il testo che
+vede l'utente lo scrive il frontend partendo dal codice. Un numero che varia è un parametro, così la
+traduzione sceglie la forma singolare o plurale ("1 contratto", "3 contratti"), e il test controlla
+codice e parametri invece del testo.
 
 ```csharp
-var ordini = count == 1 ? "1 ordine" : $"{count} ordini";
-throw new ConflictException($"Impossibile eliminare: usato in {ordini}.");
+throw new ConflictException(ErrorCode.CustomerHasContracts,
+    $"Cannot delete customer {customer.Name}: they have {contratti} contract(s). " +
+    "Block them to prevent new contracts.",
+    ("name", customer.Name), ("count", contratti));
 ```
 
 ### I repository

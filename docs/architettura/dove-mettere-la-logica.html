@@ -178,13 +178,15 @@ altrove significa che qualcuno potrà costruire un oggetto in uno stato che non 
 <p><code>RentalContract.AddLine</code> è tutto logica di dominio, e non tocca nulla fuori da sé:</p>
 <pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> RentalLine <span class="hljs-title">AddLine</span>(<span class="hljs-params">Equipment equipment, <span class="hljs-built_in">decimal</span> discountPercent = <span class="hljs-number">0</span>m</span>)</span>
 {
-    EnsureEditable(<span class="hljs-string">&quot;Non si possono aggiungere righe a un contratto non più in bozza.&quot;</span>);
+    EnsureEditable(<span class="hljs-string">&quot;add lines to&quot;</span>);
 
     <span class="hljs-keyword">if</span> (_lines.Count &gt;= MaxLines)
-        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">$&quot;Un contratto non può superare <span class="hljs-subst">{MaxLines}</span> righe.&quot;</span>);
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(ErrorCode.RentalContractTooManyLines,
+            <span class="hljs-string">$&quot;A contract cannot exceed <span class="hljs-subst">{MaxLines}</span> lines.&quot;</span>, (<span class="hljs-string">&quot;maxLines&quot;</span>, MaxLines));
 
     <span class="hljs-keyword">if</span> (_lines.Any(l =&gt; l.EquipmentCode == equipment.Code.Value))
-        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(<span class="hljs-string">$&quot;L&#x27;attrezzatura <span class="hljs-subst">{equipment.Code}</span> è già presente nel contratto.&quot;</span>);
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(ErrorCode.DuplicateLine,
+            <span class="hljs-string">$&quot;Equipment <span class="hljs-subst">{equipment.Code}</span> is already in the contract.&quot;</span>, (<span class="hljs-string">&quot;code&quot;</span>, equipment.Code.Value));
 
     <span class="hljs-comment">// Lo stato del pezzo lo verifica l&#x27;aggregato Equipment: la regola è sua.</span>
     equipment.EnsureBookable();
@@ -260,10 +262,10 @@ posti diversi:</p>
         ConfirmRentalContractCommand request, CancellationToken cancellationToken</span>)</span>
     {
         <span class="hljs-keyword">var</span> contract = <span class="hljs-keyword">await</span> contracts.GetByIdAsync(request.Id, cancellationToken)
-            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Contratto con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.RentalContractNotFound, <span class="hljs-string">$&quot;Rental contract <span class="hljs-subst">{request.Id}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, request.Id));
 
         <span class="hljs-keyword">var</span> customer = <span class="hljs-keyword">await</span> customers.GetByIdAsync(contract.CustomerId, cancellationToken)
-            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Cliente con id <span class="hljs-subst">{contract.CustomerId}</span> non trovato.&quot;</span>);
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.CustomerNotFound, <span class="hljs-string">$&quot;Customer <span class="hljs-subst">{contract.CustomerId}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, contract.CustomerId));
 
         <span class="hljs-keyword">var</span> equipmentIds = contract.Lines.Select(l =&gt; l.EquipmentId).ToList();
 

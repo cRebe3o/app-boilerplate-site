@@ -200,9 +200,10 @@ object</strong>, e la garanzia è per costruzione:</p>
         <span class="hljs-keyword">var</span> normalized = (<span class="hljs-keyword">value</span> ?? <span class="hljs-built_in">string</span>.Empty).Trim().ToLowerInvariant();
 
         <span class="hljs-keyword">if</span> (normalized.Length == <span class="hljs-number">0</span>)
-            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">&quot;Username obbligatorio.&quot;</span>);
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(ErrorCode.UsernameRequired, <span class="hljs-string">&quot;Username is required.&quot;</span>);
         <span class="hljs-keyword">if</span> (normalized.Length &gt; MaxLength)
-            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">$&quot;Username troppo lungo (max <span class="hljs-subst">{MaxLength}</span> caratteri).&quot;</span>);
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(ErrorCode.UsernameTooLong,
+                <span class="hljs-string">$&quot;Username too long (max <span class="hljs-subst">{MaxLength}</span> characters).&quot;</span>, (<span class="hljs-string">&quot;maxLength&quot;</span>, MaxLength));
 
         <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> Username(normalized);
     }

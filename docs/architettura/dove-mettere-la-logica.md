@@ -36,13 +36,15 @@ altrove significa che qualcuno potrà costruire un oggetto in uno stato che non 
 ```csharp
 public RentalLine AddLine(Equipment equipment, decimal discountPercent = 0m)
 {
-    EnsureEditable("Non si possono aggiungere righe a un contratto non più in bozza.");
+    EnsureEditable("add lines to");
 
     if (_lines.Count >= MaxLines)
-        throw new InvariantViolationException($"Un contratto non può superare {MaxLines} righe.");
+        throw new InvariantViolationException(ErrorCode.RentalContractTooManyLines,
+            $"A contract cannot exceed {MaxLines} lines.", ("maxLines", MaxLines));
 
     if (_lines.Any(l => l.EquipmentCode == equipment.Code.Value))
-        throw new ConflictException($"L'attrezzatura {equipment.Code} è già presente nel contratto.");
+        throw new ConflictException(ErrorCode.DuplicateLine,
+            $"Equipment {equipment.Code} is already in the contract.", ("code", equipment.Code.Value));
 
     // Lo stato del pezzo lo verifica l'aggregato Equipment: la regola è sua.
     equipment.EnsureBookable();
@@ -137,10 +139,10 @@ public class ConfirmRentalContractHandler(
         ConfirmRentalContractCommand request, CancellationToken cancellationToken)
     {
         var contract = await contracts.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new NotFoundException($"Contratto con id {request.Id} non trovato.");
+            ?? throw new NotFoundException(ErrorCode.RentalContractNotFound, $"Rental contract {request.Id} not found.", ("id", request.Id));
 
         var customer = await customers.GetByIdAsync(contract.CustomerId, cancellationToken)
-            ?? throw new NotFoundException($"Cliente con id {contract.CustomerId} non trovato.");
+            ?? throw new NotFoundException(ErrorCode.CustomerNotFound, $"Customer {contract.CustomerId} not found.", ("id", contract.CustomerId));
 
         var equipmentIds = contract.Lines.Select(l => l.EquipmentId).ToList();
 
