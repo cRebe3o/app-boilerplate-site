@@ -59,10 +59,13 @@ l'errore in un punto solo. Tre modi, per tre esigenze:
 if (await attempt(() => store.confirm(id), 'errors.confirmOrder')) dialog.value = false
 ```
 
-**Il messaggio mostrato è quello del backend.** `extractApiError` legge il `detail` del
-ProblemDetails, già specifico e nella lingua della richiesta — "Username 'mario' già in uso", "I
-ruoli di sistema non possono essere eliminati". La chiave i18n passata a `run`/`runOrThrow` è solo il
-**fallback** per quando non c'è un ProblemDetails: rete assente, timeout, 502 dal proxy.
+**Il messaggio lo dice il backend, il testo lo scrive il frontend.** Il ProblemDetails porta un
+`code` (un valore dell'enum `ErrorCode`) e i suoi `params`: `extractApiError` lo traduce con
+`errors.codes.<code>` — "Username 'mario' già in uso", "I ruoli di sistema non possono essere
+eliminati". Un errore senza codice, o con un codice senza traduzione, mostra il `detail`, che il
+backend scrive in inglese. La chiave i18n passata a `run`/`runOrThrow` è solo il **fallback** per un
+4xx che non è un ProblemDetails; rete assente, timeout e 5xx hanno i loro messaggi
+(`errors.serverUnreachable`, `errors.serverError`).
 
 Due errori ricorrenti che la review intercetta:
 
@@ -152,9 +155,10 @@ const { fieldErrors, generalError, handleError, clearErrors } = useApiErrors()
 Il form è sempre un `v-form` con `ref` e `validate()` prima del submit. Gli errori hanno due
 livelli, e `useApiErrors` li separa:
 
-- **per campo** — il `400` di FluentValidation porta `errors: { Name: ['…'] }`; `fieldErrors.name`
-  (chiave lowercase) va in `:error-messages` del campo;
-- **generale** — il `detail` del ProblemDetails (404, 409) o il fallback, in un `v-alert`.
+- **per campo** — il `400` di FluentValidation porta `fieldErrors: { Name: [{ code, params, message }] }`,
+  tradotti come sopra; `fieldErrors.name` (chiave lowercase) va in `:error-messages` del campo;
+- **generale** — il codice tradotto o il `detail` del ProblemDetails (404, 409), oppure il fallback,
+  in un `v-alert`.
 
 ```vue
 <v-alert v-if="generalError" type="error" class="mb-4">{{ generalError }}</v-alert>
@@ -199,7 +203,10 @@ della pagina. Regole:
 - emette `saved`: è la pagina a fare `reload()` e a mostrare il toast.
 
 La conferma di cancellazione è `ConfirmDialog` di `components/shared/`: `v-model`, `message`,
-`loading`, evento `confirm`. Non se ne scrive una nuova per dominio.
+`loading`, evento `confirm`. Non se ne scrive una nuova per dominio. Il messaggio dice **che cosa** si
+elimina — "Eliminare il gruppo 'Amministratori'?" —, così non si conferma sulla riga sbagliata: la
+pagina tiene l'elemento intero, non solo l'id, e la traduzione ha il segnaposto `{name}`, riempito
+con `shortName` (`src/utils/text.ts`), che accorcia con "…" oltre i 40 caratteri.
 
 ## Toast e messaggi
 

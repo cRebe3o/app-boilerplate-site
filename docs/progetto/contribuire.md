@@ -30,7 +30,8 @@ cosa la blocca.
 
 - Si riparte dalla voce con priorità più alta che non sia bloccata.
 - Ciò che emerge per strada e non si fa subito diventa una voce nuova.
-- Una voce finita si toglie: la storia sta nel `CHANGELOG.md`.
+- Una voce finita si sposta in `docs/backlog-done.md`, in cima: titolo, una riga su che cosa è stato
+  fatto, versione ("prossima versione" finché non esce, poi `vx.y.z` al rilascio) e commit.
 - Le decisioni già scritte in una voce non si ridiscutono: chi la riprende parte da lì.
 
 ## Dove si lavora
@@ -170,7 +171,8 @@ dell'impianto, skill rimosse), `minor` per funzionalità nuove compatibili, `pat
    `node scripts/confronta-app-demo.mjs` deve finire con `Nessuna differenza inattesa.` Una
    correzione fatta solo nel template e non arrivata con l'update si riporta in app-demo,
    altrimenti al giro dopo ricompare come differenza; una differenza voluta si aggiunge
-   all'elenco, con il motivo.
+   all'elenco, con il motivo. Un diff già in elenco ma cambiato si rilegge e poi si registra con
+   `--approva <file>`.
 3. **Sito**: si aggiornano le pagine toccate, secondo la mappa qui sotto.
 
 In quest'ordine perché ogni passo documenta quello prima: app-demo prova il tag vero, e il sito

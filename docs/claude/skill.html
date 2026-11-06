@@ -141,7 +141,7 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 <tbody>
 <tr>
 <td><strong><code>backend-slice</code></strong></td>
-<td>Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + <code>IUnitOfWork</code> e le query <code>IReadDbContext</code>, che ogni endpoint con body dichiara <code>.Produces&lt;T&gt;()</code> perché il frontend ne generi il tipo, e che un numero in un messaggio ha il testo giusto per 1 e per gli altri numeri</td>
+<td>Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + <code>IUnitOfWork</code> e le query <code>IReadDbContext</code>, che ogni endpoint con body dichiara <code>.Produces&lt;T&gt;()</code> perché il frontend ne generi il tipo, che ogni errore ha un <code>ErrorCode</code> con messaggio inglese e parametri (il testo lo traduce il frontend), e che un numero in un messaggio ha il testo giusto per 1 e per gli altri numeri</td>
 </tr>
 <tr>
 <td><strong><code>domain-modeling</code></strong></td>
@@ -198,11 +198,11 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 <tbody>
 <tr>
 <td><strong><code>vue-feature</code></strong></td>
-<td>Una nuova feature di frontend completa: tipi da <code>pnpm gen:api</code>, service, store con <code>useAsyncAction</code>, pagina, rotta figlia di AppShell, voce di menu in <code>sections.config.ts</code>, traduzioni, con le forme singolare e plurale per i numeri accanto a un testo. Vedi <a href="../frontend/convenzioni.html">Convenzioni e flussi</a></td>
+<td>Una nuova feature di frontend completa: tipi da <code>pnpm gen:api</code>, service, store con <code>useAsyncAction</code>, pagina, rotta figlia di AppShell, voce di menu in <code>sections.config.ts</code>, traduzioni, con le forme singolare e plurale per i numeri accanto a un testo, e conferme che nominano l'elemento su cui si agisce. Vedi <a href="../frontend/convenzioni.html">Convenzioni e flussi</a></td>
 </tr>
 <tr>
 <td><strong><code>detail-page</code></strong></td>
-<td>Una pagina di dettaglio su rotta <code>:id(\\d+)</code>, che serve creazione e modifica, con <code>useBackNavigation</code> per il ritorno e <code>useApiErrors</code> per gli errori per campo</td>
+<td>Una pagina di dettaglio su rotta <code>:id(\\d+)</code>, che serve creazione e modifica, con <code>useBackNavigation</code> per il ritorno, <code>useApiErrors</code> per gli errori per campo e <code>authStore.refreshAfterSave()</code> dopo un salvataggio che può cambiare i permessi</td>
 </tr>
 <tr>
 <td><strong><code>vuetify-dialog-form</code></strong></td>
@@ -263,7 +263,7 @@ genera migration).</p>
 </tr>
 <tr>
 <td><code>/review</code></td>
-<td>Rilegge le modifiche del branch rispetto a <code>main</code> (o i percorsi indicati) contro le convenzioni del progetto, comprese le forme singolare e plurale dei numeri nei testi, senza modificare file</td>
+<td>Rilegge le modifiche del branch rispetto a <code>main</code> (o i percorsi indicati) contro le convenzioni del progetto, comprese le forme singolare e plurale dei numeri nei testi, i codici di errore, le conferme che nominano l'elemento e le regex nuove su input dell'utente (ancorate, senza quantificatori che si contendono i caratteri, su un campo con lunghezza massima), senza modificare file</td>
 </tr>
 <tr>
 <td><code>/fix &lt;descrizione&gt;</code></td>

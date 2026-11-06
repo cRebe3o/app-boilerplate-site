@@ -407,15 +407,15 @@ instrumentation registrate. Le più utili, con l'unità in cui sono espresse:
 | `kestrel.active_connections` | UpDownCounter | connessioni | Connessioni aperte |
 | `kestrel.queued_requests` | UpDownCounter | richieste | Richieste in coda: se sale, il server non sta al passo |
 
-**`Microsoft.AspNetCore.RateLimiting`** — il rate limiter di `Program.cs`
+**`Microsoft.AspNetCore.RateLimiting`** — il rate limiter di `AddAppRateLimits` (`RateLimits`)
 
 | Strumento | Tipo | Legge |
 |---|---|---|
 | `aspnetcore.rate_limiting.requests` | Counter | Tentativi, con `aspnetcore.rate_limiting.result` |
 | `aspnetcore.rate_limiting.queued_requests` | UpDownCounter | In attesa di un permesso |
 
-Il tag `aspnetcore.rate_limiting.policy` distingue `auth-policy` da `error-log-policy`: è il modo
-di vedere se qualcuno sta martellando il login.
+Il tag `aspnetcore.rate_limiting.policy` distingue `password-login-policy`, `session-policy` ed
+`error-log-policy`: sul primo si vede se qualcuno sta martellando il login.
 
 **`System.Runtime`** — il processo
 

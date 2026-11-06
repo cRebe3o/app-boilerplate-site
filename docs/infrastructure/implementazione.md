@@ -291,8 +291,11 @@ handler **lanciano** e non catturano:
 
 ```csharp
 var group = await groups.GetByIdAsync(request.Id, ct)
-    ?? throw new NotFoundException($"Gruppo con id {request.Id} non trovato.");
+    ?? throw new NotFoundException(ErrorCode.GroupNotFound, $"Group {request.Id} not found.", ("id", request.Id));
 ```
+
+Un'eccezione porta un **codice** (`ErrorCode`, in `Domain/Exceptions/`), un messaggio inglese per i
+log e di riserva, e i parametri del testo. Il testo che vede l'utente lo scrive il frontend.
 
 Le eccezioni di dominio vivono in `<Progetto>.Domain/Exceptions/` — `NotFoundException`,
 `ConflictException`, `InvariantViolationException`, `ForbiddenException`, `UnauthorizedException` —
@@ -308,8 +311,12 @@ annullamento senza `RequestAborted`, come un timeout interno, resta un 500.
 Che stiano nel **dominio** e non in un progetto di utilità è coerente con il resto: un contratto
 confermato che rifiuta una modifica sta esprimendo una regola di business, non un errore tecnico.
 
-Il formato è sempre **ProblemDetails** (RFC 7807), quindi il frontend può tradurre ogni errore con
-un unico composable (`useApiErrors`) invece che caso per caso.
+Il formato è sempre **ProblemDetails** (RFC 7807), con due campi in più: `code` e `params`. Un
+errore di validazione ha anche `fieldErrors`, con codice, parametri e messaggio per ogni campo. Un
+500 ha sempre `InternalError`, una richiesta malformata `BadRequest`. Lo schema OpenAPI descrive
+questi campi e l'enum (`ProblemDetailsSchemaTransformer`), quindi `api.generated.ts` esporta anche
+`errorCodeValues`. Il frontend traduce ogni errore con `errors.codes.<code>` in un unico punto
+(`useApiErrors`) invece che caso per caso, e senza traduzione mostra il `detail`.
 
 ## 4. Gli handler: astrazioni, mai `AppDbContext`
 

@@ -251,10 +251,11 @@ quella di ogni aggregato</strong>, perché è ciò che rende impossibile costrui
         <span class="hljs-keyword">var</span> trimmed = (<span class="hljs-keyword">value</span> ?? <span class="hljs-built_in">string</span>.Empty).Trim();
 
         <span class="hljs-keyword">if</span> (trimmed.Length == <span class="hljs-number">0</span>)
-            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(<span class="hljs-string">$&quot;La descrizione (<span class="hljs-subst">{field}</span>) è obbligatoria.&quot;</span>);
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(ErrorCode.CategoryDescriptionRequired,
+                <span class="hljs-string">$&quot;Description (<span class="hljs-subst">{field}</span>) is required.&quot;</span>, (<span class="hljs-string">&quot;field&quot;</span>, field));
         <span class="hljs-keyword">if</span> (trimmed.Length &gt; MaxDescriptionLength)
-            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(
-                <span class="hljs-string">$&quot;Descrizione troppo lunga (max <span class="hljs-subst">{MaxDescriptionLength}</span> caratteri).&quot;</span>);
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvariantViolationException(ErrorCode.CategoryDescriptionTooLong,
+                <span class="hljs-string">$&quot;Description too long (max <span class="hljs-subst">{MaxDescriptionLength}</span> characters).&quot;</span>, (<span class="hljs-string">&quot;max&quot;</span>, MaxDescriptionLength));
 
         <span class="hljs-keyword">return</span> trimmed;
     }
@@ -447,7 +448,8 @@ factory <code>Category.Create</code> impedisce che la regola sia aggirabile da u
     {
         <span class="hljs-comment">// L&#x27;unicità richiede il database: è una verifica dell&#x27;handler, non del dominio.</span>
         <span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> categories.ExistsByDescriptionAsync(request.DescIt, ct: ct))
-            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(<span class="hljs-string">$&quot;Esiste già una categoria &#x27;<span class="hljs-subst">{request.DescIt}</span>&#x27;.&quot;</span>);
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(ErrorCode.CategoryAlreadyExists,
+                <span class="hljs-string">$&quot;Category &#x27;<span class="hljs-subst">{request.DescIt}</span>&#x27; already exists.&quot;</span>, (<span class="hljs-string">&quot;name&quot;</span>, request.DescIt));
 
         <span class="hljs-keyword">var</span> category = Category.Create(request.DescIt, request.DescEn, request.Order);
 
@@ -464,10 +466,18 @@ factory <code>Category.Create</code> impedisce che la regola sia aggirabile da u
 <li><strong><code>CreatedAt</code>/<code>UpdatedAt</code> non compaiono</strong>: li imposta <code>TimestampInterceptor</code>.</li>
 <li><strong>L'handler non costruisce l'entità con un object initializer</strong>: chiama il factory, che valida.</li>
 </ul>
+<p><strong>I codici di errore.</strong> Ogni eccezione porta un valore di <code>ErrorCode</code>
+(<code>Domain/Exceptions/ErrorCode.cs</code>, con i parametri nel commento), un messaggio <strong>inglese</strong>, che
+serve per i log e di riserva, e i parametri. Il testo che vede l'utente lo scrive il frontend, in
+<code>errors.codes.&lt;Codice&gt;</code> (vedi il punto 12). Nei validator <code>NotEmpty</code>, <code>NotNull</code>, <code>MinimumLength</code>,
+<code>MaximumLength</code> ed <code>EmailAddress</code> hanno già un codice generico (<code>Required</code>, <code>TooShort</code>, <code>TooLong</code>,
+<code>InvalidEmail</code>): niente <code>WithMessage</code>. Le altre regole usano <code>WithErrorCode(ErrorCode.X, (&quot;max&quot;, 100))</code>.
+Un codice si aggiunge e non si rinomina: cambiarlo rompe le traduzioni. La skill <code>backend-slice</code>
+(sezione &quot;Codici di errore&quot;) ha i dettagli.</p>
 <p>L'update ha la stessa forma, e la modifica passa da un metodo dell'aggregato:</p>
 <pre><code class="language-csharp"><span class="hljs-comment">// UpdateCategoryHandler</span>
 <span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> categories.GetByIdAsync(request.Id, ct)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Categoria con id <span class="hljs-subst">{request.Id}</span> non trovata.&quot;</span>);
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.CategoryNotFound, <span class="hljs-string">$&quot;Category <span class="hljs-subst">{request.Id}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, request.Id));
 
 category.Update(request.Body.DescIt, request.Body.DescEn, request.Body.Order);
 
@@ -520,15 +530,14 @@ creata, modificata o cancellata, con gli snapshot prima/dopo. Lo snapshot <em>pr
     <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">Handle</span>(<span class="hljs-params">DeleteCategoryCommand request, CancellationToken ct</span>)</span>
     {
         <span class="hljs-keyword">var</span> category = <span class="hljs-keyword">await</span> categories.GetByIdAsync(request.Id, ct)
-            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Categoria con id <span class="hljs-subst">{request.Id}</span> non trovata.&quot;</span>);
+            ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.CategoryNotFound, <span class="hljs-string">$&quot;Category <span class="hljs-subst">{request.Id}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, request.Id));
 
         <span class="hljs-comment">// Conteggio prima della DELETE per dare un 409 con messaggio chiaro: la FK Restrict</span>
         <span class="hljs-comment">// farebbe comunque fallire la cancellazione, ma con un errore generico.</span>
         <span class="hljs-keyword">var</span> count = <span class="hljs-keyword">await</span> executor.CountAsync(db.Articles.Where(x =&gt; x.CategoryId == request.Id), ct);
         <span class="hljs-keyword">if</span> (count &gt; <span class="hljs-number">0</span>)
-            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(
-                <span class="hljs-string">$&quot;Impossibile eliminare questa categoria: è ancora utilizzata in <span class="hljs-subst">{count}</span> elemento/i. &quot;</span> +
-                <span class="hljs-string">&quot;Rimuovila da tutti gli elementi prima di eliminarla.&quot;</span>);
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> ConflictException(ErrorCode.CategoryInUse,
+                <span class="hljs-string">$&quot;Category is used by <span class="hljs-subst">{count}</span> articles.&quot;</span>, (<span class="hljs-string">&quot;count&quot;</span>, count));
 
         categories.Remove(category);
         <span class="hljs-keyword">await</span> unitOfWork.SaveChangesAsync(ct);
@@ -667,7 +676,7 @@ mano — un campo rinominato nel record C# deve rompere <code>vue-tsc</code>, no
   <span class="hljs-keyword">const</span> selectedItem = ref&lt;<span class="hljs-title class_">Category</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
 
   <span class="hljs-comment">// loading ed error condivisi da tutte le azioni: la gestione degli errori sta in un</span>
-  <span class="hljs-comment">// punto solo e il messaggio mostrato è il `detail` del ProblemDetails del backend</span>
+  <span class="hljs-comment">// punto solo, e il messaggio è il codice di errore del backend tradotto (o il suo `detail`)</span>
   <span class="hljs-keyword">const</span> { loading, error, run, runOrThrow, clearError } = <span class="hljs-title function_">useAsyncAction</span>()
 
   <span class="hljs-comment">// LETTURE con `run`: l&#x27;errore finisce in `error`, non viene rilanciato</span>
@@ -705,6 +714,10 @@ lato server, lo store terrebbe l'ultima query e la riuserebbe in <code>reload()<
 <span class="hljs-keyword">const</span> { can } = <span class="hljs-title function_">usePermission</span>()
 <span class="hljs-keyword">const</span> toast = <span class="hljs-title function_">useToastStore</span>()
 
+<span class="hljs-comment">// l&#x27;elemento intero, non solo l&#x27;id: la conferma lo nomina</span>
+<span class="hljs-keyword">const</span> toDelete = ref&lt;<span class="hljs-title class_">Category</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
+<span class="hljs-keyword">const</span> deleteDialog = <span class="hljs-title function_">ref</span>(<span class="hljs-literal">false</span>)
+
 <span class="hljs-title function_">onMounted</span>(<span class="hljs-function">() =&gt;</span> store.<span class="hljs-title function_">fetchAll</span>())
 </span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
 
@@ -723,7 +736,10 @@ lato server, lo store terrebbe l'ultima query e la riuserebbe in <code>reload()<
   <span class="hljs-tag">&lt;<span class="hljs-name">v-data-table</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;!mobile&quot;</span> <span class="hljs-attr">:headers</span>=<span class="hljs-string">&quot;headers&quot;</span> <span class="hljs-attr">:items</span>=<span class="hljs-string">&quot;store.items&quot;</span> <span class="hljs-attr">:loading</span>=<span class="hljs-string">&quot;store.loading&quot;</span> /&gt;</span>
   <span class="hljs-tag">&lt;<span class="hljs-name">v-list</span> <span class="hljs-attr">v-else</span>&gt;</span> … <span class="hljs-tag">&lt;/<span class="hljs-name">v-list</span>&gt;</span>
 
-  <span class="hljs-tag">&lt;<span class="hljs-name">confirm-dialog</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;deleteDialog&quot;</span> <span class="hljs-attr">:message</span>=<span class="hljs-string">&quot;t(&#x27;categories.deleteConfirm&#x27;)&quot;</span> @<span class="hljs-attr">confirm</span>=<span class="hljs-string">&quot;confirmDelete&quot;</span> /&gt;</span>
+  <span class="hljs-comment">&lt;!-- la conferma dice che cosa si elimina: la pagina tiene l&#x27;elemento, non solo l&#x27;id --&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">confirm-dialog</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;deleteDialog&quot;</span>
+                  <span class="hljs-attr">:message</span>=<span class="hljs-string">&quot;t(&#x27;categories.deleteConfirm&#x27;, { name: shortName(toDelete?.descIt ?? &#x27;&#x27;) })&quot;</span>
+                  @<span class="hljs-attr">confirm</span>=<span class="hljs-string">&quot;confirmDelete&quot;</span> /&gt;</span>
 <span class="hljs-tag">&lt;/<span class="hljs-name">template</span>&gt;</span>
 </code></pre>
 <p>Le convenzioni che si vedono qui:</p>
@@ -732,8 +748,10 @@ lato server, lo store terrebbe l'ultima query e la riuserebbe in <code>reload()<
 <li><strong><code>can('permesso')</code></strong> per mostrare o nascondere le azioni. È cortesia verso l'utente: a <strong>negare</strong>
 l'operazione è il backend.</li>
 <li><strong>Componenti Vuetify</strong>, colori dal tema (<code>color=&quot;primary&quot;</code>, <code>color=&quot;error&quot;</code>), mai valori esadecimali.</li>
-<li><strong><code>store.error</code></strong> è già il messaggio del backend: la pagina lo mostra, non lo costruisce.</li>
-<li><strong>La conferma di cancellazione è <code>ConfirmDialog</code></strong> di <code>components/shared/</code>; dopo la cancellazione
+<li><strong><code>store.error</code></strong> è già il messaggio da mostrare, tradotto dal codice di errore del backend: la
+pagina lo mostra, non lo costruisce.</li>
+<li><strong>La conferma di cancellazione è <code>ConfirmDialog</code></strong> di <code>components/shared/</code> e nomina l'elemento,
+accorciato da <code>shortName</code> (<code>src/utils/text.ts</code>) oltre i 40 caratteri; dopo la cancellazione
 <code>toast.success(t('common.deleted'))</code>.</li>
 <li>Nel dettaglio, <strong><code>useApiErrors</code></strong> separa gli errori per campo (il <code>400</code> di FluentValidation →
 <code>:error-messages</code>) dall'errore generale, e <strong><code>useBackNavigation</code></strong> gestisce il ritorno.</li>
@@ -831,7 +849,7 @@ si propaga anche <code>fromQuery</code>, altrimenti il nuovo dettaglio perde l'o
   <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Categorie&#x27;</span>,
   <span class="hljs-attr">subtitle</span>: <span class="hljs-string">&#x27;Gestione categorie&#x27;</span>,
   <span class="hljs-attr">createButton</span>: <span class="hljs-string">&#x27;Nuova categoria&#x27;</span>,
-  <span class="hljs-attr">deleteConfirm</span>: <span class="hljs-string">&#x27;Sei sicuro di voler eliminare questa categoria?&#x27;</span>,
+  <span class="hljs-attr">deleteConfirm</span>: <span class="hljs-string">&quot;Eliminare la categoria &#x27;{name}&#x27;?&quot;</span>,
   <span class="hljs-attr">descIt</span>: <span class="hljs-string">&#x27;Descrizione (IT)&#x27;</span>,
   <span class="hljs-attr">descEn</span>: <span class="hljs-string">&#x27;Descrizione (EN)&#x27;</span>,
 },
@@ -839,6 +857,15 @@ si propaga anche <code>fromQuery</code>, altrimenti il nuovo dettaglio perde l'o
   <span class="hljs-attr">loadCategories</span>: <span class="hljs-string">&#x27;Errore nel caricamento delle categorie&#x27;</span>,
   <span class="hljs-attr">createCategory</span>: <span class="hljs-string">&#x27;Errore nella creazione della categoria&#x27;</span>,
   <span class="hljs-attr">deleteCategory</span>: <span class="hljs-string">&#x27;Errore nell\&#x27;eliminazione della categoria&#x27;</span>,
+  <span class="hljs-comment">// un testo per ogni codice nuovo di ErrorCode, con i parametri come segnaposto</span>
+  <span class="hljs-attr">codes</span>: {
+    <span class="hljs-title class_">CategoryNotFound</span>: <span class="hljs-string">&#x27;Categoria con id {id} non trovata&#x27;</span>,
+    <span class="hljs-title class_">CategoryAlreadyExists</span>: <span class="hljs-string">&quot;Esiste già una categoria &#x27;{name}&#x27;&quot;</span>,
+    <span class="hljs-title class_">CategoryDescriptionRequired</span>: <span class="hljs-string">&#x27;La descrizione ({field}) è obbligatoria&#x27;</span>,
+    <span class="hljs-title class_">CategoryDescriptionTooLong</span>: <span class="hljs-string">&#x27;Descrizione troppo lunga (massimo {max} caratteri)&#x27;</span>,
+    <span class="hljs-comment">// `count` sceglie la forma: singolare | plurale</span>
+    <span class="hljs-title class_">CategoryInUse</span>: <span class="hljs-string">&#x27;Impossibile eliminare: la categoria è usata in {count} articolo | Impossibile eliminare: la categoria è usata in {count} articoli&#x27;</span>,
+  },
 },
 </code></pre>
 <hr>
@@ -853,6 +880,8 @@ Nessun handler nomina <code>AppDbContext</code></li>
 <li>[ ] Il repository è registrato in <code>DependencyInjection.cs</code>, e i metodi che caricano per modificare
 chiamano <code>tracker.Capture(...)</code></li>
 <li>[ ] Le regole di business stanno nell'aggregato o in un domain service, non in <code>if</code> sparsi negli handler</li>
+<li>[ ] Ogni eccezione ha il suo <code>ErrorCode</code>, con messaggio inglese e parametri, e ogni codice nuovo ha
+<code>errors.codes.&lt;Codice&gt;</code> in <code>it.ts</code> ed <code>en.ts</code> (<code>locales.test.ts</code> lo controlla)</li>
 <li>[ ] Le query LINQ sono traducibili da entrambi i provider — attenzione a <code>Contains</code> su stringa</li>
 <li>[ ] Le rotte con id usano il constraint <code>{id:int}</code>, gli endpoint sono agganciati in <code>EndpointExtensions</code>
 e ogni risposta con body dichiara <code>.Produces&lt;T&gt;()</code></li>

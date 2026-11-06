@@ -91,10 +91,11 @@ public class Category : AggregateRoot, ITimestamped
         var trimmed = (value ?? string.Empty).Trim();
 
         if (trimmed.Length == 0)
-            throw new InvariantViolationException($"La descrizione ({field}) è obbligatoria.");
+            throw new InvariantViolationException(ErrorCode.CategoryDescriptionRequired,
+                $"Description ({field}) is required.", ("field", field));
         if (trimmed.Length > MaxDescriptionLength)
-            throw new InvariantViolationException(
-                $"Descrizione troppo lunga (max {MaxDescriptionLength} caratteri).");
+            throw new InvariantViolationException(ErrorCode.CategoryDescriptionTooLong,
+                $"Description too long (max {MaxDescriptionLength} characters).", ("max", MaxDescriptionLength));
 
         return trimmed;
     }
@@ -323,7 +324,8 @@ public class CreateCategoryHandler(
     {
         // L'unicità richiede il database: è una verifica dell'handler, non del dominio.
         if (await categories.ExistsByDescriptionAsync(request.DescIt, ct: ct))
-            throw new ConflictException($"Esiste già una categoria '{request.DescIt}'.");
+            throw new ConflictException(ErrorCode.CategoryAlreadyExists,
+                $"Category '{request.DescIt}' already exists.", ("name", request.DescIt));
 
         var category = Category.Create(request.DescIt, request.DescEn, request.Order);
 
@@ -341,12 +343,21 @@ Tre punti da non perdere:
 - **`CreatedAt`/`UpdatedAt` non compaiono**: li imposta `TimestampInterceptor`.
 - **L'handler non costruisce l'entità con un object initializer**: chiama il factory, che valida.
 
+**I codici di errore.** Ogni eccezione porta un valore di `ErrorCode`
+(`Domain/Exceptions/ErrorCode.cs`, con i parametri nel commento), un messaggio **inglese**, che
+serve per i log e di riserva, e i parametri. Il testo che vede l'utente lo scrive il frontend, in
+`errors.codes.<Codice>` (vedi il punto 12). Nei validator `NotEmpty`, `NotNull`, `MinimumLength`,
+`MaximumLength` ed `EmailAddress` hanno già un codice generico (`Required`, `TooShort`, `TooLong`,
+`InvalidEmail`): niente `WithMessage`. Le altre regole usano `WithErrorCode(ErrorCode.X, ("max", 100))`.
+Un codice si aggiunge e non si rinomina: cambiarlo rompe le traduzioni. La skill `backend-slice`
+(sezione "Codici di errore") ha i dettagli.
+
 L'update ha la stessa forma, e la modifica passa da un metodo dell'aggregato:
 
 ```csharp
 // UpdateCategoryHandler
 var category = await categories.GetByIdAsync(request.Id, ct)
-    ?? throw new NotFoundException($"Categoria con id {request.Id} non trovata.");
+    ?? throw new NotFoundException(ErrorCode.CategoryNotFound, $"Category {request.Id} not found.", ("id", request.Id));
 
 category.Update(request.Body.DescIt, request.Body.DescEn, request.Body.Order);
 
@@ -380,15 +391,14 @@ public class DeleteCategoryHandler(
     public async Task Handle(DeleteCategoryCommand request, CancellationToken ct)
     {
         var category = await categories.GetByIdAsync(request.Id, ct)
-            ?? throw new NotFoundException($"Categoria con id {request.Id} non trovata.");
+            ?? throw new NotFoundException(ErrorCode.CategoryNotFound, $"Category {request.Id} not found.", ("id", request.Id));
 
         // Conteggio prima della DELETE per dare un 409 con messaggio chiaro: la FK Restrict
         // farebbe comunque fallire la cancellazione, ma con un errore generico.
         var count = await executor.CountAsync(db.Articles.Where(x => x.CategoryId == request.Id), ct);
         if (count > 0)
-            throw new ConflictException(
-                $"Impossibile eliminare questa categoria: è ancora utilizzata in {count} elemento/i. " +
-                "Rimuovila da tutti gli elementi prima di eliminarla.");
+            throw new ConflictException(ErrorCode.CategoryInUse,
+                $"Category is used by {count} articles.", ("count", count));
 
         categories.Remove(category);
         await unitOfWork.SaveChangesAsync(ct);
@@ -556,7 +566,7 @@ export const useCategoriesStore = defineStore('categories', () => {
   const selectedItem = ref<Category | null>(null)
 
   // loading ed error condivisi da tutte le azioni: la gestione degli errori sta in un
-  // punto solo e il messaggio mostrato è il `detail` del ProblemDetails del backend
+  // punto solo, e il messaggio è il codice di errore del backend tradotto (o il suo `detail`)
   const { loading, error, run, runOrThrow, clearError } = useAsyncAction()
 
   // LETTURE con `run`: l'errore finisce in `error`, non viene rilanciato
@@ -599,6 +609,10 @@ const store = useCategoriesStore()
 const { can } = usePermission()
 const toast = useToastStore()
 
+// l'elemento intero, non solo l'id: la conferma lo nomina
+const toDelete = ref<Category | null>(null)
+const deleteDialog = ref(false)
+
 onMounted(() => store.fetchAll())
 </script>
 
@@ -617,7 +631,10 @@ onMounted(() => store.fetchAll())
   <v-data-table v-if="!mobile" :headers="headers" :items="store.items" :loading="store.loading" />
   <v-list v-else> … </v-list>
 
-  <confirm-dialog v-model="deleteDialog" :message="t('categories.deleteConfirm')" @confirm="confirmDelete" />
+  <!-- la conferma dice che cosa si elimina: la pagina tiene l'elemento, non solo l'id -->
+  <confirm-dialog v-model="deleteDialog"
+                  :message="t('categories.deleteConfirm', { name: shortName(toDelete?.descIt ?? '') })"
+                  @confirm="confirmDelete" />
 </template>
 ```
 
@@ -627,8 +644,10 @@ Le convenzioni che si vedono qui:
 - **`can('permesso')`** per mostrare o nascondere le azioni. È cortesia verso l'utente: a **negare**
   l'operazione è il backend.
 - **Componenti Vuetify**, colori dal tema (`color="primary"`, `color="error"`), mai valori esadecimali.
-- **`store.error`** è già il messaggio del backend: la pagina lo mostra, non lo costruisce.
-- **La conferma di cancellazione è `ConfirmDialog`** di `components/shared/`; dopo la cancellazione
+- **`store.error`** è già il messaggio da mostrare, tradotto dal codice di errore del backend: la
+  pagina lo mostra, non lo costruisce.
+- **La conferma di cancellazione è `ConfirmDialog`** di `components/shared/` e nomina l'elemento,
+  accorciato da `shortName` (`src/utils/text.ts`) oltre i 40 caratteri; dopo la cancellazione
   `toast.success(t('common.deleted'))`.
 - Nel dettaglio, **`useApiErrors`** separa gli errori per campo (il `400` di FluentValidation →
   `:error-messages`) dall'errore generale, e **`useBackNavigation`** gestisce il ritorno.
@@ -750,7 +769,7 @@ categories: {
   title: 'Categorie',
   subtitle: 'Gestione categorie',
   createButton: 'Nuova categoria',
-  deleteConfirm: 'Sei sicuro di voler eliminare questa categoria?',
+  deleteConfirm: "Eliminare la categoria '{name}'?",
   descIt: 'Descrizione (IT)',
   descEn: 'Descrizione (EN)',
 },
@@ -758,6 +777,15 @@ errors: {
   loadCategories: 'Errore nel caricamento delle categorie',
   createCategory: 'Errore nella creazione della categoria',
   deleteCategory: 'Errore nell\'eliminazione della categoria',
+  // un testo per ogni codice nuovo di ErrorCode, con i parametri come segnaposto
+  codes: {
+    CategoryNotFound: 'Categoria con id {id} non trovata',
+    CategoryAlreadyExists: "Esiste già una categoria '{name}'",
+    CategoryDescriptionRequired: 'La descrizione ({field}) è obbligatoria',
+    CategoryDescriptionTooLong: 'Descrizione troppo lunga (massimo {max} caratteri)',
+    // `count` sceglie la forma: singolare | plurale
+    CategoryInUse: 'Impossibile eliminare: la categoria è usata in {count} articolo | Impossibile eliminare: la categoria è usata in {count} articoli',
+  },
 },
 ```
 
@@ -774,6 +802,8 @@ errors: {
 - [ ] Il repository è registrato in `DependencyInjection.cs`, e i metodi che caricano per modificare
       chiamano `tracker.Capture(...)`
 - [ ] Le regole di business stanno nell'aggregato o in un domain service, non in `if` sparsi negli handler
+- [ ] Ogni eccezione ha il suo `ErrorCode`, con messaggio inglese e parametri, e ogni codice nuovo ha
+      `errors.codes.<Codice>` in `it.ts` ed `en.ts` (`locales.test.ts` lo controlla)
 - [ ] Le query LINQ sono traducibili da entrambi i provider — attenzione a `Contains` su stringa
 - [ ] Le rotte con id usano il constraint `{id:int}`, gli endpoint sono agganciati in `EndpointExtensions`
       e ogni risposta con body dichiara `.Produces<T>()`

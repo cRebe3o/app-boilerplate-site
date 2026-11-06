@@ -548,6 +548,10 @@ aggiungere a tutte le richieste va in <code>axios.ts</code>. Non contengono logi
 <td>i messaggi delle regole di form</td>
 </tr>
 <tr>
+<td><code>errors.codes.*</code></td>
+<td>il testo di ogni codice di <code>ErrorCode</code> del backend, con i suoi parametri come segnaposto</td>
+</tr>
+<tr>
 <td><code>errors.*</code></td>
 <td>i <strong>fallback</strong> degli store, uno per operazione, usati solo se il backend non ha risposto con un ProblemDetails</td>
 </tr>
@@ -555,10 +559,12 @@ aggiungere a tutte le richieste va in <code>axios.ts</code>. Non contengono logi
 </table>
 </div>
 <p>Nei template si scrive sempre <code>t('chiave')</code>: nessun testo fisso, nemmeno un'etichetta.</p>
-<p><code>locales.test.ts</code> controlla che le due lingue abbiano le stesse chiavi e gli stessi segnaposto, e che
+<p><code>locales.test.ts</code> controlla che le due lingue abbiano le stesse chiavi e gli stessi segnaposto, che
 ogni chiave usata nel codice con testo fisso (<code>t('...')</code>, <code>$t('...')</code>, <code>i18n.global.t('...')</code>) esista
-in entrambe. Legge i sorgenti come testo: conta anche gli esempi nei commenti e non vede le chiavi
-calcolate, come <code>t(item.titleKey)</code>.</p>
+in entrambe, e che ogni codice di <code>errorCodeValues</code> abbia la sua <code>errors.codes.&lt;Codice&gt;</code>. Vede anche
+le chiavi calcolate più comuni: quelle di <code>sections.config.ts</code> (menu, dashboard, breadcrumb) e i
+<code>meta.title</code> delle rotte, letti dai dati veri, le proprietà che finiscono in <code>Key</code> e la chiave di
+riserva di <code>run</code>/<code>runOrThrow</code>/<code>attempt</code>. I commenti non contano come uso di una chiave.</p>
 <h2 id="types-generati-non-scritti"><code>types/</code> — generati, non scritti</h2>
 <div class="table-wrap">
 <table>

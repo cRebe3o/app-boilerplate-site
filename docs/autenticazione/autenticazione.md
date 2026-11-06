@@ -161,8 +161,10 @@ POST /api/auth/login   { username, password }
    Set-Cookie: refreshToken=…  (HttpOnly)
 ```
 
-L'errore su username inesistente e quello su password sbagliata sono **lo stesso messaggio**
-("Credenziali non valide"): distinguerli permetterebbe di scoprire quali utenti sono registrati.
+L'errore su username inesistente e quello su password sbagliata sono **lo stesso codice**
+(`InvalidCredentials`, "Username o password non corretti"): distinguerli permetterebbe di scoprire
+quali utenti sono registrati. "Account disabilitato" (`AccountDisabled`) arriva solo a chi ha dato la
+password giusta, e un test in `LoginHandlerTests` lo garantisce.
 
 ### 2. Accesso con account Microsoft
 
@@ -327,7 +329,7 @@ group.MapPost("/windows-login", async (/* … */) => { /* … */ })
     {
         AuthenticationSchemes = NegotiateDefaults.AuthenticationScheme
     })
-    .RequireRateLimiting("auth-policy");
+    .RequireRateLimiting(RateLimits.Session);
 ```
 
 Tutti gli altri endpoint continuano a usare JWT Bearer. Su Windows il pacchetto
@@ -508,12 +510,12 @@ credenziali, perché il browser considera comunque `localhost` intranet.
 
 | Protezione | Come |
 |---|---|
-| Password | Hash **BCrypt** (lento, con salt): dall'hash non si risale alla password |
+| Password | Hash **BCrypt** (lento, con salt): dall'hash non si risale alla password. Massimo 64 caratteri in creazione e nel cambio password (`PasswordRules`): BCrypt usa solo i primi 72 byte, e oltre due password con lo stesso inizio darebbero lo stesso hash. Il login non ha massimo, così chi ha già una password più lunga entra |
 | Firma del JWT | HMAC-SHA256 con il secret; alla validazione `ClockSkew = 0`, nessuna tolleranza sulla scadenza |
 | Refresh token | 64 byte casuali crittografici, salvati nel database, **ruotati** a ogni uso, revocabili |
 | Cookie | `HttpOnly` (JavaScript non lo può leggere, neanche in caso di XSS), `Secure` fuori da sviluppo, `Path=/api/auth` |
-| Brute force | Rate limiting **per IP** su login, msal-login, windows-login e refresh: 10 tentativi ogni 15 minuti in produzione (100 in `Development`, per non intralciare il prova-riprova sul login) |
-| Enumerazione utenti | Messaggio di errore identico per username sconosciuto e password errata |
+| Brute force | Rate limiting **per IP** (`RateLimits` in `Api/Extensions`). Login con username e password: 10 tentativi ogni 15 minuti in produzione (100 in `Development`, per non intralciare il prova-riprova). Refresh, msal-login e windows-login: 300 ogni 15 minuti, perché non hanno una password da indovinare e un ufficio dietro un solo IP deve poter accedere tutto insieme |
+| Enumerazione utenti | Codice di errore identico per username sconosciuto e password errata; l'account disabilitato si rivela solo con la password giusta |
 | Account disattivati | `IsActive` verificato al login **e a ogni refresh** |
 | Token Azure | Firma (JWKS), issuer, audience e scadenza validati **dal backend** |
 | Identità Windows | Handshake Negotiate gestito dal middleware ASP.NET; header di bypass attivo **solo** in Development |
@@ -557,24 +559,38 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// 401 → logout. NON un retry automatico con refresh.
-let isLoggingOut = false
+// 401 → un solo refresh condiviso, poi si ripete la richiesta; logout solo se la sessione è persa
 api.interceptors.response.use(
   res => res,
   async error => {
-    if (error.response?.status === 401 && !isLoggingOut) {
-      isLoggingOut = true
-      try { await useAuthStore().logout() } finally { isLoggingOut = false }
+    if (error.response?.status === 401 && !isLoggingOut && !isAuthRequest) {
+      if (!originalRequest._retry) {
+        originalRequest._retry = true
+        refreshPromise ??= authStore.refresh().finally(() => { refreshPromise = null })
+        const result = await refreshPromise
+        if (result.outcome === 'refreshed') return api(originalRequest)
+        if (result.outcome === 'unavailable')                     // rete assente, 5xx, 429…
+          return Promise.reject(extractServerFailure(result.error) ? result.error : new SessionNotRenewedError(result.error))
+      }
+      await authStore.logout()                                    // refresh token non più valido
     }
     return Promise.reject(error)
   },
 )
 ```
 
-> **Attenzione a questo comportamento**: su `401` il frontend **disconnette l'utente**, non tenta il
-> refresh. `authStore.refresh()` esiste ed è disponibile per un rinnovo preventivo, ma non è agganciato
-> all'interceptor. In pratica, a token scaduto l'utente viene rimandato al login. È una scelta da
-> rivalutare in un progetto dove le sessioni lunghe contano.
+Un token scaduto **non** manda al login: l'interceptor chiama `/api/auth/refresh` con il cookie e
+ripete la richiesta una volta. Più richieste che ricevono 401 insieme condividono lo stesso refresh.
+Si esce solo quando il refresh dice che la sessione non c'è più (401). Se invece il server non
+risponde, risponde con un 5xx o rifiuta il rinnovo con un altro 4xx (di solito 429, troppi rinnovi),
+la sessione resta e fallisce solo la richiesta: rete assente e 5xx hanno il loro messaggio, il 4xx
+diventa `SessionNotRenewedError`, "Non è stato possibile rinnovare la sessione. Riprova tra poco."
+Nessun toast: lo mostra l'avviso della pagina.
+
+Dopo un salvataggio che può cambiare i permessi dell'utente corrente (gruppi, ruoli, utenti), la
+pagina chiama `authStore.refreshAfterSave()`, che rinnova la sessione per avere i permessi nuovi e
+dice "Salvato". Se il rinnovo non riesce, l'avviso dice che i permessi si aggiorneranno al prossimo
+accesso; se la sessione è scaduta, l'utente esce come per ogni 401.
 
 Lo store `auth.store.ts` conserva in `localStorage` token, scadenza, `username`, `email` (se presente),
 gli altri dati dell'utente e i permessi. Le azioni di login sono tre: `login()`, `loginWithMsal()`,

@@ -179,11 +179,15 @@ solo quando mancano:
 - **`UseForwardedHeaders` come primissimo middleware.** Dietro un reverse proxy l'IP del client
   arriva in `X-Forwarded-For`: senza questo, ogni richiesta sembrerebbe provenire dal load balancer
   e il rate limiting per IP diventerebbe di fatto globale.
-- **Rate limiting partizionato per IP**, non globale: 10 richieste ogni 15 minuti sugli endpoint di
-  autenticazione in produzione (100 in `Development`), 20 al minuto sull'endpoint pubblico di
-  raccolta errori.
+- **Rate limiting partizionato per IP**, non globale: 10 richieste ogni 15 minuti sul login con
+  username e password in produzione (100 in `Development`), 300 ogni 15 minuti su refresh, login
+  Microsoft e login Windows, 20 al minuto sull'endpoint pubblico di raccolta errori.
+- **Timeout di 1 secondo per ogni regex del backend** (`RegexTimeout`, in un inizializzatore del
+  modulo): una regex lenta su un input costruito apposta (ReDoS) si ferma con
+  `RegexMatchTimeoutException`, cioè un 500 con ErrorLog, invece di tenere occupato il server.
 - **Localizzazione della richiesta** in base ad `Accept-Language` (`it` predefinito, `en` supportato):
-  i messaggi di errore dell'API seguono la lingua dell'utente.
+  i testi che il backend scrive ancora seguono la lingua dell'utente. Gli errori invece arrivano
+  con un codice (`ErrorCode`) e i suoi parametri, e il testo lo mette il frontend.
 - **Inizializzazione del database all'avvio**: `MigrateAsync()` applica le migration mancanti del
   provider attivo (e crea il database se non esiste); poi il seed, identico per i due provider, che
   popola **solo uno store vuoto** — mai un wipe, mai un reseed.

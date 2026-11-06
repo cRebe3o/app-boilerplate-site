@@ -243,10 +243,13 @@ l'errore in un punto solo. Tre modi, per tre esigenze:</p>
 <pre><code class="language-typescript"><span class="hljs-comment">// nel componente di un dialog</span>
 <span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> <span class="hljs-title function_">attempt</span>(<span class="hljs-function">() =&gt;</span> store.<span class="hljs-title function_">confirm</span>(id), <span class="hljs-string">&#x27;errors.confirmOrder&#x27;</span>)) dialog.<span class="hljs-property">value</span> = <span class="hljs-literal">false</span>
 </code></pre>
-<p><strong>Il messaggio mostrato è quello del backend.</strong> <code>extractApiError</code> legge il <code>detail</code> del
-ProblemDetails, già specifico e nella lingua della richiesta — &quot;Username 'mario' già in uso&quot;, &quot;I
-ruoli di sistema non possono essere eliminati&quot;. La chiave i18n passata a <code>run</code>/<code>runOrThrow</code> è solo il
-<strong>fallback</strong> per quando non c'è un ProblemDetails: rete assente, timeout, 502 dal proxy.</p>
+<p><strong>Il messaggio lo dice il backend, il testo lo scrive il frontend.</strong> Il ProblemDetails porta un
+<code>code</code> (un valore dell'enum <code>ErrorCode</code>) e i suoi <code>params</code>: <code>extractApiError</code> lo traduce con
+<code>errors.codes.&lt;code&gt;</code> — &quot;Username 'mario' già in uso&quot;, &quot;I ruoli di sistema non possono essere
+eliminati&quot;. Un errore senza codice, o con un codice senza traduzione, mostra il <code>detail</code>, che il
+backend scrive in inglese. La chiave i18n passata a <code>run</code>/<code>runOrThrow</code> è solo il <strong>fallback</strong> per un
+4xx che non è un ProblemDetails; rete assente, timeout e 5xx hanno i loro messaggi
+(<code>errors.serverUnreachable</code>, <code>errors.serverError</code>).</p>
 <p>Due errori ricorrenti che la review intercetta:</p>
 <ul>
 <li><strong><code>try/catch</code> scritto a mano</strong> in un'azione: <code>loading</code> ed <code>error</code> finiscono fuori sincrono, e il
@@ -323,9 +326,10 @@ decide quale delle due mostrare.</li>
 <p>Il form è sempre un <code>v-form</code> con <code>ref</code> e <code>validate()</code> prima del submit. Gli errori hanno due
 livelli, e <code>useApiErrors</code> li separa:</p>
 <ul>
-<li><strong>per campo</strong> — il <code>400</code> di FluentValidation porta <code>errors: { Name: ['…'] }</code>; <code>fieldErrors.name</code>
-(chiave lowercase) va in <code>:error-messages</code> del campo;</li>
-<li><strong>generale</strong> — il <code>detail</code> del ProblemDetails (404, 409) o il fallback, in un <code>v-alert</code>.</li>
+<li><strong>per campo</strong> — il <code>400</code> di FluentValidation porta <code>fieldErrors: { Name: [{ code, params, message }] }</code>,
+tradotti come sopra; <code>fieldErrors.name</code> (chiave lowercase) va in <code>:error-messages</code> del campo;</li>
+<li><strong>generale</strong> — il codice tradotto o il <code>detail</code> del ProblemDetails (404, 409), oppure il fallback,
+in un <code>v-alert</code>.</li>
 </ul>
 <pre><code class="language-vue"><span class="hljs-tag">&lt;<span class="hljs-name">v-alert</span> <span class="hljs-attr">v-if</span>=<span class="hljs-string">&quot;generalError&quot;</span> <span class="hljs-attr">type</span>=<span class="hljs-string">&quot;error&quot;</span> <span class="hljs-attr">class</span>=<span class="hljs-string">&quot;mb-4&quot;</span>&gt;</span>{{ generalError }}<span class="hljs-tag">&lt;/<span class="hljs-name">v-alert</span>&gt;</span>
 <span class="hljs-tag">&lt;<span class="hljs-name">v-text-field</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;form.name&quot;</span> <span class="hljs-attr">:rules</span>=<span class="hljs-string">&quot;[rules.required]&quot;</span> <span class="hljs-attr">:error-messages</span>=<span class="hljs-string">&quot;fieldErrors[&#x27;name&#x27;]&quot;</span> /&gt;</span>
@@ -361,7 +365,10 @@ della pagina. Regole:</p>
 <li>emette <code>saved</code>: è la pagina a fare <code>reload()</code> e a mostrare il toast.</li>
 </ul>
 <p>La conferma di cancellazione è <code>ConfirmDialog</code> di <code>components/shared/</code>: <code>v-model</code>, <code>message</code>,
-<code>loading</code>, evento <code>confirm</code>. Non se ne scrive una nuova per dominio.</p>
+<code>loading</code>, evento <code>confirm</code>. Non se ne scrive una nuova per dominio. Il messaggio dice <strong>che cosa</strong> si
+elimina — &quot;Eliminare il gruppo 'Amministratori'?&quot; —, così non si conferma sulla riga sbagliata: la
+pagina tiene l'elemento intero, non solo l'id, e la traduzione ha il segnaposto <code>{name}</code>, riempito
+con <code>shortName</code> (<code>src/utils/text.ts</code>), che accorcia con &quot;…&quot; oltre i 40 caratteri.</p>
 <h2 id="toast-e-messaggi">Toast e messaggi</h2>
 <p>Una sola <code>v-snackbar</code>, in <code>App.vue</code>, pilotata da <code>useToastStore()</code>: <code>success</code> (3 s), <code>error</code> (5 s),
 <code>warning</code>, <code>info</code>. Dopo una scrittura riuscita: <code>toast.success(t('common.saved'))</code>. Gli errori

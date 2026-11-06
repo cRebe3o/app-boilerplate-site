@@ -316,8 +316,10 @@ token in arrivo. Per Windows, invece, <strong>non serve configurare nulla</stron
    200 OK  { accessToken, expiresAt, userId, username, email, displayName, language, permissions }
    Set-Cookie: refreshToken=…  (HttpOnly)
 </code></pre>
-<p>L'errore su username inesistente e quello su password sbagliata sono <strong>lo stesso messaggio</strong>
-(&quot;Credenziali non valide&quot;): distinguerli permetterebbe di scoprire quali utenti sono registrati.</p>
+<p>L'errore su username inesistente e quello su password sbagliata sono <strong>lo stesso codice</strong>
+(<code>InvalidCredentials</code>, &quot;Username o password non corretti&quot;): distinguerli permetterebbe di scoprire
+quali utenti sono registrati. &quot;Account disabilitato&quot; (<code>AccountDisabled</code>) arriva solo a chi ha dato la
+password giusta, e un test in <code>LoginHandlerTests</code> lo garantisce.</p>
 <h3 id="2-accesso-con-account-microsoft">2. Accesso con account Microsoft</h3>
 <pre><code>Frontend → Azure AD (login, MFA, consenso)  →  access token firmato da Microsoft
         │
@@ -461,7 +463,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)   <span class
     {
         AuthenticationSchemes = NegotiateDefaults.AuthenticationScheme
     })
-    .RequireRateLimiting(<span class="hljs-string">&quot;auth-policy&quot;</span>);
+    .RequireRateLimiting(RateLimits.Session);
 </code></pre>
 <p>Tutti gli altri endpoint continuano a usare JWT Bearer. Su Windows il pacchetto
 <code>Microsoft.AspNetCore.Authentication.Negotiate</code> funziona <strong>anche fuori dominio</strong>, con il fallback NTLM
@@ -632,7 +634,7 @@ credenziali, perché il browser considera comunque <code>localhost</code> intran
 <tbody>
 <tr>
 <td>Password</td>
-<td>Hash <strong>BCrypt</strong> (lento, con salt): dall'hash non si risale alla password</td>
+<td>Hash <strong>BCrypt</strong> (lento, con salt): dall'hash non si risale alla password. Massimo 64 caratteri in creazione e nel cambio password (<code>PasswordRules</code>): BCrypt usa solo i primi 72 byte, e oltre due password con lo stesso inizio darebbero lo stesso hash. Il login non ha massimo, così chi ha già una password più lunga entra</td>
 </tr>
 <tr>
 <td>Firma del JWT</td>
@@ -648,11 +650,11 @@ credenziali, perché il browser considera comunque <code>localhost</code> intran
 </tr>
 <tr>
 <td>Brute force</td>
-<td>Rate limiting <strong>per IP</strong> su login, msal-login, windows-login e refresh: 10 tentativi ogni 15 minuti in produzione (100 in <code>Development</code>, per non intralciare il prova-riprova sul login)</td>
+<td>Rate limiting <strong>per IP</strong> (<code>RateLimits</code> in <code>Api/Extensions</code>). Login con username e password: 10 tentativi ogni 15 minuti in produzione (100 in <code>Development</code>, per non intralciare il prova-riprova). Refresh, msal-login e windows-login: 300 ogni 15 minuti, perché non hanno una password da indovinare e un ufficio dietro un solo IP deve poter accedere tutto insieme</td>
 </tr>
 <tr>
 <td>Enumerazione utenti</td>
-<td>Messaggio di errore identico per username sconosciuto e password errata</td>
+<td>Codice di errore identico per username sconosciuto e password errata; l'account disabilitato si rivela solo con la password giusta</td>
 </tr>
 <tr>
 <td>Account disattivati</td>
@@ -701,25 +703,36 @@ api.<span class="hljs-property">interceptors</span>.<span class="hljs-property">
   <span class="hljs-keyword">return</span> config
 })
 
-<span class="hljs-comment">// 401 → logout. NON un retry automatico con refresh.</span>
-<span class="hljs-keyword">let</span> isLoggingOut = <span class="hljs-literal">false</span>
+<span class="hljs-comment">// 401 → un solo refresh condiviso, poi si ripete la richiesta; logout solo se la sessione è persa</span>
 api.<span class="hljs-property">interceptors</span>.<span class="hljs-property">response</span>.<span class="hljs-title function_">use</span>(
   <span class="hljs-function"><span class="hljs-params">res</span> =&gt;</span> res,
   <span class="hljs-keyword">async</span> error =&gt; {
-    <span class="hljs-keyword">if</span> (error.<span class="hljs-property">response</span>?.<span class="hljs-property">status</span> === <span class="hljs-number">401</span> &amp;&amp; !isLoggingOut) {
-      isLoggingOut = <span class="hljs-literal">true</span>
-      <span class="hljs-keyword">try</span> { <span class="hljs-keyword">await</span> <span class="hljs-title function_">useAuthStore</span>().<span class="hljs-title function_">logout</span>() } <span class="hljs-keyword">finally</span> { isLoggingOut = <span class="hljs-literal">false</span> }
+    <span class="hljs-keyword">if</span> (error.<span class="hljs-property">response</span>?.<span class="hljs-property">status</span> === <span class="hljs-number">401</span> &amp;&amp; !isLoggingOut &amp;&amp; !isAuthRequest) {
+      <span class="hljs-keyword">if</span> (!originalRequest.<span class="hljs-property">_retry</span>) {
+        originalRequest.<span class="hljs-property">_retry</span> = <span class="hljs-literal">true</span>
+        refreshPromise ??= authStore.<span class="hljs-title function_">refresh</span>().<span class="hljs-title function_">finally</span>(<span class="hljs-function">() =&gt;</span> { refreshPromise = <span class="hljs-literal">null</span> })
+        <span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> refreshPromise
+        <span class="hljs-keyword">if</span> (result.<span class="hljs-property">outcome</span> === <span class="hljs-string">&#x27;refreshed&#x27;</span>) <span class="hljs-keyword">return</span> <span class="hljs-title function_">api</span>(originalRequest)
+        <span class="hljs-keyword">if</span> (result.<span class="hljs-property">outcome</span> === <span class="hljs-string">&#x27;unavailable&#x27;</span>)                     <span class="hljs-comment">// rete assente, 5xx, 429…</span>
+          <span class="hljs-keyword">return</span> <span class="hljs-title class_">Promise</span>.<span class="hljs-title function_">reject</span>(<span class="hljs-title function_">extractServerFailure</span>(result.<span class="hljs-property">error</span>) ? result.<span class="hljs-property">error</span> : <span class="hljs-keyword">new</span> <span class="hljs-title class_">SessionNotRenewedError</span>(result.<span class="hljs-property">error</span>))
+      }
+      <span class="hljs-keyword">await</span> authStore.<span class="hljs-title function_">logout</span>()                                    <span class="hljs-comment">// refresh token non più valido</span>
     }
     <span class="hljs-keyword">return</span> <span class="hljs-title class_">Promise</span>.<span class="hljs-title function_">reject</span>(error)
   },
 )
 </code></pre>
-<blockquote>
-<p><strong>Attenzione a questo comportamento</strong>: su <code>401</code> il frontend <strong>disconnette l'utente</strong>, non tenta il
-refresh. <code>authStore.refresh()</code> esiste ed è disponibile per un rinnovo preventivo, ma non è agganciato
-all'interceptor. In pratica, a token scaduto l'utente viene rimandato al login. È una scelta da
-rivalutare in un progetto dove le sessioni lunghe contano.</p>
-</blockquote>
+<p>Un token scaduto <strong>non</strong> manda al login: l'interceptor chiama <code>/api/auth/refresh</code> con il cookie e
+ripete la richiesta una volta. Più richieste che ricevono 401 insieme condividono lo stesso refresh.
+Si esce solo quando il refresh dice che la sessione non c'è più (401). Se invece il server non
+risponde, risponde con un 5xx o rifiuta il rinnovo con un altro 4xx (di solito 429, troppi rinnovi),
+la sessione resta e fallisce solo la richiesta: rete assente e 5xx hanno il loro messaggio, il 4xx
+diventa <code>SessionNotRenewedError</code>, &quot;Non è stato possibile rinnovare la sessione. Riprova tra poco.&quot;
+Nessun toast: lo mostra l'avviso della pagina.</p>
+<p>Dopo un salvataggio che può cambiare i permessi dell'utente corrente (gruppi, ruoli, utenti), la
+pagina chiama <code>authStore.refreshAfterSave()</code>, che rinnova la sessione per avere i permessi nuovi e
+dice &quot;Salvato&quot;. Se il rinnovo non riesce, l'avviso dice che i permessi si aggiorneranno al prossimo
+accesso; se la sessione è scaduta, l'utente esce come per ogni 401.</p>
 <p>Lo store <code>auth.store.ts</code> conserva in <code>localStorage</code> token, scadenza, <code>username</code>, <code>email</code> (se presente),
 gli altri dati dell'utente e i permessi. Le azioni di login sono tre: <code>login()</code>, <code>loginWithMsal()</code>,
 <code>loginWithWindows()</code>. Il navigation guard del router controlla <code>meta.requiresAuth</code> e <code>meta.permission</code>

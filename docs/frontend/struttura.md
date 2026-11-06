@@ -315,14 +315,17 @@ Due file, `it.ts` ed `en.ts`, **entrambi obbligatori** e sempre aggiornati insie
 | `nav.*` | le voci di menu e le sezioni |
 | `common.*` | salva, annulla, elimina, cerca, "salvato con successo"… |
 | `validation.*` | i messaggi delle regole di form |
+| `errors.codes.*` | il testo di ogni codice di `ErrorCode` del backend, con i suoi parametri come segnaposto |
 | `errors.*` | i **fallback** degli store, uno per operazione, usati solo se il backend non ha risposto con un ProblemDetails |
 
 Nei template si scrive sempre `t('chiave')`: nessun testo fisso, nemmeno un'etichetta.
 
-`locales.test.ts` controlla che le due lingue abbiano le stesse chiavi e gli stessi segnaposto, e che
+`locales.test.ts` controlla che le due lingue abbiano le stesse chiavi e gli stessi segnaposto, che
 ogni chiave usata nel codice con testo fisso (`t('...')`, `$t('...')`, `i18n.global.t('...')`) esista
-in entrambe. Legge i sorgenti come testo: conta anche gli esempi nei commenti e non vede le chiavi
-calcolate, come `t(item.titleKey)`.
+in entrambe, e che ogni codice di `errorCodeValues` abbia la sua `errors.codes.<Codice>`. Vede anche
+le chiavi calcolate più comuni: quelle di `sections.config.ts` (menu, dashboard, breadcrumb) e i
+`meta.title` delle rotte, letti dai dati veri, le proprietà che finiscono in `Key` e la chiave di
+riserva di `run`/`runOrThrow`/`attempt`. I commenti non contano come uso di una chiave.
 
 ## `types/` — generati, non scritti
 

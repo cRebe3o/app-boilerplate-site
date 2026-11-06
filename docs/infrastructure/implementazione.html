@@ -376,8 +376,10 @@ nei log con la sua durata.</p>
 <p><code>ExceptionHandlingMiddleware</code> è il solo punto in cui un'eccezione diventa una risposta HTTP. Gli
 handler <strong>lanciano</strong> e non catturano:</p>
 <pre><code class="language-csharp"><span class="hljs-keyword">var</span> <span class="hljs-keyword">group</span> = <span class="hljs-keyword">await</span> groups.GetByIdAsync(request.Id, ct)
-    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(<span class="hljs-string">$&quot;Gruppo con id <span class="hljs-subst">{request.Id}</span> non trovato.&quot;</span>);
+    ?? <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotFoundException(ErrorCode.GroupNotFound, <span class="hljs-string">$&quot;Group <span class="hljs-subst">{request.Id}</span> not found.&quot;</span>, (<span class="hljs-string">&quot;id&quot;</span>, request.Id));
 </code></pre>
+<p>Un'eccezione porta un <strong>codice</strong> (<code>ErrorCode</code>, in <code>Domain/Exceptions/</code>), un messaggio inglese per i
+log e di riserva, e i parametri del testo. Il testo che vede l'utente lo scrive il frontend.</p>
 <p>Le eccezioni di dominio vivono in <code>&lt;Progetto&gt;.Domain/Exceptions/</code> — <code>NotFoundException</code>,
 <code>ConflictException</code>, <code>InvariantViolationException</code>, <code>ForbiddenException</code>, <code>UnauthorizedException</code> —
 e il middleware le mappa su 404, 409, 409, 403, 401. Un'invariante violata è un 409 come un
@@ -389,8 +391,12 @@ middleware lo registra a livello <code>Debug</code>, risponde 499 senza corpo e 
 annullamento senza <code>RequestAborted</code>, come un timeout interno, resta un 500.</p>
 <p>Che stiano nel <strong>dominio</strong> e non in un progetto di utilità è coerente con il resto: un contratto
 confermato che rifiuta una modifica sta esprimendo una regola di business, non un errore tecnico.</p>
-<p>Il formato è sempre <strong>ProblemDetails</strong> (RFC 7807), quindi il frontend può tradurre ogni errore con
-un unico composable (<code>useApiErrors</code>) invece che caso per caso.</p>
+<p>Il formato è sempre <strong>ProblemDetails</strong> (RFC 7807), con due campi in più: <code>code</code> e <code>params</code>. Un
+errore di validazione ha anche <code>fieldErrors</code>, con codice, parametri e messaggio per ogni campo. Un
+500 ha sempre <code>InternalError</code>, una richiesta malformata <code>BadRequest</code>. Lo schema OpenAPI descrive
+questi campi e l'enum (<code>ProblemDetailsSchemaTransformer</code>), quindi <code>api.generated.ts</code> esporta anche
+<code>errorCodeValues</code>. Il frontend traduce ogni errore con <code>errors.codes.&lt;code&gt;</code> in un unico punto
+(<code>useApiErrors</code>) invece che caso per caso, e senza traduzione mostra il <code>detail</code>.</p>
 <h2 id="4-gli-handler-astrazioni-mai-appdbcontext">4. Gli handler: astrazioni, mai <code>AppDbContext</code></h2>
 <p>Gli handler vivono in <code>&lt;Progetto&gt;.Application</code> e non conoscono EF Core. Che cosa iniettano dipende
 dal tipo di operazione:</p>

@@ -715,7 +715,7 @@ instrumentation registrate. Le più utili, con l'unità in cui sono espresse:</p
 </tbody>
 </table>
 </div>
-<p><strong><code>Microsoft.AspNetCore.RateLimiting</code></strong> — il rate limiter di <code>Program.cs</code></p>
+<p><strong><code>Microsoft.AspNetCore.RateLimiting</code></strong> — il rate limiter di <code>AddAppRateLimits</code> (<code>RateLimits</code>)</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -739,8 +739,8 @@ instrumentation registrate. Le più utili, con l'unità in cui sono espresse:</p
 </tbody>
 </table>
 </div>
-<p>Il tag <code>aspnetcore.rate_limiting.policy</code> distingue <code>auth-policy</code> da <code>error-log-policy</code>: è il modo
-di vedere se qualcuno sta martellando il login.</p>
+<p>Il tag <code>aspnetcore.rate_limiting.policy</code> distingue <code>password-login-policy</code>, <code>session-policy</code> ed
+<code>error-log-policy</code>: sul primo si vede se qualcuno sta martellando il login.</p>
 <p><strong><code>System.Runtime</code></strong> — il processo</p>
 <div class="table-wrap">
 <table>

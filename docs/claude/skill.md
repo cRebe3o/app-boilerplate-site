@@ -26,7 +26,7 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 
 | Skill | Quando si attiva |
 |---|---|
-| **`backend-slice`** | Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + `IUnitOfWork` e le query `IReadDbContext`, che ogni endpoint con body dichiara `.Produces<T>()` perché il frontend ne generi il tipo, e che un numero in un messaggio ha il testo giusto per 1 e per gli altri numeri |
+| **`backend-slice`** | Qualsiasi nuova operazione di backend: comando o query, handler, validator, response. È la skill centrale del backend. Sa che i comandi usano repository + `IUnitOfWork` e le query `IReadDbContext`, che ogni endpoint con body dichiara `.Produces<T>()` perché il frontend ne generi il tipo, che ogni errore ha un `ErrorCode` con messaggio inglese e parametri (il testo lo traduce il frontend), e che un numero in un messaggio ha il testo giusto per 1 e per gli altri numeri |
 | **`domain-modeling`** | Modellare una regola di business: che cosa è un aggregato, dove vive una regola, quando serve un value object, un domain service, un evento o una specification. Vedi [Dove mettere la logica](../architettura/dove-mettere-la-logica.md) |
 | **`db-entity`** | Una nuova entità: l'aggregato in `Domain/`, la sua `IEntityTypeConfiguration`, il repository e la **doppia migration** SQL Server + Postgres |
 | **`audit-log`** | Come funziona l'audit automatico via `AuditLogInterceptor` e che cosa deve fare un repository perché lo snapshot *prima* sia corretto. Un handler non scrive mai l'audit a mano. Vedi [Audit log](../infrastructure/audit-log.md) |
@@ -42,8 +42,8 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 
 | Skill | Quando si attiva |
 |---|---|
-| **`vue-feature`** | Una nuova feature di frontend completa: tipi da `pnpm gen:api`, service, store con `useAsyncAction`, pagina, rotta figlia di AppShell, voce di menu in `sections.config.ts`, traduzioni, con le forme singolare e plurale per i numeri accanto a un testo. Vedi [Convenzioni e flussi](../frontend/convenzioni.md) |
-| **`detail-page`** | Una pagina di dettaglio su rotta `:id(\\d+)`, che serve creazione e modifica, con `useBackNavigation` per il ritorno e `useApiErrors` per gli errori per campo |
+| **`vue-feature`** | Una nuova feature di frontend completa: tipi da `pnpm gen:api`, service, store con `useAsyncAction`, pagina, rotta figlia di AppShell, voce di menu in `sections.config.ts`, traduzioni, con le forme singolare e plurale per i numeri accanto a un testo, e conferme che nominano l'elemento su cui si agisce. Vedi [Convenzioni e flussi](../frontend/convenzioni.md) |
+| **`detail-page`** | Una pagina di dettaglio su rotta `:id(\\d+)`, che serve creazione e modifica, con `useBackNavigation` per il ritorno, `useApiErrors` per gli errori per campo e `authStore.refreshAfterSave()` dopo un salvataggio che può cambiare i permessi |
 | **`vuetify-dialog-form`** | Un dialog di creazione o modifica in `components/<dominio>/`: validazione, `attempt()` per chiudersi solo se il salvataggio riesce, reset all'apertura, un solo componente per create ed edit |
 
 ## Test
@@ -69,7 +69,7 @@ genera migration).
 | `/new-slice <caso d'uso>` | Aggiunge un'operazione a un'entità esistente (un'azione, una query, un report): regola nell'aggregato, slice, endpoint e permesso, e il frontend se serve |
 | `/add-field <Entità>` | Aggiunge un campo a un'entità esistente, lo propaga su tutti i punti che lo richiedono e verifica |
 | `/remove-field <Entità>` | L'operazione inversa: chiede conferma prima della migration che cancella i dati |
-| `/review` | Rilegge le modifiche del branch rispetto a `main` (o i percorsi indicati) contro le convenzioni del progetto, comprese le forme singolare e plurale dei numeri nei testi, senza modificare file |
+| `/review` | Rilegge le modifiche del branch rispetto a `main` (o i percorsi indicati) contro le convenzioni del progetto, comprese le forme singolare e plurale dei numeri nei testi, i codici di errore, le conferme che nominano l'elemento e le regex nuove su input dell'utente (ancorate, senza quantificatori che si contendono i caratteri, su un campo con lunghezza massima), senza modificare file |
 | `/fix <descrizione>` | Trova la causa di un bug, la dimostra con un test, la corregge e verifica; segnala lo stesso errore se lo trova altrove |
 | `/aggiorna-dal-template [versione]` | Porta nel progetto una versione nuova del template: `copier update` su un branch nuovo, conflitti risolti conservando il codice del progetto, dipendenze ripristinate, `pnpm verify`. Merge e push solo dopo una conferma. Copre anche un `.copier-answers.yml` mancante e la scelta del suo `_commit` |
 
