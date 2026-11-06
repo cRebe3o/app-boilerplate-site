@@ -152,7 +152,7 @@ fuso orario e i fine riga, che contano per chi fa il deploy su Linux.
   quando il lotto è pronto o quando c'è un caso urgente, ma non lo avvia da solo.
 
 La skill verifica, sceglie il numero, sposta la voce del CHANGELOG sotto la versione con la data, poi
-crea commit e tag. Prima di pubblicare chiede una conferma, che vale anche per app-demo e il sito:
+crea commit e tag. Prima di pubblicare chiede una conferma, che vale anche per il sito:
 
 ```bash
 git push --atomic origin main v1.4.0
@@ -167,7 +167,8 @@ dell'impianto, skill rimosse), `minor` per funzionalità nuove compatibili, `pat
 ### L'ordine: template → app-demo → sito
 
 1. **Template**: rilasciato, con il tag.
-2. **app-demo**: si aggiorna al nuovo tag con `/aggiorna-dal-template`, poi
+2. **app-demo**: l'update al nuovo tag lo avvia chi mantiene il template, con
+   `/aggiorna-dal-template` in app-demo: Claude si ferma dopo il push del template e lo chiede. Poi
    `node scripts/confronta-app-demo.mjs` deve finire con `Nessuna differenza inattesa.` Una
    correzione fatta solo nel template e non arrivata con l'update si riporta in app-demo,
    altrimenti al giro dopo ricompare come differenza; una differenza voluta si aggiunge
