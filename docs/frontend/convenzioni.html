@@ -246,8 +246,9 @@ l'errore in un punto solo. Tre modi, per tre esigenze:</p>
 <p><strong>Il messaggio lo dice il backend, il testo lo scrive il frontend.</strong> Il ProblemDetails porta un
 <code>code</code> (un codice di <code>ErrorCode</code>, del template o del progetto) e i suoi <code>params</code>: <code>extractApiError</code> lo traduce con
 <code>errors.codes.&lt;code&gt;</code> — &quot;Username 'mario' già in uso&quot;, &quot;I ruoli di sistema non possono essere
-eliminati&quot;. Un errore senza codice, o con un codice senza traduzione, mostra il <code>detail</code>, che il
-backend scrive in inglese. La chiave i18n passata a <code>run</code>/<code>runOrThrow</code> è solo il <strong>fallback</strong> per un
+eliminati&quot;. Le eccezioni di dominio hanno sempre un codice; un codice senza traduzione mostra il
+<code>detail</code>, che il backend scrive in inglese. Gli errori di validazione arrivano in <code>fieldErrors</code>, uno
+per campo, con lo stesso codice e i suoi parametri. La chiave i18n passata a <code>run</code>/<code>runOrThrow</code> è solo il <strong>fallback</strong> per un
 4xx che non è un ProblemDetails; rete assente, timeout e 5xx hanno i loro messaggi
 (<code>errors.serverUnreachable</code>, <code>errors.serverError</code>).</p>
 <p>Due errori ricorrenti che la review intercetta:</p>

@@ -62,8 +62,9 @@ if (await attempt(() => store.confirm(id), 'errors.confirmOrder')) dialog.value 
 **Il messaggio lo dice il backend, il testo lo scrive il frontend.** Il ProblemDetails porta un
 `code` (un codice di `ErrorCode`, del template o del progetto) e i suoi `params`: `extractApiError` lo traduce con
 `errors.codes.<code>` — "Username 'mario' già in uso", "I ruoli di sistema non possono essere
-eliminati". Un errore senza codice, o con un codice senza traduzione, mostra il `detail`, che il
-backend scrive in inglese. La chiave i18n passata a `run`/`runOrThrow` è solo il **fallback** per un
+eliminati". Le eccezioni di dominio hanno sempre un codice; un codice senza traduzione mostra il
+`detail`, che il backend scrive in inglese. Gli errori di validazione arrivano in `fieldErrors`, uno
+per campo, con lo stesso codice e i suoi parametri. La chiave i18n passata a `run`/`runOrThrow` è solo il **fallback** per un
 4xx che non è un ProblemDetails; rete assente, timeout e 5xx hanno i loro messaggi
 (`errors.serverUnreachable`, `errors.serverError`).
 

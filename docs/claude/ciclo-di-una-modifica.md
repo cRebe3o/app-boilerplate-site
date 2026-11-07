@@ -91,7 +91,7 @@ esce già formattato.
 **Una modifica è finita quando i controlli sono verdi**, non quando sembra giusta.
 
 ```bash
-pnpm verify              # dalla root: build e test .NET, typecheck, lint e test Vue, vulnerabilità
+pnpm verify              # dalla root: build e test .NET, typecheck, lint, formato e test Vue, vulnerabilità
 pnpm verify --backend    # solo la parte .NET (--frontend: solo la parte Vue)
 ```
 
