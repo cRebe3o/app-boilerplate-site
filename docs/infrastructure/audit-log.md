@@ -154,7 +154,9 @@ riga.
 
 La retention è configurabile dalla pagina **Configurazione** (`SystemConfig.AuditLogs`): abilitato
 sì/no e numero massimo di record, da 1 a 100.000. Il reset (`audit.write`) cancella i record oltre
-la soglia configurata: il taglio avviene solo così, non in automatico. I record non si modificano
+la soglia configurata. Di base il taglio avviene solo così; con i
+[lavori programmati](lavori-programmati.md) lo stesso reset gira anche ogni notte, per l'audit e
+per l'error log. I record non si modificano
 né si cancellano uno per uno.
 
 ## Errori comuni

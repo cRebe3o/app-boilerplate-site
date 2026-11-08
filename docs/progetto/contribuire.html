@@ -68,6 +68,7 @@
             <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
             <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
             <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/lavori-programmati.html">Lavori programmati</a></li>
             <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -261,9 +262,10 @@ mostra solo ciò che esce da quell'elenco. La tabella qui sotto ne spiega il sen
 <h2 id="verificare">Verificare</h2>
 <p>Il template non compila: lo si verifica <strong>generando</strong> un progetto in una cartella temporanea e
 lanciando <code>pnpm verify</code>. La parte di verifica di <code>/rilascio-template</code>, alla radice di
-<code>app-boilerplate</code>, si può usare a ogni modifica: genera un progetto per provider (SQL Server e
-PostgreSQL) dal commit corrente, lancia <code>pnpm verify</code> su entrambi e poi introduce apposta un errore,
-per provare che il controllo sappia diventare rosso.</p>
+<code>app-boilerplate</code>, si può usare a ogni modifica: genera dal commit corrente un progetto per ogni
+combinazione di provider (SQL Server e PostgreSQL) e lavori programmati (con e senza), lancia
+<code>pnpm verify</code> su tutti e quattro, uno alla volta, e poi introduce apposta un errore, per provare che
+il controllo sappia diventare rosso.</p>
 <blockquote>
 <p><strong>Percorsi brevi.</strong> Su Windows una cartella temporanea con un percorso lungo fa fallire pnpm in
 modo silenzioso: i link dentro <code>node_modules/.pnpm</code> superano i 260 caratteri e Vitest o Vite non
@@ -271,10 +273,10 @@ trovano più i pacchetti. <code>C:\tmp\prova</code> va bene; una cartella annida
 </blockquote>
 <h3 id="la-action">La Action</h3>
 <p><code>.github/workflows/verify.yml</code> fa la stessa cosa su GitHub a ogni push su <code>main</code> e a ogni pull
-request: genera i due progetti e lancia <code>pnpm verify</code> su ciascuno. Non parte quando cambiano solo
+request: genera i quattro progetti e lancia <code>pnpm verify</code> su ciascuno. Non parte quando cambiano solo
 <code>docs/**</code>, <code>CHANGELOG.md</code> e il <code>CLAUDE.md</code> della radice, che non entrano nei progetti generati.</p>
-<p><code>/rilascio-template</code> legge il suo esito: se riguarda esattamente ciò che si sta rilasciando, e i due
-job sono verdi, non ripete in locale la verifica dei due progetti. Un job rosso è un rosso anche se
+<p><code>/rilascio-template</code> legge il suo esito: se riguarda esattamente ciò che si sta rilasciando, e i quattro
+job sono verdi, non ripete in locale la verifica dei quattro progetti. Un job rosso è un rosso anche se
 in locale passa. La Action gira su Linux: non prova Windows, ma vede le maiuscole nei percorsi, il
 fuso orario e i fine riga, che contano per chi fa il deploy su Linux.</p>
 <h2 id="rilasciare-a-lotti">Rilasciare a lotti</h2>
@@ -349,6 +351,10 @@ rilascio. La mappa:</p>
 <td><a href="../guide/nuova-feature.html">Aggiungere una feature</a></td>
 </tr>
 <tr>
+<td>Hangfire, un lavoro programmato o il pannello</td>
+<td><a href="../infrastructure/lavori-programmati.html">Lavori programmati</a></td>
+</tr>
+<tr>
 <td>una scelta di progetto</td>
 <td><a href="../infrastructure/decisioni.html">Decisioni</a></td>
 </tr>
@@ -375,7 +381,7 @@ costa un minuto e trova le pagine rimaste indietro.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.1.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

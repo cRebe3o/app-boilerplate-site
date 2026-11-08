@@ -68,6 +68,7 @@
             <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
             <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
             <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/lavori-programmati.html">Lavori programmati</a></li>
             <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -173,7 +174,7 @@ ne è il riassunto ragionato.</p>
 <p>Le versioni esatte dei pacchetti .NET e npm sono pinnate nei <code>.csproj</code> e nei <code>package.json</code> del
 template: non serve sceglierle.</p>
 <h2 id="le-variabili-del-template">Le variabili del template</h2>
-<p>Alla generazione Copier fa sette domande. Sono definite in <code>copier.yml</code> e determinano com'è fatto
+<p>Alla generazione Copier fa otto domande. Sono definite in <code>copier.yml</code> e determinano com'è fatto
 il progetto che ne esce:</p>
 <div class="table-wrap">
 <table>
@@ -228,6 +229,12 @@ il progetto che ne esce:</p>
 <td><code>true</code></td>
 <td>Presenza del file in radice</td>
 </tr>
+<tr>
+<td><code>include_jobs</code></td>
+<td>I lavori programmati con Hangfire, e il loro pannello</td>
+<td><code>false</code></td>
+<td>Cartelle <code>Jobs</code> in Api, Application, Infrastructure e test; voce &quot;Lavori programmati&quot; in Sistema; permesso <code>jobs.dashboard</code></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -235,6 +242,10 @@ il progetto che ne esce:</p>
 <blockquote>
 <p><strong><code>project_slug</code> non può contenere spazi.</strong> Diventa un namespace C# e dei nomi di file: usa
 PascalCase (<code>GestioneOrdini</code>, non <code>Gestione Ordini</code>). <code>project_name</code> invece è solo un'etichetta.</p>
+</blockquote>
+<blockquote>
+<p><strong><code>include_jobs</code> si può cambiare dopo.</strong> Chi risponde no non riceve niente di Hangfire: né
+pacchetti, né codice, né tabelle. Per averli più avanti, <code>copier update --trust --data include_jobs=true</code>. Vedi <a href="../infrastructure/lavori-programmati.html">Lavori programmati</a>.</p>
 </blockquote>
 <blockquote>
 <p><strong><code>db_provider</code> non è una scelta definitiva.</strong> Decide il valore iniziale di <code>Database:Provider</code> e
@@ -403,7 +414,7 @@ qualsiasi altra modifica.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.1.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

@@ -75,7 +75,7 @@ genera migration).
 
 Chi mantiene il template ha un comando in più, `/rilascio-template [versione]`, che sta nella
 `.claude/` alla radice di `app-boilerplate` e quindi non arriva ai progetti generati: verifica una
-modifica generando un progetto per provider, controlla con un errore introdotto apposta che i test
+modifica generando un progetto per provider, con e senza lavori programmati, controlla con un errore introdotto apposta che i test
 lo vedano, poi rilascia. Il giro è descritto in
 [Contribuire al template](../progetto/contribuire.md).
 

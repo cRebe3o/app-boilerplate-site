@@ -123,9 +123,10 @@ Dopo il merge, una ricerca di `Rental`, `Equipment`, `Customer`, `Noleggi`, `App
 
 Il template non compila: lo si verifica **generando** un progetto in una cartella temporanea e
 lanciando `pnpm verify`. La parte di verifica di `/rilascio-template`, alla radice di
-`app-boilerplate`, si può usare a ogni modifica: genera un progetto per provider (SQL Server e
-PostgreSQL) dal commit corrente, lancia `pnpm verify` su entrambi e poi introduce apposta un errore,
-per provare che il controllo sappia diventare rosso.
+`app-boilerplate`, si può usare a ogni modifica: genera dal commit corrente un progetto per ogni
+combinazione di provider (SQL Server e PostgreSQL) e lavori programmati (con e senza), lancia
+`pnpm verify` su tutti e quattro, uno alla volta, e poi introduce apposta un errore, per provare che
+il controllo sappia diventare rosso.
 
 > **Percorsi brevi.** Su Windows una cartella temporanea con un percorso lungo fa fallire pnpm in
 > modo silenzioso: i link dentro `node_modules/.pnpm` superano i 260 caratteri e Vitest o Vite non
@@ -134,11 +135,11 @@ per provare che il controllo sappia diventare rosso.
 ### La Action
 
 `.github/workflows/verify.yml` fa la stessa cosa su GitHub a ogni push su `main` e a ogni pull
-request: genera i due progetti e lancia `pnpm verify` su ciascuno. Non parte quando cambiano solo
+request: genera i quattro progetti e lancia `pnpm verify` su ciascuno. Non parte quando cambiano solo
 `docs/**`, `CHANGELOG.md` e il `CLAUDE.md` della radice, che non entrano nei progetti generati.
 
-`/rilascio-template` legge il suo esito: se riguarda esattamente ciò che si sta rilasciando, e i due
-job sono verdi, non ripete in locale la verifica dei due progetti. Un job rosso è un rosso anche se
+`/rilascio-template` legge il suo esito: se riguarda esattamente ciò che si sta rilasciando, e i quattro
+job sono verdi, non ripete in locale la verifica dei quattro progetti. Un job rosso è un rosso anche se
 in locale passa. La Action gira su Linux: non prova Windows, ma vede le maiuscole nei percorsi, il
 fuso orario e i fine riga, che contano per chi fa il deploy su Linux.
 
@@ -197,6 +198,7 @@ rilascio. La mappa:
 | una convenzione del backend | [Comandi e query](../architettura/comandi-e-query.md), [Il codice](../infrastructure/implementazione.md) |
 | una convenzione del frontend | [Struttura](../frontend/struttura.md), [Convenzioni e flussi](../frontend/convenzioni.md) |
 | il percorso di una feature | [Aggiungere una feature](../guide/nuova-feature.md) |
+| Hangfire, un lavoro programmato o il pannello | [Lavori programmati](../infrastructure/lavori-programmati.md) |
 | una scelta di progetto | [Decisioni](../infrastructure/decisioni.md) |
 | il modo di lavorare sul template | questa pagina |
 

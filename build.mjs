@@ -22,7 +22,7 @@ const SITE = {
   subtitle: 'Documentazione tecnica del template',
   // Versione del template descritta da queste pagine: coincide con l'ultimo tag di
   // app-boilerplate (vedi il suo CHANGELOG.md). Compare nel piè di pagina.
-  templateVersion: '1.0.0',
+  templateVersion: '3.1.0',
   sections: [
     {
       title: 'Progetto',
@@ -151,6 +151,11 @@ const SITE = {
           file: 'infrastructure/audit-log.md',
           title: 'Audit log',
           summary: 'Chi ha fatto cosa, con gli snapshot prima e dopo: come lo scrive l’interceptor, che cosa non traccia, che cosa deve fare un repository.',
+        },
+        {
+          file: 'infrastructure/lavori-programmati.md',
+          title: 'Lavori programmati',
+          summary: 'Hangfire a richiesta: aggiungere un lavoro, entrare nel pannello con un biglietto monouso, host che addormentano l’API, più istanze, i limiti su PostgreSQL.',
         },
         {
           file: 'infrastructure/decisioni.md',

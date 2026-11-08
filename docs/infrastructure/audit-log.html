@@ -68,6 +68,7 @@
             <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
             <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
             <li><a href="../infrastructure/audit-log.html" aria-current="page">Audit log</a></li>
+            <li><a href="../infrastructure/lavori-programmati.html">Lavori programmati</a></li>
             <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -317,7 +318,9 @@ documenta il motivo. È l'eccezione.</p>
 riga.</p>
 <p>La retention è configurabile dalla pagina <strong>Configurazione</strong> (<code>SystemConfig.AuditLogs</code>): abilitato
 sì/no e numero massimo di record, da 1 a 100.000. Il reset (<code>audit.write</code>) cancella i record oltre
-la soglia configurata: il taglio avviene solo così, non in automatico. I record non si modificano
+la soglia configurata. Di base il taglio avviene solo così; con i
+<a href="lavori-programmati.html">lavori programmati</a> lo stesso reset gira anche ogni notte, per l'audit e
+per l'error log. I record non si modificano
 né si cancellano uno per uno.</p>
 <h2 id="errori-comuni">Errori comuni</h2>
 <div class="table-wrap">
@@ -373,7 +376,7 @@ né si cancellano uno per uno.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.1.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

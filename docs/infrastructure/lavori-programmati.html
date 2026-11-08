@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lavori programmati — app-boilerplate</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-up="../">
+  <header class="topbar">
+    <a class="brand" href="../index.html">
+      <span class="brand-name">app-boilerplate</span>
+      <span class="brand-sub">Documentazione tecnica del template</span>
+    </a>
+  </header>
+
+  <div class="shell">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-toggle-label">Sezioni</label>
+
+    <nav class="sidebar" aria-label="Navigazione">
+        <a class="nav-home" href="../index.html">Indice</a>
+        <div class="search">
+          <input type="search" class="search-input" placeholder="Cerca…" aria-label="Cerca nella documentazione" autocomplete="off">
+          <ul class="search-results" hidden></ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Progetto</p>
+          <ul>
+            <li><a href="../progetto/panoramica.html">Panoramica</a></li>
+            <li><a href="../progetto/generazione.html">Generare e aggiornare</a></li>
+            <li><a href="../progetto/configurazione.html">Configurazione</a></li>
+            <li><a href="../progetto/contribuire.html">Contribuire al template</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Claude</p>
+          <ul>
+            <li><a href="../claude/come-lavora.html">Il modello di lavoro</a></li>
+            <li><a href="../claude/ciclo-di-una-modifica.html">Il ciclo di una modifica</a></li>
+            <li><a href="../claude/lavorare-con-claude.html">Lavorare con Claude</a></li>
+            <li><a href="../claude/subagenti.html">I subagenti</a></li>
+            <li><a href="../claude/istruzioni.html">Le istruzioni</a></li>
+            <li><a href="../claude/skill.html">Le skill e i comandi</a></li>
+            <li><a href="../claude/permessi-e-hook.html">Permessi e hook</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Architettura</p>
+          <ul>
+            <li><a href="../architettura/clean-architecture.html">Clean Architecture</a></li>
+            <li><a href="../architettura/dove-mettere-la-logica.html">Dove mettere la logica</a></li>
+            <li><a href="../architettura/il-dominio.html">Il dominio</a></li>
+            <li><a href="../architettura/comandi-e-query.html">Comandi e query</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Frontend</p>
+          <ul>
+            <li><a href="../frontend/struttura.html">Struttura del progetto</a></li>
+            <li><a href="../frontend/convenzioni.html">Convenzioni e flussi</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Infrastruttura</p>
+          <ul>
+            <li><a href="../infrastructure/panoramica.html">Il doppio provider</a></li>
+            <li><a href="../infrastructure/architettura.html">Modello EF e schema</a></li>
+            <li><a href="../infrastructure/implementazione.html">Il codice</a></li>
+            <li><a href="../infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="../infrastructure/lavori-programmati.html" aria-current="page">Lavori programmati</a></li>
+            <li><a href="../infrastructure/decisioni.html">Decisioni</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Autenticazione</p>
+          <ul>
+            <li><a href="../autenticazione/autenticazione.html">JWT, MSAL e Windows</a></li>
+            <li><a href="../autenticazione/azure-app-registration.html">App registration Azure</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Guide</p>
+          <ul>
+            <li><a href="../guide/nuova-feature.html">Aggiungere una feature</a></li>
+            <li><a href="../guide/test-backend.html">Testare il backend</a></li>
+          </ul>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Operatività</p>
+          <ul>
+            <li><a href="../deploy/render.html">Deploy su Render</a></li>
+            <li><a href="../deploy/observability.html">Observability</a></li>
+          </ul>
+        </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Infrastruttura</p>
+      <article class="prose">
+<h1 id="lavori-programmati">Lavori programmati</h1>
+<nav class="toc" aria-label="Indice della pagina">
+        <p class="toc-title">In questa pagina</p>
+        <ul>
+          <li class="lvl-2"><a href="#averli-la-domanda-include-jobs">Averli: la domanda <code>include_jobs</code></a></li>
+          <li class="lvl-2"><a href="#com-e-fatto">Com'è fatto</a></li>
+          <li class="lvl-3"><a href="#il-primo-lavoro-la-pulizia-dei-log">Il primo lavoro: la pulizia dei log</a></li>
+          <li class="lvl-2"><a href="#aggiungere-un-lavoro">Aggiungere un lavoro</a></li>
+          <li class="lvl-2"><a href="#il-pannello">Il pannello</a></li>
+          <li class="lvl-3"><a href="#perche-un-biglietto">Perché un biglietto</a></li>
+          <li class="lvl-2"><a href="#dove-gira-i-limiti">Dove gira: i limiti</a></li>
+          <li class="lvl-3"><a href="#host-che-addormentano-l-api">Host che addormentano l'API</a></li>
+          <li class="lvl-3"><a href="#piu-istanze">Più istanze</a></li>
+          <li class="lvl-3"><a href="#postgresql-hangfirepostgresql">PostgreSQL: Hangfire.PostgreSql</a></li>
+          <li class="lvl-3"><a href="#newtonsoftjson"><code>Newtonsoft.Json</code></a></li>
+          <li class="lvl-2"><a href="#errori-comuni">Errori comuni</a></li>
+          <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
+        </ul>
+      </nav>
+<p>Un lavoro programmato è codice che gira a un orario fisso, senza che nessuno lo chieda: ogni notte,
+ogni ora, il primo del mese. Il template li affida a <strong>Hangfire</strong>, che gira dentro l'API e tiene
+lavori e orari nel database dell'app. Questa pagina spiega come si ottengono, com'è fatto
+l'impianto, come si aggiunge un lavoro, come si entra nel pannello di Hangfire e dove ci sono dei
+limiti.</p>
+<pre><code>appsettings.json  Jobs:TrimLogs:Cron = &quot;0 3 * * *&quot;
+        │
+Api/Jobs/JobsExtensions.cs        AddOrUpdate&lt;TrimLogsJob&gt;(&quot;trim-logs&quot;, …)   quando
+        │
+Infrastructure/Jobs/JobsSetup.cs  storage da Database:Provider, server        dove
+        │                         dentro l'API
+Application/Jobs/TrimLogsJob.cs   ISender → ResetAuditLogs, ResetErrorLogs  che cosa
+</code></pre>
+<h2 id="averli-la-domanda-include-jobs">Averli: la domanda <code>include_jobs</code></h2>
+<p>I lavori programmati sono <strong>a richiesta</strong>. Copier lo chiede alla generazione con <code>include_jobs</code>, e
+la risposta di base è <strong>no</strong>: chi risponde no non riceve niente di Hangfire, né pacchetti, né
+codice, né il permesso, né le tabelle. Lo stesso vale per un progetto che aggiorna senza
+chiederlo.</p>
+<p>Per aggiungerli a un progetto che non li ha:</p>
+<pre><code class="language-powershell">copier update <span class="hljs-literal">--trust</span> <span class="hljs-literal">--data</span> include_jobs=true
+</code></pre>
+<p>L'update porta pacchetti, codice, test, la voce di menu e il permesso <code>jobs.dashboard</code>, che il seed
+aggiunge anche a un database esistente. Le tabelle di Hangfire le crea Hangfire al primo avvio
+(sotto).</p>
+<h2 id="com-e-fatto">Com'è fatto</h2>
+<p>Tre posti, come il resto della <a href="../architettura/clean-architecture.html">Clean Architecture</a>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Che cosa</th>
+<th>Dove</th>
+<th>Chi conosce Hangfire</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>il lavoro: che cosa fa</td>
+<td><code>Application/Jobs/XxxJob.cs</code>, una classe semplice con <code>RunAsync(CancellationToken)</code></td>
+<td>nessuno: un test di architettura vieta Hangfire in Domain e Application</td>
+</tr>
+<tr>
+<td>storage e server</td>
+<td><code>Infrastructure/Jobs/JobsSetup.cs</code></td>
+<td>Infrastructure</td>
+</tr>
+<tr>
+<td>quando gira, e il pannello</td>
+<td><code>Api/Jobs/JobsExtensions.cs</code> (<code>UseJobs</code>), con l'orario in <code>appsettings.json</code> sotto <code>Jobs:&lt;Nome&gt;</code></td>
+<td>Api</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Lo storage segue <code>Database:Provider</code></strong>, come EF: Hangfire.SqlServer su SQL Server,
+Hangfire.PostgreSql su PostgreSQL. Entrano tutti e due i pacchetti, così il cambio di provider
+resta una questione di configurazione, come per il resto del <a href="panoramica.html">doppio provider</a>.
+Su SQL Server Hangfire usa <code>Microsoft.Data.SqlClient</code>, lo stesso client di EF.</p>
+<p><strong>Le tabelle non hanno migration.</strong> Le crea Hangfire al primo avvio, nel suo schema: <code>HangFire</code> su
+SQL Server, <code>hangfire</code> su PostgreSQL. Per questo l'utente del database deve poter creare uno schema
+e delle tabelle, almeno al primo avvio. <code>UseJobs</code> si chiama dopo le migration e il seed, quindi le
+tabelle dell'app esistono già quando Hangfire si collega.</p>
+<p><strong>Il server gira nell'API</strong>, nello stesso processo: non c'è un servizio a parte da distribuire. Non
+parte quando si genera lo schema OpenAPI, che esegue <code>Program.cs</code> senza un database.</p>
+<h3 id="il-primo-lavoro-la-pulizia-dei-log">Il primo lavoro: la pulizia dei log</h3>
+<p><code>TrimLogsJob</code> fa ogni giorno alle 3 UTC ciò che fa &quot;Reset da configurazione&quot; nelle pagine dei log:
+per l'<a href="audit-log.html">audit log</a> e per l'error log, se il log è disattivato lo svuota, se è attivo
+tiene solo le righe più recenti, secondo la conservazione impostata in <strong>Configurazione</strong>. Non ha
+logica sua: manda i due comandi che esistono già.</p>
+<pre><code class="language-csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">TrimLogsJob</span>(<span class="hljs-params">ISender sender</span>)</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">RunAsync</span>(<span class="hljs-params">CancellationToken cancellationToken</span>)</span>
+    {
+        <span class="hljs-keyword">await</span> sender.Send(<span class="hljs-keyword">new</span> ResetAuditLogsCommand(), cancellationToken);
+        <span class="hljs-keyword">await</span> sender.Send(<span class="hljs-keyword">new</span> ResetErrorLogsCommand(), cancellationToken);
+    }
+}
+</code></pre>
+<p>Orario e fuso stanno in <code>appsettings.json</code>:</p>
+<pre><code class="language-json"><span class="hljs-attr">&quot;Jobs&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;TrimLogs&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;Cron&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;0 3 * * *&quot;</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;TimeZone&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;UTC&quot;</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<h2 id="aggiungere-un-lavoro">Aggiungere un lavoro</h2>
+<p>Un esempio con nomi di fantasia: archiviare ogni notte gli ordini chiusi da più di un anno.</p>
+<p><strong>1. La classe, in Application.</strong> Senza Hangfire: riceve le dipendenze nel costruttore e di solito
+manda un comando che esiste già, o uno nuovo scritto come gli altri
+(<a href="../architettura/comandi-e-query.html">Comandi e query</a>). Non serve registrarla nella DI: Hangfire
+la crea con le dipendenze del container.</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">namespace</span> <span class="hljs-title">MioProgetto.Application.Jobs</span>;
+
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ArchiveOrdersJob</span>(<span class="hljs-params">ISender sender</span>)</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> Task <span class="hljs-title">RunAsync</span>(<span class="hljs-params">CancellationToken cancellationToken</span>)</span> =&gt;
+        sender.Send(<span class="hljs-keyword">new</span> ArchiveClosedOrdersCommand(), cancellationToken);
+}
+</code></pre>
+<p><strong>2. L'orario, in Api.</strong> Una chiamata in <code>UseJobs</code>, accanto a quella di <code>TrimLogsJob</code>:</p>
+<pre><code class="language-csharp"><span class="hljs-keyword">var</span> archiveOrders = app.Configuration.GetSection(<span class="hljs-string">&quot;Jobs:ArchiveOrders&quot;</span>);
+app.Services.GetRequiredService&lt;IRecurringJobManager&gt;().AddOrUpdate&lt;ArchiveOrdersJob&gt;(
+    <span class="hljs-string">&quot;archive-orders&quot;</span>,
+    job =&gt; job.RunAsync(CancellationToken.None),   <span class="hljs-comment">// Hangfire passa il token del lavoro</span>
+    archiveOrders[<span class="hljs-string">&quot;Cron&quot;</span>] ?? <span class="hljs-string">&quot;0 2 * * *&quot;</span>,
+    <span class="hljs-keyword">new</span> RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(archiveOrders[<span class="hljs-string">&quot;TimeZone&quot;</span>] ?? <span class="hljs-string">&quot;UTC&quot;</span>) });
+</code></pre>
+<p>e la sua sezione in <code>appsettings.json</code>, <code>Jobs:ArchiveOrders</code>, con <code>Cron</code> e <code>TimeZone</code>.</p>
+<p><strong>3. Il test, come un handler.</strong> Il lavoro si prova senza Hangfire, con un <code>ISender</code> sostituito,
+come fa <code>TrimLogsJobTests</code>: si controlla che mandi i comandi giusti. Che Hangfire lo lanci
+all'orario giusto è affar suo.</p>
+<p>Due cose da sapere sugli id:</p>
+<ul>
+<li><strong>L'id del lavoro ricorrente è stabile.</strong> <code>AddOrUpdate</code> con lo stesso id aggiorna orario e
+metodo; con un id nuovo crea un secondo lavoro, e il vecchio resta nel database. Per rinominarne
+uno si toglie il vecchio con <code>RemoveIfExists(&quot;vecchio-id&quot;)</code>.</li>
+<li><strong>Il metodo è registrato per nome.</strong> Hangfire salva tipo e metodo del lavoro: rinominare la
+classe o <code>RunAsync</code> lascia nel database lavori che non trovano più il codice. Si rinomina insieme
+all'id, togliendo quello vecchio.</li>
+</ul>
+<h2 id="il-pannello">Il pannello</h2>
+<p>Hangfire ha un pannello web: lavori ricorrenti, esecuzioni riuscite e fallite, coda. Da lì si
+rilancia un lavoro fallito, se ne cancella uno o lo si fa partire subito. Il template lo monta su
+<code>/hangfire</code> del backend e lo apre dalla voce <strong>Lavori programmati</strong> della sezione <strong>Sistema</strong>, in
+una scheda nuova, a chi ha il permesso <code>jobs.dashboard</code>. Sul database nuovo ce l'ha solo
+SuperAdmin, e il seed lo aggiunge solo a SuperAdmin anche su un database esistente.</p>
+<h3 id="perche-un-biglietto">Perché un biglietto</h3>
+<p>Il pannello si apre con una <strong>navigazione</strong>, non con una chiamata dell'app: il JWT, che il frontend
+manda nell'header <code>Authorization</code>, lì non viaggia. In produzione il pannello sta poi sull'origine
+del backend, diversa da quella del frontend. Serve un altro modo per dire al backend chi è
+l'utente, e il template usa un biglietto per entrare e un cookie per restare:</p>
+<pre><code>frontend                                  backend
+────────                                  ───────
+clic su &quot;Lavori programmati&quot;
+  apre subito una scheda vuota
+  POST /api/jobs/dashboard-ticket  ─────▶ JWT valido + permesso jobs.dashboard
+                                   ◀───── biglietto: un minuto, un solo uso
+  form POST /hangfire/login        ─────▶ consuma il biglietto, ricontrolla il permesso
+  (nella scheda, biglietto nel corpo)     imposta il cookie del pannello (30 minuti)
+                                   ◀───── pagina che porta a /hangfire
+                                          a ogni richiesta: permesso riletto dal database
+</code></pre>
+<p>Ogni passo ha una ragione:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Scelta</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>la scheda si apre <strong>prima</strong> di chiedere il biglietto</td>
+<td>il browser blocca le finestre aperte dopo un'attesa: si apre nel clic, poi ci si manda il form</td>
+</tr>
+<tr>
+<td>il biglietto va in un <strong>POST</strong>, nel corpo</td>
+<td>un biglietto nell'indirizzo finirebbe nel log della richiesta, in cronologia e nel Referer. <code>?ticket=</code> nell'indirizzo non vale</td>
+</tr>
+<tr>
+<td>un minuto, un solo uso</td>
+<td>se qualcuno lo intercetta, non lo può riusare: il backend lo toglie dalla cache prima di guardarlo</td>
+</tr>
+<tr>
+<td><code>/hangfire/login</code> risponde con una pagina, non con un redirect</td>
+<td>il cookie è <code>SameSite=Strict</code>: il browser non lo manderebbe nel redirect di una navigazione partita da un altro sito, il frontend. La pagina è già del backend, e la navigazione che parte da lì lo porta</td>
+</tr>
+<tr>
+<td>cookie <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite=Strict</code>, sul percorso <code>/hangfire</code></td>
+<td>JavaScript non lo legge, non va in chiaro, non parte da altri siti, non arriva al resto dell'API. Se l'app gira sotto un sotto-percorso, il cookie sta sotto quello</td>
+</tr>
+<tr>
+<td>il cookie è un JWT con un'<strong>audience sua</strong></td>
+<td>firmato con la chiave dei JWT, ma non vale come token dell'API, né il token dell'API come cookie del pannello</td>
+</tr>
+<tr>
+<td>il permesso si rilegge <strong>a ogni richiesta</strong></td>
+<td>togliere <code>jobs.dashboard</code>, o disattivare l'utente, chiude il pannello subito, senza aspettare che il cookie scada</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il filtro di base di Hangfire ammette solo le richieste locali: il template lo sostituisce con il
+suo, che fa il controllo dell'ultima riga.</p>
+<p>Quando l'accesso si chiude (sessione scaduta, permesso tolto, link già usato) il pannello non
+mostra la finestra 401 del browser ma una pagina breve, in italiano o in inglese secondo il
+browser, che dice di riaprirlo dalla voce <strong>Lavori programmati</strong>. Il pannello si aggiorna da solo
+ogni pochi secondi: le sue richieste non finiscono nella <a href="../deploy/observability.html">telemetria</a>,
+che altrimenti ne sarebbe piena.</p>
+<h2 id="dove-gira-i-limiti">Dove gira: i limiti</h2>
+<h3 id="host-che-addormentano-l-api">Host che addormentano l'API</h3>
+<p>Sui piani gratuiti di molti host, <a href="../deploy/render.html">Render</a> compreso, l'API si ferma quando non
+riceve richieste per un po' e riparte alla prima che arriva. Il server di Hangfire è dentro l'API:
+<strong>mentre dorme, i lavori non partono</strong>. Un lavoro ricorrente saltato parte al risveglio, non
+all'orario. Se un lavoro deve girare davvero alle 3, serve un piano che tenga l'API accesa.</p>
+<h3 id="piu-istanze">Più istanze</h3>
+<p>Più istanze dell'API si dividono i lavori coordinandosi dal database: un lavoro gira su una sola.
+Il <strong>biglietto del pannello</strong> invece sta in una cache in memoria (<code>IDistributedCache</code>, con
+l'implementazione in memoria di base): dietro un bilanciatore, un biglietto emesso da un'istanza
+non vale sull'altra. Con più istanze si registra una cache condivisa, per esempio Redis, al posto
+di <code>AddDistributedMemoryCache</code> in <code>JobsExtensions</code>.</p>
+<h3 id="postgresql-hangfirepostgresql">PostgreSQL: Hangfire.PostgreSql</h3>
+<p>Su SQL Server lo storage è di Hangfire stesso. Su PostgreSQL è <strong>Hangfire.PostgreSql</strong>, un
+pacchetto della comunità fermo da marzo 2026. Il template usa la 1.21.1, con due limiti noti:</p>
+<ul>
+<li><strong>Molti lavori creati insieme</strong> possono rallentare le richieste fino al timeout (issue #431).
+Conta per chi accoda molti lavori in una volta, non per qualche lavoro ricorrente.</li>
+<li><strong>Più istanze che partono insieme su un database vuoto</strong> possono fallire nel creare lo schema
+(#425): la prima volta se ne avvia una sola, poi si scala.</li>
+</ul>
+<p>Chi mantiene il template lo ricontrolla a ogni aggiornamento delle dipendenze, e cercherà
+un'alternativa se resta fermo.</p>
+<h3 id="newtonsoftjson"><code>Newtonsoft.Json</code></h3>
+<p>Hangfire.Core 1.8.25 chiede <code>Newtonsoft.Json</code> 11.0.1, che ha un advisory alto
+(GHSA-5crp-9r3c-p9vr) e farebbe fallire il controllo delle vulnerabilità di <code>pnpm verify</code>.
+Infrastructure lo fissa alla 13.0.4. Il pin si toglie quando Hangfire.Core ne chiederà una
+versione corretta.</p>
+<h2 id="errori-comuni">Errori comuni</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Sintomo</th>
+<th>Causa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>all'avvio, errore di permessi sullo schema <code>HangFire</code> o <code>hangfire</code></td>
+<td>l'utente del database non può creare schemi o tabelle: serve almeno al primo avvio</td>
+</tr>
+<tr>
+<td>la voce &quot;Lavori programmati&quot; non c'è nel menu</td>
+<td>l'utente non ha <code>jobs.dashboard</code>: sul database nuovo ce l'ha solo SuperAdmin</td>
+</tr>
+<tr>
+<td>il pannello, appena aperto, dice di riaprirlo dal menu</td>
+<td>il biglietto è scaduto o già usato, oppure con più istanze è arrivato a un'altra: vedi sopra</td>
+</tr>
+<tr>
+<td>un lavoro rinominato gira ancora con il nome vecchio, o fallisce perché non trova il metodo</td>
+<td>è rimasto il lavoro con l'id vecchio: <code>RemoveIfExists</code></td>
+</tr>
+<tr>
+<td>un lavoro notturno parte la mattina</td>
+<td>l'API dormiva: vedi gli host che addormentano l'API</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="da-qui">Da qui</h2>
+<ul>
+<li><a href="../progetto/generazione.html">Generare e aggiornare</a> — la domanda <code>include_jobs</code> e <code>copier update --data</code></li>
+<li><a href="audit-log.html#consultazione-e-retention">Audit log</a> — la conservazione che <code>TrimLogsJob</code> applica</li>
+<li><a href="../architettura/comandi-e-query.html">Comandi e query</a> — il comando che un lavoro manda</li>
+<li><a href="../deploy/render.html">Deploy su Render</a> — l'API che dorme sul piano gratuito</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.1.0.</p>
+  </footer>
+
+  <script src="../assets/search-index.js"></script>
+  <script>
+(function () {
+  var input = document.querySelector('.search-input');
+  var list = document.querySelector('.search-results');
+  if (!input || !list || !window.SEARCH_INDEX) return;
+  var up = document.body.getAttribute('data-up') || '';
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mark(text, words) {
+    var out = esc(text);
+    words.forEach(function (w) {
+      out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>');
+    });
+    return out;
+  }
+  function snippet(text, words) {
+    var low = norm(text), pos = -1;
+    for (var i = 0; i < words.length && pos < 0; i++) pos = low.indexOf(words[i]);
+    var start = Math.max(0, pos - 60), end = Math.min(text.length, (pos < 0 ? 0 : pos) + 120);
+    return (start > 0 ? '… ' : '') + mark(text.slice(start, end), words) + (end < text.length ? ' …' : '');
+  }
+
+  function search(q) {
+    var words = norm(q).split(/\s+/).filter(function (w) { return w.length >= 2; });
+    if (!words.length) return [];
+    var hits = [];
+    window.SEARCH_INDEX.forEach(function (e) {
+      var p = norm(e.p), s = norm(e.s), x = norm(e.x), score = 0;
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        if (p.indexOf(w) >= 0) score += 5;
+        else if (s.indexOf(w) >= 0) score += 3;
+        else if (x.indexOf(w) >= 0) score += 1;
+        else return;   // ogni parola deve comparire da qualche parte
+      }
+      hits.push({ e: e, score: score });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.slice(0, 8).map(function (h) { return h.e; }).map(function (e) {
+      var title = e.s ? e.p + ' › ' + e.s : e.p;
+      return { title: mark(title, words), url: up + e.u, text: snippet(e.x, words) };
+    });
+  }
+
+  function render(results, q) {
+    if (!q) { list.hidden = true; list.innerHTML = ''; return; }
+    list.hidden = false;
+    if (!results.length) { list.innerHTML = '<li class="search-empty">Nessun risultato</li>'; return; }
+    list.innerHTML = results.map(function (r) {
+      return '<li><a href="' + r.url + '"><span class="search-title">' + r.title + '</span><span class="search-snippet">' + r.text + '</span></a></li>';
+    }).join('');
+  }
+
+  var timer = null;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function () { render(search(q), q); }, 80);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { input.value = ''; render([], ''); }
+    if (ev.key === 'Enter') { var first = list.querySelector('a'); if (first) first.click(); }
+  });
+})();
+</script>
+</body>
+</html>

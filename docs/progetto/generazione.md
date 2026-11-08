@@ -26,7 +26,7 @@ template: non serve sceglierle.
 
 ## Le variabili del template
 
-Alla generazione Copier fa sette domande. Sono definite in `copier.yml` e determinano com'è fatto
+Alla generazione Copier fa otto domande. Sono definite in `copier.yml` e determinano com'è fatto
 il progetto che ne esce:
 
 | Variabile | Che cos'è | Default | Dove si vede nel generato |
@@ -38,11 +38,16 @@ il progetto che ne esce:
 | `db_provider` | `SqlServer` o `PostgreSQL` | `SqlServer` | `Database:Provider` in `appsettings.json`, immagine del `docker-compose.yml` |
 | `access_mode` | `public` o `private` | `public` | `VITE_APP_ACCESS_MODE`, comportamento del router |
 | `include_docker` | Generare o no il `docker-compose.yml` del database | `true` | Presenza del file in radice |
+| `include_jobs` | I lavori programmati con Hangfire, e il loro pannello | `false` | Cartelle `Jobs` in Api, Application, Infrastructure e test; voce "Lavori programmati" in Sistema; permesso `jobs.dashboard` |
 
 Due avvertenze che costano tempo:
 
 > **`project_slug` non può contenere spazi.** Diventa un namespace C# e dei nomi di file: usa
 > PascalCase (`GestioneOrdini`, non `Gestione Ordini`). `project_name` invece è solo un'etichetta.
+
+> **`include_jobs` si può cambiare dopo.** Chi risponde no non riceve niente di Hangfire: né
+> pacchetti, né codice, né tabelle. Per averli più avanti, `copier update --trust --data
+> include_jobs=true`. Vedi [Lavori programmati](../infrastructure/lavori-programmati.md).
 
 > **`db_provider` non è una scelta definitiva.** Decide il valore iniziale di `Database:Provider` e
 > quale database avvia Docker, ma il codice generato supporta **entrambi** i provider in ogni caso:

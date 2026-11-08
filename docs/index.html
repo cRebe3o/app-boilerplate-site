@@ -68,6 +68,7 @@
             <li><a href="infrastructure/architettura.html">Modello EF e schema</a></li>
             <li><a href="infrastructure/implementazione.html">Il codice</a></li>
             <li><a href="infrastructure/audit-log.html">Audit log</a></li>
+            <li><a href="infrastructure/lavori-programmati.html">Lavori programmati</a></li>
             <li><a href="infrastructure/decisioni.html">Decisioni</a></li>
           </ul>
         </div>
@@ -105,7 +106,7 @@ e <strong>frontend Vue 3 + Vuetify</strong>, che gira indifferentemente su <stro
 l'<strong>identità Windows</strong>.</p>
 <p>Il template non porta un dominio applicativo: porta tutto ciò che in un gestionale viene <em>prima</em>
 del dominio — accesso, utenti, gruppi, ruoli e permessi, audit log, log degli errori,
-configurazione di sistema, monitoraggio del database. Le feature del progetto si aggiungono sopra,
+configurazione di sistema, monitoraggio del database e, a richiesta, i lavori programmati. Le feature del progetto si aggiungono sopra,
 seguendo il pattern già presente.</p>
 <p>Queste pagine descrivono com'è fatto un progetto generato e come ci si lavora sopra. Sono la
 documentazione del template: la fonte di verità ultima resta il codice del repository
@@ -218,6 +219,10 @@ documentazione del template: la fonte di verità ultima resta il codice del repo
         <h3>Audit log</h3>
         <p>Chi ha fatto cosa, con gli snapshot prima e dopo: come lo scrive l’interceptor, che cosa non traccia, che cosa deve fare un repository.</p>
       </a>
+      <a class="card" href="infrastructure/lavori-programmati.html">
+        <h3>Lavori programmati</h3>
+        <p>Hangfire a richiesta: aggiungere un lavoro, entrare nel pannello con un biglietto monouso, host che addormentano l’API, più istanze, i limiti su PostgreSQL.</p>
+      </a>
       <a class="card" href="infrastructure/decisioni.html">
         <h3>Decisioni</h3>
         <p>Perché la chiave primaria è int identity, perché i repository solo sulle scritture, che cosa è stato scartato.</p>
@@ -270,7 +275,7 @@ documentazione del template: la fonte di verità ultima resta il codice del repo
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 1.0.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.1.0.</p>
   </footer>
 
   <script src="assets/search-index.js"></script>

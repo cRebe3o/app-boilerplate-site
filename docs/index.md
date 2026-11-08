@@ -8,7 +8,7 @@ l'**identità Windows**.
 
 Il template non porta un dominio applicativo: porta tutto ciò che in un gestionale viene *prima*
 del dominio — accesso, utenti, gruppi, ruoli e permessi, audit log, log degli errori,
-configurazione di sistema, monitoraggio del database. Le feature del progetto si aggiungono sopra,
+configurazione di sistema, monitoraggio del database e, a richiesta, i lavori programmati. Le feature del progetto si aggiungono sopra,
 seguendo il pattern già presente.
 
 Queste pagine descrivono com'è fatto un progetto generato e come ci si lavora sopra. Sono la
