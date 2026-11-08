@@ -16,15 +16,15 @@ apps/frontend/
 ├── index.html                   # l'unica pagina HTML: monta #app
 ├── src/
 │   ├── main.ts                  # bootstrap: Pinia, router, Vuetify, i18n
-│   ├── App.vue                  # radice: v-app, snackbar globale, titolo del tab, tema
+│   ├── App.vue                  # radice: v-app, snackbar e dialog di conferma globali, titolo del tab, tema
 │   ├── router/index.ts          # tutte le rotte + guard (auth, permessi, accessMode)
 │   ├── config/                  # app.config.ts (import.meta.env) · sections.config.ts (menu)
 │   ├── pages/<dominio>/         # una pagina per rotta
 │   ├── components/
 │   │   ├── layout/              # AppShell, AppTopBar, AppNav, AppBreadcrumb, AppFooter
-│   │   ├── shared/              # ConfirmDialog, ServerWakeBanner
+│   │   ├── shared/              # ConfirmDialog, GlobalConfirm, ListEmptyState, MobileListPager, ServerWakeBanner
 │   │   └── <dominio>/           # dialog, card e picker di una feature
-│   ├── stores/                  # Pinia: uno per dominio + auth, toast, navigation, server-wake
+│   ├── stores/                  # Pinia: uno per dominio + auth, toast, confirm, navigation, server-wake
 │   ├── services/                # le chiamate HTTP, un file per dominio
 │   ├── composables/             # logica riusabile senza stato globale
 │   ├── constants/               # valori condivisi (paginazione, stati di dominio)
@@ -59,8 +59,9 @@ Il percorso di avvio spiega perché i file di radice sono così pochi:
 1. **`index.html`** contiene solo `<div id="app">` e carica `src/main.ts`.
 2. **`main.ts`** crea l'app e registra i quattro plugin: Pinia, router, Vuetify, i18n. Non fa altro.
 3. **`App.vue`** monta `<v-app>`, l'unico `<v-snackbar>` dell'applicazione (alimentato da
-   `toast.store`), il banner "server in riattivazione" e il `<router-view>`. Al mount ripristina il
-   tema salvato e da lì in poi aggiorna il titolo del tab a ogni cambio di rotta.
+   `toast.store`), l'unico `GlobalConfirm` (le domande di `confirm.store`), il banner "server in
+   riattivazione" e il `<router-view>`. Al mount ripristina il tema salvato e da lì in poi aggiorna
+   il titolo del tab a ogni cambio di rotta.
 4. **Il router** carica `AppShell` per la rotta `/`, e dentro AppShell si aprono tutte le pagine
    applicative come rotte figlie. Solo `/login` sta fuori dallo shell.
 
@@ -75,14 +76,19 @@ Non c'è nient'altro da "inizializzare": lo stato di sessione lo ricostruisce `a
 
 **Che cosa fa una pagina.** Compone: prende lo store, chiede i dati, mette insieme tabella, filtri e
 dialog. La logica di business non sta qui, e nemmeno le chiamate HTTP. Una pagina lista tipica ha
-tre righe di "impianto":
+poche righe di "impianto":
 
 ```typescript
 const store = useUsersStore()
 const { can } = usePermission()
-const { search, page, itemsPerPage, onOptionsUpdate, reload } =
-  useServerTable(query => store.fetchUsers(query))
+const { mobile } = useDisplay()        // sotto i 960 px: elenco al posto della tabella
+const { search, page, itemsPerPage, sortBy, onOptionsUpdate, reload, clearFilters } =
+  useServerTable(query => store.fetchUsers(query), { totalCount: () => store.totalCount })
 ```
+
+Pagina, ricerca, ordinamento e filtri finiscono nell'indirizzo (`?page=3&q=rossi`): tornando dal
+dettaglio la lista è com'era. Il giro completo, con i filtri, la lista vuota e l'elenco per
+telefono, è in [Convenzioni e flussi](convenzioni.md#la-pagina-lista-useservertable).
 
 **Le due forme.** Ogni dominio ha di norma **due pagine**:
 
@@ -109,7 +115,7 @@ adatta da solo.
 
 | Componente | Che cosa fa |
 |---|---|
-| `AppShell.vue` | Contenitore delle pagine: top bar, drawer laterale (rail su desktop, overlay su mobile), breadcrumb, `<router-view>` |
+| `AppShell.vue` | Contenitore delle pagine: top bar, drawer laterale (rail su desktop, overlay sotto i 960 px), breadcrumb fisso in cima anche nelle pagine lunghe, `<router-view>` |
 | `AppTopBar.vue` | Le **tab di sezione** (una per voce di `SECTIONS`), il toggle del tema, il menu utente con logout, il pulsante Login per l'anonimo |
 | `AppNav.vue` | Le voci della sezione attiva, già filtrate per permesso da `navigation.store` |
 | `AppBreadcrumb.vue` | Le briciole generate da `useBreadcrumb` dai `meta.title` delle rotte |
@@ -121,8 +127,16 @@ Una voce di menu nuova **non** è un `v-if` in `AppNav`: è una riga in `section
 
 Componenti senza dominio, riusati ovunque:
 
-- **`ConfirmDialog.vue`** — la conferma "sei sicuro?" con `v-model`, `message`, `loading` ed evento
-  `confirm`. Ogni cancellazione nel progetto passa da qui.
+- **`ConfirmDialog.vue`** — la conferma "sei sicuro?" con `v-model`, `message`, `loading`,
+  `confirmText` facoltativo ed evento `confirm`. Ogni cancellazione nel progetto passa da qui.
+- **`GlobalConfirm.vue`** — la stessa domanda fatta da codice, `await useConfirmStore().ask(...)`,
+  dove il dialog non può stare nel template: una guardia del router, come l'avviso delle modifiche
+  non salvate. Ce n'è uno solo, in `App.vue`.
+- **`ListEmptyState.vue`** — che cosa mostrare quando una lista non ha righe: "Dati non caricati"
+  con Riprova, "Nessun risultato" con Azzera filtri, "Ancora nessun elemento" con il pulsante per
+  creare. Nello slot `#no-data` della tabella e sotto l'elenco per telefono.
+- **`MobileListPager.vue`** — la paginazione dell'elenco per telefono, che non ha il piè di pagina
+  della tabella; pulsanti da 48 px, per il dito.
 - **`ServerWakeBanner.vue`** — il banner mostrato se la prima richiesta della sessione tarda più di
   tre secondi (cold start di un hosting free tier). Lo pilota `server-wake.store`, alimentato
   dall'interceptor axios.
@@ -145,36 +159,42 @@ lettura resta nella pagina. Si spezza per responsabilità, non per lunghezza.
 
 ## `stores/` — lo stato, con Pinia
 
-**Che cosa contiene.** Uno store per dominio (`users.store.ts`, `groups.store.ts`, …) più quattro
+**Che cosa contiene.** Uno store per dominio (`users.store.ts`, `groups.store.ts`, …) più cinque
 store trasversali:
 
 | Store | Ruolo |
 |---|---|
 | `auth.store` | Sessione: token, utente, permessi, lingua. Persistita in `localStorage`. Espone `login`, `loginWithMsal`, `loginWithWindows`, `logout`, `refresh` |
 | `toast.store` | La notifica globale: `success`, `error`, `warning`, `info`. La `v-snackbar` è una sola, in `App.vue` |
+| `confirm.store` | Una domanda sì/no da codice: `ask()` restituisce una promise con la risposta, `answer()` la chiude. La mostra `GlobalConfirm` |
 | `navigation.store` | Sezione attiva, sezioni e voci visibili (filtrate per permesso a partire da `SECTIONS`) |
 | `server-wake.store` | Il timer del banner di riattivazione |
 
 **La forma di uno store di dominio.** Composition API, mai options API. Lo stato (`users`,
-`totalCount`, `selectedUser`), `loading` ed `error` presi da `useAsyncAction`, e un'azione per ogni
-chiamata al service:
+`totalCount`, `selectedUser`), `loading`, `error` e `loadFailed` presi da `useAsyncAction`, e
+un'azione per ogni chiamata al service:
 
 ```typescript
 export const useUsersStore = defineStore('users', () => {
   const users = ref<User[]>([])
   const totalCount = ref(0)                 // dal backend, mai users.length
   const selectedUser = ref<User | null>(null)
-  const { loading, error, run, runOrThrow, clearError } = useAsyncAction()
+  const { loading, error, loadFailed, run, runOrThrow, clearError } = useAsyncAction()
 
   let lastQuery: UsersQuery | undefined
 
-  const fetchUsers = (params?: UsersQuery) =>
-    run(async () => {                        // lettura: l'errore finisce in `error`
+  const fetchUsers = async (params?: UsersQuery) => {
+    await run(async () => {                  // lettura: l'errore finisce in `error`
       lastQuery = params
       const res = await usersService.getAll(params)
       users.value = res.items
       totalCount.value = res.totalCount
     }, 'errors.loadUsers')
+    if (loadFailed.value) {                  // lettura fallita: niente righe vecchie che sembrino caricate
+      users.value = []
+      totalCount.value = 0
+    }
+  }
 
   const createUser = (data: CreateUserRequest) =>
     runOrThrow(async () => {                 // scrittura: l'errore viene anche rilanciato
@@ -183,7 +203,7 @@ export const useUsersStore = defineStore('users', () => {
       return created
     }, 'errors.createUser')
 
-  return { users, totalCount, selectedUser, loading, error, fetchUsers, createUser, clearError }
+  return { users, totalCount, selectedUser, loading, error, loadFailed, fetchUsers, createUser, clearError }
 })
 ```
 
@@ -223,8 +243,10 @@ di uno store, un composable **non ha stato globale**: ogni chiamata crea il prop
 
 | Composable | Quando lo usi |
 |---|---|
-| `useAsyncAction` | In **ogni store**: `loading`, `error`, `run` (letture), `runOrThrow` (scritture), `attempt` (nei dialog, restituisce `true`/`false`) |
-| `useServerTable` | In ogni **pagina lista** con `v-data-table-server`: pagina, righe per pagina, ordinamento, ricerca con debounce, `reload()` |
+| `useAsyncAction` | In **ogni store**: `loading`, `error`, `loadFailed` (l'ultima lettura è fallita), `run` (letture), `runOrThrow` (scritture), `attempt` (nei dialog, restituisce `true`/`false`) |
+| `useServerTable` | In ogni **pagina lista** con `v-data-table-server`: pagina, righe per pagina, ordinamento (`sortBy`), ricerca con debounce, `filters`, `clearFilters()`, `reload()`; tutto nell'indirizzo |
+| `useRouteQueryState` | Tiene dei `ref` allineati alla query dell'indirizzo. Lo usa `useServerTable`, e da solo le liste non paginate dal server (`GroupsPage`, `RolesPage`, `PermissionsPage`) |
+| `useUnsavedChanges` | Nei **form** di pagine e dialog: chiede conferma prima di perdere modifiche non salvate (`markClean()`, `confirmDiscard()`) |
 | `useApiErrors` | Nei **form**: separa gli errori per campo (400 di FluentValidation) dall'errore generale. `extractApiError` è la funzione di base usata anche da `useAsyncAction` |
 | `usePermission` | `can('users.write')` e `canAny(...)` per mostrare o nascondere i pulsanti |
 | `useBackNavigation` | Nelle **pagine di dettaglio**: il pulsante indietro torna alla provenienza (`?from=`), alla history o al fallback |
@@ -298,7 +320,7 @@ stesso comportamento fra le tre strategie di autenticazione.
 |---|---|
 | `axios.ts` | L'istanza `api`: `baseURL`, `withCredentials` (per il cookie del refresh token), header `Authorization` e `Accept-Language` su ogni richiesta; su **401** un tentativo di refresh e la ripetizione della richiesta, poi logout; su **5xx** l'invio di un `ErrorLog` al backend; il timer del banner di riattivazione |
 | `i18n.ts` | vue-i18n con `it` ed `en`, lingua ripristinata da `localStorage`; contiene anche i testi dei componenti Vuetify, sotto `$vuetify` |
-| `vuetify.ts` | Tema chiaro e scuro (colori delle barre inclusi), `defaults` dei componenti: `outlined` + `compact` per gli input, `rounded: 0` ovunque; l'adapter che fa seguire ai componenti la lingua di vue-i18n |
+| `vuetify.ts` | Tema chiaro e scuro (colori delle barre inclusi), `defaults` dei componenti: `outlined` + `compact` per gli input, `rounded: 0` ovunque; la soglia di telefono e tablet a 960 px (`display.mobileBreakpoint: 'md'`); l'adapter che fa seguire ai componenti la lingua di vue-i18n |
 | `msal.ts` | L'istanza MSAL, creata solo con la strategia `msal` |
 
 **Quando si toccano.** Quasi mai. Un colore del tema nuovo va in `vuetify.ts`; un header da
@@ -379,7 +401,9 @@ codice; ciò che deve essere servito tale e quale (favicon, `_redirects` per l'h
 | una schermata raggiungibile da URL | `pages/<dominio>/` + una rotta + una voce in `sections.config.ts` | — |
 | un dialog di creazione/modifica | `components/<dominio>/XxxDialog.vue` | il template della pagina |
 | una card o un pannello con azioni proprie | `components/<dominio>/` | — |
-| una conferma "sei sicuro?" | `ConfirmDialog` già esistente | un nuovo dialog |
+| una conferma "sei sicuro?" | `ConfirmDialog` già esistente; da codice, `useConfirmStore().ask()` | un nuovo dialog |
+| il messaggio di una lista senza righe | `ListEmptyState` | un testo nello slot `#no-data` |
+| lo stato di una lista (pagina, filtri) | l'indirizzo, con `useServerTable` o `useRouteQueryState` | `ref` che si perdono uscendo dalla pagina |
 | una chiamata HTTP | `services/<dominio>.service.ts` | store, pagina, composable |
 | stato letto da più componenti, `loading`/`error` | `stores/<dominio>.store.ts` | componente |
 | logica riusabile con `ref`/`computed` | `composables/useXxx.ts` | store (se non serve stato globale) |

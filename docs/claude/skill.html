@@ -165,7 +165,7 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 </tr>
 <tr>
 <td><strong><code>search-filter</code></strong></td>
-<td>Ricerca testuale o filtri su una lista, con il <code>Where</code> dinamico lato EF e il debounce lato Vue</td>
+<td>Ricerca testuale o filtri su una lista, con il <code>Where</code> dinamico lato EF e, lato Vue, il debounce e <code>filters</code>/<code>clearFilters</code> di <code>useServerTable</code>: lo stato resta nell'indirizzo</td>
 </tr>
 <tr>
 <td><strong><code>bulk-operations</code></strong></td>
@@ -202,11 +202,11 @@ attiva <code>backend-slice</code>; parlare di paginazione attiva <code>paginatio
 </tr>
 <tr>
 <td><strong><code>detail-page</code></strong></td>
-<td>Una pagina di dettaglio su rotta <code>:id(\\d+)</code>, che serve creazione e modifica, con <code>useBackNavigation</code> per il ritorno, <code>useApiErrors</code> per gli errori per campo e <code>authStore.refreshAfterSave()</code> dopo un salvataggio che può cambiare i permessi</td>
+<td>Una pagina di dettaglio su rotta <code>:id(\\d+)</code>, che serve creazione e modifica, con <code>useBackNavigation</code> per il ritorno, <code>useApiErrors</code> per gli errori per campo, <code>useUnsavedChanges</code> per le modifiche non salvate e <code>authStore.refreshAfterSave()</code> dopo un salvataggio che può cambiare i permessi</td>
 </tr>
 <tr>
 <td><strong><code>vuetify-dialog-form</code></strong></td>
-<td>Un dialog di creazione o modifica in <code>components/&lt;dominio&gt;/</code>: validazione, <code>attempt()</code> per chiudersi solo se il salvataggio riesce, reset all'apertura, un solo componente per create ed edit</td>
+<td>Un dialog di creazione o modifica in <code>components/&lt;dominio&gt;/</code>: validazione, <code>attempt()</code> per chiudersi solo se il salvataggio riesce, reset all'apertura, un solo componente per create ed edit, schermo intero sul telefono e avviso di modifiche non salvate</td>
 </tr>
 </tbody>
 </table>

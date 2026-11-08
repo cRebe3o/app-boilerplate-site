@@ -188,7 +188,7 @@ Si usa quando la risposta richiede di **scorrere molti file** e al lead serve so
 
 | Explore sì | Explore no |
 |---|---|
-| "In quali pagine c'è una ricerca, e quali usano `useServerTable`?" | Leggere un file di cui si conosce il percorso |
+| "Quali liste hanno ancora un `watch` che riporta a pagina 1 invece di `filters`, e quali non hanno `ListEmptyState`?" | Leggere un file di cui si conosce il percorso |
 | "Dove viene letto o scritto `Supplier.VatNumber`, backend e frontend?" | Cercare una classe per nome: basta una ricerca diretta |
 | Capire una convenzione che cambia nome da una cartella all'altra | Leggere i file che si stanno per modificare: il lead deve averli davanti lui |
 

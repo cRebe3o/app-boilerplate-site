@@ -106,7 +106,11 @@
           <li class="lvl-2"><a href="#lo-store-useasyncaction">Lo store: <code>useAsyncAction</code></a></li>
           <li class="lvl-3"><a href="#liste-paginate-reload-con-l-ultima-query">Liste paginate: <code>reload()</code> con l'ultima query</a></li>
           <li class="lvl-2"><a href="#la-pagina-lista-useservertable">La pagina lista: <code>useServerTable</code></a></li>
+          <li class="lvl-3"><a href="#lo-stato-nell-indirizzo">Lo stato nell'indirizzo</a></li>
+          <li class="lvl-3"><a href="#la-lista-vuota-listemptystate">La lista vuota: <code>ListEmptyState</code></a></li>
+          <li class="lvl-3"><a href="#telefono-e-tablet">Telefono e tablet</a></li>
           <li class="lvl-2"><a href="#la-pagina-di-dettaglio">La pagina di dettaglio</a></li>
+          <li class="lvl-3"><a href="#le-modifiche-non-salvate-useunsavedchanges">Le modifiche non salvate: <code>useUnsavedChanges</code></a></li>
           <li class="lvl-3"><a href="#il-ritorno-usebacknavigation">Il ritorno: <code>useBackNavigation</code></a></li>
           <li class="lvl-2"><a href="#i-dialog">I dialog</a></li>
           <li class="lvl-2"><a href="#toast-e-messaggi">Toast e messaggi</a></li>
@@ -210,8 +214,10 @@ backend) e si arriva alla rotta, che dipende da tutto.</p>
 dichiara <code>.Produces(200)</code> senza il tipo. Con <code>.Produces&lt;SupplierResponse&gt;(200)</code> lo schema lo
 descrive e il frontend lo vede. Non si aggira scrivendo l'interfaccia a mano: si corregge l'endpoint.</p>
 <h2 id="lo-store-useasyncaction">Lo store: <code>useAsyncAction</code></h2>
-<p>Ogni azione di uno store passa da <code>useAsyncAction</code>, che tiene <code>loading</code> ed <code>error</code> e gestisce
-l'errore in un punto solo. Tre modi, per tre esigenze:</p>
+<p>Ogni azione di uno store passa da <code>useAsyncAction</code>, che tiene <code>loading</code>, <code>error</code> e <code>loadFailed</code> e
+gestisce l'errore in un punto solo. <code>loadFailed</code> dice che l'ultima <strong>lettura</strong> è fallita, ed è
+separato da <code>error</code>: chiuso l'avviso, <code>error</code> torna vuoto ma la lista continua a sapere che i suoi
+dati non sono caricati. Tre modi, per tre esigenze:</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -262,29 +268,50 @@ promise si risolve comunque.</li>
 <p>Le liste sono paginate e ordinate dal server, quindi dopo una scrittura <strong>non si appende</strong> alla
 lista: si ricarica. Lo store tiene l'ultima query e la riusa, così l'utente non torna a pagina 1 e
 non perde la ricerca:</p>
-<pre><code class="language-typescript"><span class="hljs-keyword">let</span> <span class="hljs-attr">lastQuery</span>: <span class="hljs-title class_">SuppliersQuery</span> | <span class="hljs-literal">undefined</span>
+<pre><code class="language-typescript"><span class="hljs-keyword">let</span> <span class="hljs-attr">lastQuery</span>: <span class="hljs-title class_">SupplierListParams</span> | <span class="hljs-literal">undefined</span>
 
-<span class="hljs-keyword">const</span> <span class="hljs-title function_">fetchSuppliers</span> = (<span class="hljs-params"><span class="hljs-attr">params</span>?: <span class="hljs-title class_">SuppliersQuery</span></span>) =&gt;
-  <span class="hljs-title function_">run</span>(<span class="hljs-title function_">async</span> () =&gt; {
+<span class="hljs-keyword">const</span> <span class="hljs-title function_">fetchSuppliers</span> = <span class="hljs-keyword">async</span> (<span class="hljs-params"><span class="hljs-attr">params</span>?: <span class="hljs-title class_">SupplierListParams</span></span>) =&gt; {
+  <span class="hljs-keyword">await</span> <span class="hljs-title function_">run</span>(<span class="hljs-title function_">async</span> () =&gt; {
     lastQuery = params
     <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">await</span> suppliersService.<span class="hljs-title function_">getAll</span>(params)
     suppliers.<span class="hljs-property">value</span> = res.<span class="hljs-property">items</span>
     totalCount.<span class="hljs-property">value</span> = res.<span class="hljs-property">totalCount</span>       <span class="hljs-comment">// dal backend: mai items.length</span>
   }, <span class="hljs-string">&#x27;errors.loadSuppliers&#x27;</span>)
+  <span class="hljs-comment">// lettura fallita: la lista si svuota</span>
+  <span class="hljs-keyword">if</span> (loadFailed.<span class="hljs-property">value</span>) {
+    suppliers.<span class="hljs-property">value</span> = []
+    totalCount.<span class="hljs-property">value</span> = <span class="hljs-number">0</span>
+  }
+}
 
 <span class="hljs-keyword">const</span> <span class="hljs-title function_">reload</span> = (<span class="hljs-params"></span>) =&gt; <span class="hljs-title function_">fetchSuppliers</span>(lastQuery)
 </code></pre>
+<p>Lo svuotamento dopo una lettura fallita non è un dettaglio: riaprendo la lista dal menu con il
+backend giù, senza, resterebbero le righe della volta prima, e chiuso l'avviso sembrerebbero dati
+appena caricati. Lo store espone <code>loadFailed</code> insieme a <code>loading</code> ed <code>error</code>.</p>
 <h2 id="la-pagina-lista-useservertable">La pagina lista: <code>useServerTable</code></h2>
 <p><code>useServerTable</code> raccoglie la meccanica che ogni lista ripeteva: tradurre le opzioni di
-<code>v-data-table-server</code> in parametri di query, azzerare la pagina quando cambia la ricerca, evitare la
-doppia fetch quando Vuetify emette più eventi per la stessa azione.</p>
+<code>v-data-table-server</code> in parametri di query, azzerare la pagina quando cambiano ricerca o filtri,
+evitare la doppia fetch quando Vuetify emette più eventi per la stessa azione, e tenere tutto
+<strong>nell'indirizzo</strong>.</p>
 <pre><code class="language-vue"><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">setup</span> <span class="hljs-attr">lang</span>=<span class="hljs-string">&quot;ts&quot;</span>&gt;</span><span class="language-javascript">
 <span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useSuppliersStore</span>()
 <span class="hljs-keyword">const</span> { can } = <span class="hljs-title function_">usePermission</span>()
 <span class="hljs-keyword">const</span> toast = <span class="hljs-title function_">useToastStore</span>()
 
-<span class="hljs-keyword">const</span> { search, page, itemsPerPage, onOptionsUpdate, reload } =
-  <span class="hljs-title function_">useServerTable</span>(<span class="hljs-function"><span class="hljs-params">query</span> =&gt;</span> store.<span class="hljs-title function_">fetchSuppliers</span>(query))
+<span class="hljs-comment">// un filtro della pagina: il valore iniziale del ref è il default</span>
+<span class="hljs-keyword">const</span> active = ref&lt;boolean | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
+<span class="hljs-keyword">const</span> { search, page, itemsPerPage, sortBy, onOptionsUpdate, reload, clearFilters } = <span class="hljs-title function_">useServerTable</span>(
+  <span class="hljs-function"><span class="hljs-params">query</span> =&gt;</span> store.<span class="hljs-title function_">fetchSuppliers</span>({ ...query, <span class="hljs-attr">isActive</span>: active.<span class="hljs-property">value</span> ?? <span class="hljs-literal">undefined</span> }),
+  { <span class="hljs-attr">totalCount</span>: <span class="hljs-function">() =&gt;</span> store.<span class="hljs-property">totalCount</span>, <span class="hljs-attr">filters</span>: { active } }
+)
+
+<span class="hljs-comment">// lista senza righe: caricamento fallito, nessun risultato o lista davvero vuota</span>
+<span class="hljs-keyword">const</span> emptyState = <span class="hljs-title function_">computed</span>(<span class="hljs-function">() =&gt;</span> ({
+  <span class="hljs-attr">error</span>: store.<span class="hljs-property">loadFailed</span>,
+  <span class="hljs-attr">filtered</span>: !!search.<span class="hljs-property">value</span> || active.<span class="hljs-property">value</span> !== <span class="hljs-literal">null</span>,
+  <span class="hljs-attr">createLabel</span>: <span class="hljs-title function_">can</span>(<span class="hljs-string">&#x27;suppliers.write&#x27;</span>) ? <span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;suppliers.createButton&#x27;</span>) : <span class="hljs-literal">undefined</span>,
+}))
 
 <span class="hljs-keyword">const</span> headers = <span class="hljs-title function_">computed</span>(<span class="hljs-function">() =&gt;</span> [
   { <span class="hljs-attr">title</span>: <span class="hljs-title function_">t</span>(<span class="hljs-string">&#x27;suppliers.name&#x27;</span>), <span class="hljs-attr">key</span>: <span class="hljs-string">&#x27;name&#x27;</span> },
@@ -298,9 +325,13 @@ doppia fetch quando Vuetify emette più eventi per la stessa azione.</p>
   <span class="hljs-tag">&lt;<span class="hljs-name">v-data-table-server</span>
     <span class="hljs-attr">:headers</span>=<span class="hljs-string">&quot;headers&quot;</span> <span class="hljs-attr">:items</span>=<span class="hljs-string">&quot;store.suppliers&quot;</span> <span class="hljs-attr">:items-length</span>=<span class="hljs-string">&quot;store.totalCount&quot;</span>
     <span class="hljs-attr">:loading</span>=<span class="hljs-string">&quot;store.loading&quot;</span> <span class="hljs-attr">:page</span>=<span class="hljs-string">&quot;page&quot;</span> <span class="hljs-attr">:items-per-page</span>=<span class="hljs-string">&quot;itemsPerPage&quot;</span>
-    <span class="hljs-attr">:items-per-page-options</span>=<span class="hljs-string">&quot;ITEMS_PER_PAGE_OPTIONS&quot;</span>
+    <span class="hljs-attr">:items-per-page-options</span>=<span class="hljs-string">&quot;ITEMS_PER_PAGE_OPTIONS&quot;</span> <span class="hljs-attr">:sort-by</span>=<span class="hljs-string">&quot;sortBy&quot;</span>
     @<span class="hljs-attr">update:options</span>=<span class="hljs-string">&quot;onOptionsUpdate&quot;</span>
-  /&gt;</span>
+  &gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">template</span> #<span class="hljs-attr">no-data</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">list-empty-state</span> <span class="hljs-attr">v-bind</span>=<span class="hljs-string">&quot;emptyState&quot;</span> @<span class="hljs-attr">retry</span>=<span class="hljs-string">&quot;reload&quot;</span> @<span class="hljs-attr">clear-filters</span>=<span class="hljs-string">&quot;clearFilters&quot;</span> @<span class="hljs-attr">create</span>=<span class="hljs-string">&quot;openCreate&quot;</span> /&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">template</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">v-data-table-server</span>&gt;</span>
 
   <span class="hljs-tag">&lt;<span class="hljs-name">supplier-dialog</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;showDialog&quot;</span> <span class="hljs-attr">:item</span>=<span class="hljs-string">&quot;editing&quot;</span> @<span class="hljs-attr">saved</span>=<span class="hljs-string">&quot;reload(); toast.success(t(&#x27;common.saved&#x27;))&quot;</span> /&gt;</span>
 <span class="hljs-tag">&lt;/<span class="hljs-name">template</span>&gt;</span>
@@ -314,9 +345,74 @@ avrebbero due fetch per un gesto.</li>
 non esistere più.</li>
 <li><code>:items-per-page-options</code> è <strong>esplicito</strong>: il default di Vuetify include &quot;Tutti&quot; (<code>-1</code>), che con
 migliaia di record è una risposta enorme. Per estrarre tutto c'è l'export CSV.</li>
-<li>Su mobile la tabella lascia il posto a una <code>v-list</code> di card con la propria paginazione: <code>useDisplay().mobile</code>
-decide quale delle due mostrare.</li>
+<li><code>totalCount</code> riporta all'ultima pagina valida quando un'eliminazione svuota quella corrente.</li>
 </ul>
+<h3 id="lo-stato-nell-indirizzo">Lo stato nell'indirizzo</h3>
+<p>Pagina, righe per pagina, ricerca, ordinamento e filtri stanno nella query:
+<code>?page=3&amp;q=rossi&amp;sort=name&amp;desc=1&amp;active=1</code>. Tornando dal dettaglio con &quot;indietro&quot;, ricaricando o
+aprendo un link copiato, la lista si ripresenta com'era. Le regole:</p>
+<ul>
+<li>i <strong>filtri della pagina</strong> vanno in <code>filters</code>: la chiave è il nome nell'indirizzo, il valore
+iniziale del ref è il default. Un filtro cambiato riporta a pagina 1 e ricarica da solo, senza un
+<code>watch</code> scritto a mano; il fetcher li legge dai ref;</li>
+<li><strong><code>:sort-by=&quot;sortBy&quot;</code> va legato</strong>: l'ordinamento letto dall'indirizzo deve arrivare alla tabella,
+altrimenti la lista è ordinata ma l'intestazione non lo mostra;</li>
+<li><strong><code>clearFilters()</code></strong> toglie ricerca e filtri con una sola richiesta, tenendo righe per pagina e
+ordinamento: è il pulsante &quot;Azzera filtri&quot;;</li>
+<li>l'indirizzo si aggiorna con <code>router.replace</code>, quindi digitare una ricerca non riempie la history,
+e i valori uguali al default non compaiono. Le altre chiavi, come <code>from</code>, restano;</li>
+<li>un clic nel menu sulla lista in cui si è già la riporta all'indirizzo pulito, e la lista ricarica.</li>
+</ul>
+<p>Il meccanismo è <code>useRouteQueryState</code>, che si usa anche da solo nelle liste <strong>non paginate dal
+server</strong> (<code>v-data-table</code>, come <code>GroupsPage</code>, <code>RolesPage</code>, <code>PermissionsPage</code>) per tenere ricerca e
+pagina nell'indirizzo.</p>
+<h3 id="la-lista-vuota-listemptystate">La lista vuota: <code>ListEmptyState</code></h3>
+<p>Una tabella senza righe direbbe sempre &quot;Nessun dato&quot;, ma i casi sono tre e chiedono gesti diversi.
+<code>ListEmptyState</code>, nello slot <code>#no-data</code> della tabella e sotto l'elenco per telefono, li distingue:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Caso</th>
+<th>Prop</th>
+<th>Mostra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lettura fallita</td>
+<td><code>error</code> (da <code>store.loadFailed</code>)</td>
+<td>&quot;Dati non caricati&quot; con <strong>Riprova</strong> (<code>@retry</code>)</td>
+</tr>
+<tr>
+<td>ricerca o filtri senza risultati</td>
+<td><code>filtered</code></td>
+<td>&quot;Nessun risultato&quot; con <strong>Azzera filtri</strong> (<code>@clear-filters</code>)</td>
+</tr>
+<tr>
+<td>lista davvero vuota</td>
+<td>—</td>
+<td>&quot;Ancora nessun elemento&quot; con il pulsante per creare, se c'è <code>createLabel</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>createLabel</code> si passa solo con il permesso di scrittura; con <code>createTo</code> il pulsante apre una
+rotta, senza emette <code>create</code> (per aprire un dialog). Il motivo dell'errore resta nell'avviso della
+pagina: <code>ListEmptyState</code> offre solo di riprovare.</p>
+<h3 id="telefono-e-tablet">Telefono e tablet</h3>
+<p>Sotto i <strong>960 px</strong> la tabella lascia il posto a una <code>v-list</code>: decide <code>useDisplay().mobile</code>, con la
+soglia fissata in <code>plugins/vuetify.ts</code> (<code>display.mobileBreakpoint: 'md'</code>). Si usa <code>mobile</code>, non
+<code>smAndDown</code> (600 px): così il tablet verticale ha l'elenco e quello orizzontale la tabella.</p>
+<p>L'elenco non ha il piè di pagina della tabella: lo pagina <code>MobileListPager</code>, con <code>page</code>, <code>total</code> e
+<code>itemsPerPage</code> e l'evento <code>update:page</code>, che la pagina gira a <code>useServerTable</code>:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">function</span> <span class="hljs-title function_">goToPage</span>(<span class="hljs-params"><span class="hljs-attr">newPage</span>: <span class="hljs-built_in">number</span></span>) {
+  page.<span class="hljs-property">value</span> = newPage
+  <span class="hljs-title function_">reload</span>()
+}
+</code></pre>
+<p>I suoi pulsanti sono da 48 px (<code>density=&quot;default&quot;</code>), grandi abbastanza per il dito; gli altri
+pulsanti dell'app restano <code>compact</code>. Il riferimento completo, tabella ed elenco, è <code>UsersPage</code>.</p>
 <h2 id="la-pagina-di-dettaglio">La pagina di dettaglio</h2>
 <p>La stessa pagina serve <strong>creazione e modifica</strong>: la distinzione è la presenza di <code>:id</code>.</p>
 <pre><code class="language-typescript"><span class="hljs-keyword">const</span> isCreate = route.<span class="hljs-property">name</span> === <span class="hljs-string">&#x27;supplier-create&#x27;</span>
@@ -336,14 +432,34 @@ in un <code>v-alert</code>.</li>
 <span class="hljs-tag">&lt;<span class="hljs-name">v-text-field</span> <span class="hljs-attr">v-model</span>=<span class="hljs-string">&quot;form.name&quot;</span> <span class="hljs-attr">:rules</span>=<span class="hljs-string">&quot;[rules.required]&quot;</span> <span class="hljs-attr">:error-messages</span>=<span class="hljs-string">&quot;fieldErrors[&#x27;name&#x27;]&quot;</span> /&gt;</span>
 </code></pre>
 <p>Dopo il salvataggio: toast di successo e <code>goBack()</code>. Il breadcrumb non lo costruisce la pagina —
-lo genera <code>AppBreadcrumb</code> dai <code>meta.title</code> delle rotte.</p>
+lo genera <code>AppBreadcrumb</code> dai <code>meta.title</code> delle rotte, e la barra resta fissa in cima anche nelle
+pagine lunghe.</p>
+<h3 id="le-modifiche-non-salvate-useunsavedchanges">Le modifiche non salvate: <code>useUnsavedChanges</code></h3>
+<p>Un form con modifiche non si perde in silenzio:</p>
+<pre><code class="language-typescript"><span class="hljs-keyword">const</span> { markClean } = <span class="hljs-title function_">useUnsavedChanges</span>(<span class="hljs-function">() =&gt;</span> form)
+<span class="hljs-title function_">onMounted</span>(<span class="hljs-title function_">async</span> () =&gt; { <span class="hljs-keyword">await</span> <span class="hljs-title function_">load</span>(); <span class="hljs-title function_">markClean</span>() })     <span class="hljs-comment">// anche in creazione</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">save</span>(<span class="hljs-params"></span>) { <span class="hljs-keyword">await</span> store.<span class="hljs-title function_">update</span>(id, form); <span class="hljs-title function_">markClean</span>(); <span class="hljs-title function_">goBack</span>() }
+</code></pre>
+<p><code>markClean()</code> fissa i dati &quot;salvati&quot;: dopo il caricamento e dopo un salvataggio riuscito. Da lì una
+differenza (per valore, non per riferimento: tornare al valore iniziale non conta) è una modifica,
+e:</p>
+<ul>
+<li>lasciando la pagina — link, menu, tasto indietro — l'app chiede conferma con il suo dialog;
+rispondendo no si resta dove si è;</li>
+<li>chiudendo o ricaricando la scheda compare l'avviso del browser, l'unico possibile lì;</li>
+<li>&quot;Esci&quot; chiede prima di chiudere la sessione (<code>confirmUnsavedChanges()</code>);</li>
+<li>a sessione scaduta si esce senza domande: non si potrebbe più salvare.</li>
+</ul>
+<p>Lo usano <code>UserDetailPage</code>, <code>GroupDetailPage</code>, <code>RoleDetailPage</code> e <code>ConfigurationPage</code>.</p>
 <h3 id="il-ritorno-usebacknavigation">Il ritorno: <code>useBackNavigation</code></h3>
 <p>Il pulsante indietro <strong>non è un link alla lista</strong>. Una pagina di dettaglio ha più ingressi (la
 lista, una dashboard, un'altra entità che la referenzia) e un back cablato sulla lista riporta
 sempre lì. <code>goBack()</code> applica tre regole in cascata:</p>
 <ol>
 <li><strong><code>?from=&lt;origine&gt;</code></strong> dichiarato da chi apre il dettaglio: si torna lì. Sopravvive al refresh e
-al link condiviso, e il breadcrumb mostra la stessa provenienza.</li>
+al link condiviso, e il breadcrumb mostra la stessa provenienza. Se la pagina precedente nella
+history è proprio l'origine, <code>goBack()</code> fa un back reale, così la lista torna con i suoi filtri;
+altrimenti apre l'origine.</li>
 <li><strong>History del browser</strong>: senza <code>from</code>, se si è arrivati navigando dentro l'app si fa un back
 reale, che ripresenta la lista con filtri, pagina e scroll intatti.</li>
 <li><strong>Fallback</strong>: link incollato o apertura diretta → la lista.</li>
@@ -365,8 +481,25 @@ della pagina. Regole:</p>
 <li><strong>scrive tramite lo store</strong> e usa <code>attempt</code> per decidere se chiudersi;</li>
 <li>emette <code>saved</code>: è la pagina a fare <code>reload()</code> e a mostrare il toast.</li>
 </ul>
+<p>Un dialog <strong>con un form</strong> in più:</p>
+<ul>
+<li>va a schermo intero sul telefono, <code>:fullscreen=&quot;mobile&quot;</code>;</li>
+<li>usa <code>useUnsavedChanges</code> solo mentre è aperto, e &quot;Annulla&quot; passa da <code>confirmDiscard()</code>:</li>
+</ul>
+<pre><code class="language-typescript"><span class="hljs-keyword">const</span> { markClean, confirmDiscard } = <span class="hljs-title function_">useUnsavedChanges</span>(<span class="hljs-function">() =&gt;</span> form, { <span class="hljs-attr">active</span>: <span class="hljs-function">() =&gt;</span> props.<span class="hljs-property">modelValue</span> })
+
+<span class="hljs-comment">// all&#x27;apertura, dopo aver riempito il form: markClean()</span>
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">cancel</span>(<span class="hljs-params"></span>) {
+  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> <span class="hljs-title function_">confirmDiscard</span>()) <span class="hljs-title function_">emit</span>(<span class="hljs-string">&#x27;update:modelValue&#x27;</span>, <span class="hljs-literal">false</span>)
+}
+</code></pre>
+<p>Il riferimento nel template è <code>ChangePasswordDialog</code>, che è anche <code>persistent</code>: un clic fuori non
+butta via la password scritta.</p>
 <p>La conferma di cancellazione è <code>ConfirmDialog</code> di <code>components/shared/</code>: <code>v-model</code>, <code>message</code>,
-<code>loading</code>, evento <code>confirm</code>. Non se ne scrive una nuova per dominio. Il messaggio dice <strong>che cosa</strong> si
+<code>loading</code>, <code>confirmText</code> facoltativo, evento <code>confirm</code>. Non se ne scrive una nuova per dominio. Dove
+il dialog non può stare nel template di chi chiede — una guardia del router, come quella delle
+modifiche non salvate — si usa <code>useConfirmStore().ask({ message, title, confirmText })</code>, che
+restituisce una promise con la risposta; la mostra l'unico <code>GlobalConfirm</code>, in <code>App.vue</code>. Il messaggio dice <strong>che cosa</strong> si
 elimina — &quot;Eliminare il gruppo 'Amministratori'?&quot; —, così non si conferma sulla riga sbagliata: la
 pagina tiene l'elemento intero, non solo l'id, e la traduzione ha il segnaposto <code>{name}</code>, riempito
 con <code>shortName</code> (<code>src/utils/text.ts</code>), che accorcia con &quot;…&quot; oltre i 40 caratteri.</p>
@@ -451,7 +584,8 @@ italiane come <code>gg</code>: si scrive la parola intera, <code>/giorno</code> 
 <ul>
 <li>Componenti Vuetify per tutto: niente CSS custom se esiste un componente. Icone <code>mdi-*</code>.</li>
 <li>Colori dal tema (<code>color=&quot;primary&quot;</code>, <code>color=&quot;error&quot;</code>), mai esadecimali nel template.</li>
-<li>Layout <code>v-container</code> → <code>v-row</code> → <code>v-col</code>; su mobile si controlla <code>useDisplay().mobile</code>.</li>
+<li>Layout <code>v-container</code> → <code>v-row</code> → <code>v-col</code>; per telefono e tablet verticale si controlla
+<code>useDisplay().mobile</code> (sotto i 960 px), non <code>smAndDown</code>.</li>
 <li>I <code>defaults</code> in <code>plugins/vuetify.ts</code> fissano <code>outlined</code> + <code>compact</code> per gli input e <code>rounded: 0</code>:
 non si ripetono nei componenti.</li>
 <li>I testi dei componenti (&quot;Elementi per pagina&quot;, &quot;1-2 di 2&quot;) seguono la lingua di vue-i18n, tramite
@@ -532,6 +666,16 @@ tag che non trova il suo componente.</p>
 legge <code>extractApiError</code>. Con un <code>code</code> mostra la sua traduzione in <code>errors.codes</code>, riempita con i
 <code>params</code>; il <code>detail</code> inglese serve solo quando il codice manca. Un <code>new Error('x')</code> fa scattare il
 fallback i18n, ed è un caso da testare a parte.</p>
+<p>Due cose da sapere quando si testa una pagina:</p>
+<ul>
+<li><strong>jsdom ha una finestra di 1024 px</strong>, sopra la soglia dei 960: il layout è quello con la tabella.
+Per provare l'elenco del telefono, o per non dipendere dalla larghezza, si fissa <code>mobile</code> con
+<code>vi.mock('vuetify', ...)</code>, come in <code>listPages.errors.test.ts</code>.</li>
+<li><strong><code>useUnsavedChanges</code> ricorda i form montati</strong>, per &quot;Esci&quot;: un form lasciato montato da un test,
+con modifiche, cambia la risposta del test dopo. Un file che usa <code>confirmUnsavedChanges</code> o monta
+più form con modifiche chiama <code>enableAutoUnmount(afterEach)</code>. La domanda si risponde con
+<code>useConfirmStore().answer(true)</code> o <code>answer(false)</code>.</li>
+</ul>
 <p>Che cosa testare, per tipo di file:</p>
 <div class="table-wrap">
 <table>
@@ -545,7 +689,7 @@ fallback i18n, ed è un caso da testare a parte.</p>
 <tbody>
 <tr>
 <td>store</td>
-<td>stato iniziale; ogni lettura (dati e parametri); lettura fallita → <code>error</code> senza throw; scrittura fallita → <code>error</code> e promise rigettata; <code>reload</code> con l'ultima query; <code>loading</code> durante</td>
+<td>stato iniziale; ogni lettura (dati e parametri); lettura fallita → <code>error</code> e <code>loadFailed</code> senza throw, lista svuotata; scrittura fallita → <code>error</code> e promise rigettata; <code>reload</code> con l'ultima query; <code>loading</code> durante</td>
 <td><code>frontend-testing</code></td>
 </tr>
 <tr>
@@ -584,6 +728,11 @@ pnpm build                <span class="hljs-comment"># vue-tsc + vite build, lo 
 <li>Store con <code>try/catch</code> a mano invece di <code>run</code>/<code>runOrThrow</code>.</li>
 <li>Scrittura con <code>run</code>: il dialog si chiude anche se il salvataggio è fallito.</li>
 <li>Lista che dopo una scrittura ricarica da pagina 1 invece di <code>reload()</code>.</li>
+<li>Un <code>watch</code> scritto a mano per riportare a pagina 1 quando cambia un filtro, invece di <code>filters</code>;
+<code>:sort-by</code> non legato; lista senza <code>ListEmptyState</code>.</li>
+<li>Store di una lista che dopo una lettura fallita tiene le righe di prima.</li>
+<li>Form senza <code>useUnsavedChanges</code>; dialog con un form non a schermo intero sul telefono.</li>
+<li><code>smAndDown</code> per decidere fra tabella ed elenco, invece di <code>mobile</code>.</li>
 <li>Rotta con <code>'\d+'</code> invece di <code>'\\d+'</code>: non matcha mai.</li>
 <li>Tipo dell'API scritto a mano invece di generato (di solito perché manca <code>.Produces&lt;T&gt;()</code> nel backend).</li>
 <li><code>import.meta.env</code> fuori da <code>app.config.ts</code>; <code>axios</code> fuori dai service.</li>

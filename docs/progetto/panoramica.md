@@ -198,9 +198,9 @@ solo quando mancano:
 src/
 ├── pages/          # una pagina per rotta (home/, auth/, users/, groups/, roles/, system/…)
 ├── components/     # layout/ (AppShell, AppNav, AppTopBar, AppBreadcrumb), shared/, <dominio>/
-├── stores/         # Pinia, uno per dominio (composition API) + auth, toast, navigation
+├── stores/         # Pinia, uno per dominio (composition API) + auth, toast, confirm, navigation
 ├── services/       # le chiamate HTTP: solo qui si usa axios
-├── composables/    # useAsyncAction, useServerTable, useApiErrors, usePermission, useBackNavigation…
+├── composables/    # useAsyncAction, useServerTable, useUnsavedChanges, useApiErrors, useBackNavigation…
 ├── config/         # app.config.ts (unico lettore di import.meta.env), sections.config.ts (menu)
 ├── plugins/        # vuetify, axios (interceptor), i18n, msal
 ├── locales/        # it.ts (predefinito) ed en.ts

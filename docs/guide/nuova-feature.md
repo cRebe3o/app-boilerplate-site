@@ -578,14 +578,18 @@ export const useCategoriesStore = defineStore('categories', () => {
   const selectedItem = ref<Category | null>(null)
 
   // loading ed error condivisi da tutte le azioni: la gestione degli errori sta in un
-  // punto solo, e il messaggio è il codice di errore del backend tradotto (o il suo `detail`)
-  const { loading, error, run, runOrThrow, clearError } = useAsyncAction()
+  // punto solo, e il messaggio è il codice di errore del backend tradotto (o il suo `detail`).
+  // loadFailed: l'ultima lettura è fallita, anche dopo che l'utente ha chiuso l'avviso
+  const { loading, error, loadFailed, run, runOrThrow, clearError } = useAsyncAction()
 
   // LETTURE con `run`: l'errore finisce in `error`, non viene rilanciato
-  const fetchAll = () =>
-    run(async () => {
+  const fetchAll = async () => {
+    await run(async () => {
       items.value = await categoriesService.getAll()
     }, 'errors.loadCategories')          // solo fallback: rete assente, timeout
+    // lettura fallita: la lista si svuota, senza righe vecchie che sembrino caricate
+    if (loadFailed.value) items.value = []
+  }
 
   // SCRITTURE con `runOrThrow`: l'errore viene registrato E rilanciato,
   // così il dialog sa se chiudersi
@@ -598,7 +602,7 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   // fetchById, update, remove: stessa forma
 
-  return { items, selectedItem, loading, error, fetchAll, fetchById, create, update, remove, clearError }
+  return { items, selectedItem, loading, error, loadFailed, fetchAll, fetchById, create, update, remove, clearError }
 })
 ```
 
@@ -621,6 +625,26 @@ const store = useCategoriesStore()
 const { can } = usePermission()
 const toast = useToastStore()
 
+// ricerca e pagina nell'indirizzo: tornando dal dettaglio, o ricaricando, la lista è com'era
+const search = ref<string | null>('')
+const page = ref(1)
+const itemsPerPage = ref(10)
+useRouteQueryState({ q: search, page, size: itemsPerPage })
+
+// l'elenco per telefono filtra da sé: la ricerca di v-data-table vale solo per la tabella
+const filteredItems = computed(() => {
+  const q = search.value?.toLowerCase()
+  return q ? store.items.filter(c => c.descIt.toLowerCase().includes(q)) : store.items
+})
+
+// che cosa mostrare se la lista non ha righe: errore, nessun risultato o lista vuota
+const emptyState = computed(() => ({
+  error: store.loadFailed,
+  filtered: !!search.value,
+  createLabel: can('categories.write') ? t('categories.createButton') : undefined,
+  createTo: { name: 'category-create', query: { from: 'categories' } },
+}))
+
 // l'elemento intero, non solo l'id: la conferma lo nomina
 const toDelete = ref<Category | null>(null)
 const deleteDialog = ref(false)
@@ -639,9 +663,20 @@ onMounted(() => store.fetchAll())
 
   <v-alert v-if="store.error" type="error">{{ store.error }}</v-alert>
 
-  <!-- tabella su desktop, lista su mobile -->
-  <v-data-table v-if="!mobile" :headers="headers" :items="store.items" :loading="store.loading" />
-  <v-list v-else> … </v-list>
+  <v-text-field v-model="search" :label="t('common.search')" prepend-inner-icon="mdi-magnify" clearable />
+
+  <!-- tabella sopra i 960 px, elenco sotto: telefono e tablet verticale -->
+  <v-data-table v-if="!mobile" v-model:page="page" v-model:items-per-page="itemsPerPage"
+                :headers="headers" :items="store.items" :search="search ?? ''" :loading="store.loading">
+    <template #no-data>
+      <list-empty-state v-bind="emptyState" @retry="store.fetchAll()" @clear-filters="search = ''" />
+    </template>
+  </v-data-table>
+  <div v-else>
+    <v-list> … </v-list>
+    <list-empty-state v-if="!store.loading && filteredItems.length === 0" v-bind="emptyState"
+                      @retry="store.fetchAll()" @clear-filters="search = ''" />
+  </div>
 
   <!-- la conferma dice che cosa si elimina: la pagina tiene l'elemento, non solo l'id -->
   <confirm-dialog v-model="deleteDialog"
@@ -658,11 +693,23 @@ Le convenzioni che si vedono qui:
 - **Componenti Vuetify**, colori dal tema (`color="primary"`, `color="error"`), mai valori esadecimali.
 - **`store.error`** è già il messaggio da mostrare, tradotto dal codice di errore del backend: la
   pagina lo mostra, non lo costruisce.
+- **Lo stato della lista sta nell'indirizzo** (`?q=…&page=2`), con `useRouteQueryState`. Una lista
+  paginata dal server usa invece `useServerTable`, che lo fa da solo e ha `filters` e
+  `clearFilters()` per i filtri propri della pagina — vedi
+  [Convenzioni e flussi](../frontend/convenzioni.md#lo-stato-nell-indirizzo).
+- **`ListEmptyState`** distingue lettura fallita (Riprova), nessun risultato (Azzera filtri) e lista
+  vuota (il pulsante per creare, se si ha il permesso), nella tabella e sotto l'elenco.
+- **`mobile`** di `useDisplay()` vale sotto i 960 px: elenco al posto della tabella anche sul tablet
+  verticale. Un elenco paginato dal server ha sotto `MobileListPager`.
 - **La conferma di cancellazione è `ConfirmDialog`** di `components/shared/` e nomina l'elemento,
   accorciato da `shortName` (`src/utils/text.ts`) oltre i 40 caratteri; dopo la cancellazione
   `toast.success(t('common.deleted'))`.
 - Nel dettaglio, **`useApiErrors`** separa gli errori per campo (il `400` di FluentValidation →
-  `:error-messages`) dall'errore generale, e **`useBackNavigation`** gestisce il ritorno.
+  `:error-messages`) dall'errore generale, **`useBackNavigation`** gestisce il ritorno e
+  **`useUnsavedChanges(() => form)`** chiede conferma prima di perdere modifiche non salvate:
+  `markClean()` dopo il caricamento (anche in creazione) e dopo il salvataggio riuscito.
+- Un **dialog con un form** va a schermo intero sul telefono (`:fullscreen="mobile"`) e usa
+  `useUnsavedChanges` con `active: () => props.modelValue`; "Annulla" passa da `confirmDiscard()`.
 - Una pagina oltre le ~300 righe e un componente oltre le ~200 vanno spezzati: dialog in
   `components/<dominio>/`, sezioni con stato proprio in card o picker. ESLint lo segnala
   (`max-lines`).
@@ -750,7 +797,8 @@ E chi apre il dettaglio **dichiara da dove arriva**:
 
 1. **`?from=` esplicito** — si torna lì. Sopravvive al refresh e al link condiviso, e il breadcrumb
    mostra la stessa provenienza: `useBreadcrumb` legge la medesima origine, quindi briciola e
-   pulsante non possono divergere.
+   pulsante non possono divergere. Se la pagina precedente nella history è proprio l'origine, si
+   fa un back reale, così la lista torna con i suoi filtri.
 2. **History del browser** — senza `?from`, se si è arrivati navigando dentro l'app si fa un back
    reale: la lista si ripresenta con filtri, pagina e scroll intatti, cosa che una push verso la
    rotta non farebbe.
@@ -824,7 +872,11 @@ errors: {
 - [ ] Il pulsante indietro del dettaglio usa `useBackNavigation`, e i link che aprono il dettaglio
       dichiarano `query: { from: '...' }`
 - [ ] I tipi del frontend vengono da `pnpm gen:api` + alias in `api.types.ts`, non da interfacce scritte a mano
-- [ ] Lo store usa `useAsyncAction`: letture con `run`, scritture con `runOrThrow`
+- [ ] Lo store usa `useAsyncAction`: letture con `run`, scritture con `runOrThrow`; espone
+      `loadFailed` e dopo una lettura fallita svuota la lista
+- [ ] La lista tiene ricerca, pagina e filtri nell'indirizzo, ha `ListEmptyState` e sotto i 960 px
+      (`mobile`) mostra l'elenco
+- [ ] Il form del dettaglio usa `useUnsavedChanges`
 - [ ] La rotta è figlia di AppShell con `title` e `section`, e la voce di menu è in `sections.config.ts`
 - [ ] I testi esistono in italiano **e** in inglese
 - [ ] I test ci sono: l'aggregato in `Domain.Tests`, gli handler in `Application.Tests` (vedi [Testare il backend](test-backend.md))

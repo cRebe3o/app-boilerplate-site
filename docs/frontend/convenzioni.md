@@ -45,8 +45,10 @@ descrive e il frontend lo vede. Non si aggira scrivendo l'interfaccia a mano: si
 
 ## Lo store: `useAsyncAction`
 
-Ogni azione di uno store passa da `useAsyncAction`, che tiene `loading` ed `error` e gestisce
-l'errore in un punto solo. Tre modi, per tre esigenze:
+Ogni azione di uno store passa da `useAsyncAction`, che tiene `loading`, `error` e `loadFailed` e
+gestisce l'errore in un punto solo. `loadFailed` dice che l'ultima **lettura** è fallita, ed è
+separato da `error`: chiuso l'avviso, `error` torna vuoto ma la lista continua a sapere che i suoi
+dati non sono caricati. Tre modi, per tre esigenze:
 
 | Funzione | Per | Comportamento |
 |---|---|---|
@@ -82,24 +84,35 @@ lista: si ricarica. Lo store tiene l'ultima query e la riusa, così l'utente non
 non perde la ricerca:
 
 ```typescript
-let lastQuery: SuppliersQuery | undefined
+let lastQuery: SupplierListParams | undefined
 
-const fetchSuppliers = (params?: SuppliersQuery) =>
-  run(async () => {
+const fetchSuppliers = async (params?: SupplierListParams) => {
+  await run(async () => {
     lastQuery = params
     const res = await suppliersService.getAll(params)
     suppliers.value = res.items
     totalCount.value = res.totalCount       // dal backend: mai items.length
   }, 'errors.loadSuppliers')
+  // lettura fallita: la lista si svuota
+  if (loadFailed.value) {
+    suppliers.value = []
+    totalCount.value = 0
+  }
+}
 
 const reload = () => fetchSuppliers(lastQuery)
 ```
 
+Lo svuotamento dopo una lettura fallita non è un dettaglio: riaprendo la lista dal menu con il
+backend giù, senza, resterebbero le righe della volta prima, e chiuso l'avviso sembrerebbero dati
+appena caricati. Lo store espone `loadFailed` insieme a `loading` ed `error`.
+
 ## La pagina lista: `useServerTable`
 
 `useServerTable` raccoglie la meccanica che ogni lista ripeteva: tradurre le opzioni di
-`v-data-table-server` in parametri di query, azzerare la pagina quando cambia la ricerca, evitare la
-doppia fetch quando Vuetify emette più eventi per la stessa azione.
+`v-data-table-server` in parametri di query, azzerare la pagina quando cambiano ricerca o filtri,
+evitare la doppia fetch quando Vuetify emette più eventi per la stessa azione, e tenere tutto
+**nell'indirizzo**.
 
 ```vue
 <script setup lang="ts">
@@ -107,8 +120,19 @@ const store = useSuppliersStore()
 const { can } = usePermission()
 const toast = useToastStore()
 
-const { search, page, itemsPerPage, onOptionsUpdate, reload } =
-  useServerTable(query => store.fetchSuppliers(query))
+// un filtro della pagina: il valore iniziale del ref è il default
+const active = ref<boolean | null>(null)
+const { search, page, itemsPerPage, sortBy, onOptionsUpdate, reload, clearFilters } = useServerTable(
+  query => store.fetchSuppliers({ ...query, isActive: active.value ?? undefined }),
+  { totalCount: () => store.totalCount, filters: { active } }
+)
+
+// lista senza righe: caricamento fallito, nessun risultato o lista davvero vuota
+const emptyState = computed(() => ({
+  error: store.loadFailed,
+  filtered: !!search.value || active.value !== null,
+  createLabel: can('suppliers.write') ? t('suppliers.createButton') : undefined,
+}))
 
 const headers = computed(() => [
   { title: t('suppliers.name'), key: 'name' },
@@ -122,9 +146,13 @@ const headers = computed(() => [
   <v-data-table-server
     :headers="headers" :items="store.suppliers" :items-length="store.totalCount"
     :loading="store.loading" :page="page" :items-per-page="itemsPerPage"
-    :items-per-page-options="ITEMS_PER_PAGE_OPTIONS"
+    :items-per-page-options="ITEMS_PER_PAGE_OPTIONS" :sort-by="sortBy"
     @update:options="onOptionsUpdate"
-  />
+  >
+    <template #no-data>
+      <list-empty-state v-bind="emptyState" @retry="reload" @clear-filters="clearFilters" @create="openCreate" />
+    </template>
+  </v-data-table-server>
 
   <supplier-dialog v-model="showDialog" :item="editing" @saved="reload(); toast.success(t('common.saved'))" />
 </template>
@@ -139,8 +167,62 @@ Da notare:
   non esistere più.
 - `:items-per-page-options` è **esplicito**: il default di Vuetify include "Tutti" (`-1`), che con
   migliaia di record è una risposta enorme. Per estrarre tutto c'è l'export CSV.
-- Su mobile la tabella lascia il posto a una `v-list` di card con la propria paginazione: `useDisplay().mobile`
-  decide quale delle due mostrare.
+- `totalCount` riporta all'ultima pagina valida quando un'eliminazione svuota quella corrente.
+
+### Lo stato nell'indirizzo
+
+Pagina, righe per pagina, ricerca, ordinamento e filtri stanno nella query:
+`?page=3&q=rossi&sort=name&desc=1&active=1`. Tornando dal dettaglio con "indietro", ricaricando o
+aprendo un link copiato, la lista si ripresenta com'era. Le regole:
+
+- i **filtri della pagina** vanno in `filters`: la chiave è il nome nell'indirizzo, il valore
+  iniziale del ref è il default. Un filtro cambiato riporta a pagina 1 e ricarica da solo, senza un
+  `watch` scritto a mano; il fetcher li legge dai ref;
+- **`:sort-by="sortBy"` va legato**: l'ordinamento letto dall'indirizzo deve arrivare alla tabella,
+  altrimenti la lista è ordinata ma l'intestazione non lo mostra;
+- **`clearFilters()`** toglie ricerca e filtri con una sola richiesta, tenendo righe per pagina e
+  ordinamento: è il pulsante "Azzera filtri";
+- l'indirizzo si aggiorna con `router.replace`, quindi digitare una ricerca non riempie la history,
+  e i valori uguali al default non compaiono. Le altre chiavi, come `from`, restano;
+- un clic nel menu sulla lista in cui si è già la riporta all'indirizzo pulito, e la lista ricarica.
+
+Il meccanismo è `useRouteQueryState`, che si usa anche da solo nelle liste **non paginate dal
+server** (`v-data-table`, come `GroupsPage`, `RolesPage`, `PermissionsPage`) per tenere ricerca e
+pagina nell'indirizzo.
+
+### La lista vuota: `ListEmptyState`
+
+Una tabella senza righe direbbe sempre "Nessun dato", ma i casi sono tre e chiedono gesti diversi.
+`ListEmptyState`, nello slot `#no-data` della tabella e sotto l'elenco per telefono, li distingue:
+
+| Caso | Prop | Mostra |
+|---|---|---|
+| lettura fallita | `error` (da `store.loadFailed`) | "Dati non caricati" con **Riprova** (`@retry`) |
+| ricerca o filtri senza risultati | `filtered` | "Nessun risultato" con **Azzera filtri** (`@clear-filters`) |
+| lista davvero vuota | — | "Ancora nessun elemento" con il pulsante per creare, se c'è `createLabel` |
+
+`createLabel` si passa solo con il permesso di scrittura; con `createTo` il pulsante apre una
+rotta, senza emette `create` (per aprire un dialog). Il motivo dell'errore resta nell'avviso della
+pagina: `ListEmptyState` offre solo di riprovare.
+
+### Telefono e tablet
+
+Sotto i **960 px** la tabella lascia il posto a una `v-list`: decide `useDisplay().mobile`, con la
+soglia fissata in `plugins/vuetify.ts` (`display.mobileBreakpoint: 'md'`). Si usa `mobile`, non
+`smAndDown` (600 px): così il tablet verticale ha l'elenco e quello orizzontale la tabella.
+
+L'elenco non ha il piè di pagina della tabella: lo pagina `MobileListPager`, con `page`, `total` e
+`itemsPerPage` e l'evento `update:page`, che la pagina gira a `useServerTable`:
+
+```typescript
+function goToPage(newPage: number) {
+  page.value = newPage
+  reload()
+}
+```
+
+I suoi pulsanti sono da 48 px (`density="default"`), grandi abbastanza per il dito; gli altri
+pulsanti dell'app restano `compact`. Il riferimento completo, tabella ed elenco, è `UsersPage`.
 
 ## La pagina di dettaglio
 
@@ -167,7 +249,30 @@ livelli, e `useApiErrors` li separa:
 ```
 
 Dopo il salvataggio: toast di successo e `goBack()`. Il breadcrumb non lo costruisce la pagina —
-lo genera `AppBreadcrumb` dai `meta.title` delle rotte.
+lo genera `AppBreadcrumb` dai `meta.title` delle rotte, e la barra resta fissa in cima anche nelle
+pagine lunghe.
+
+### Le modifiche non salvate: `useUnsavedChanges`
+
+Un form con modifiche non si perde in silenzio:
+
+```typescript
+const { markClean } = useUnsavedChanges(() => form)
+onMounted(async () => { await load(); markClean() })     // anche in creazione
+async function save() { await store.update(id, form); markClean(); goBack() }
+```
+
+`markClean()` fissa i dati "salvati": dopo il caricamento e dopo un salvataggio riuscito. Da lì una
+differenza (per valore, non per riferimento: tornare al valore iniziale non conta) è una modifica,
+e:
+
+- lasciando la pagina — link, menu, tasto indietro — l'app chiede conferma con il suo dialog;
+  rispondendo no si resta dove si è;
+- chiudendo o ricaricando la scheda compare l'avviso del browser, l'unico possibile lì;
+- "Esci" chiede prima di chiudere la sessione (`confirmUnsavedChanges()`);
+- a sessione scaduta si esce senza domande: non si potrebbe più salvare.
+
+Lo usano `UserDetailPage`, `GroupDetailPage`, `RoleDetailPage` e `ConfigurationPage`.
 
 ### Il ritorno: `useBackNavigation`
 
@@ -176,7 +281,9 @@ lista, una dashboard, un'altra entità che la referenzia) e un back cablato sull
 sempre lì. `goBack()` applica tre regole in cascata:
 
 1. **`?from=<origine>`** dichiarato da chi apre il dettaglio: si torna lì. Sopravvive al refresh e
-   al link condiviso, e il breadcrumb mostra la stessa provenienza.
+   al link condiviso, e il breadcrumb mostra la stessa provenienza. Se la pagina precedente nella
+   history è proprio l'origine, `goBack()` fa un back reale, così la lista torna con i suoi filtri;
+   altrimenti apre l'origine.
 2. **History del browser**: senza `from`, se si è arrivati navigando dentro l'app si fa un back
    reale, che ripresenta la lista con filtri, pagina e scroll intatti.
 3. **Fallback**: link incollato o apertura diretta → la lista.
@@ -203,8 +310,28 @@ della pagina. Regole:
 - **scrive tramite lo store** e usa `attempt` per decidere se chiudersi;
 - emette `saved`: è la pagina a fare `reload()` e a mostrare il toast.
 
+Un dialog **con un form** in più:
+
+- va a schermo intero sul telefono, `:fullscreen="mobile"`;
+- usa `useUnsavedChanges` solo mentre è aperto, e "Annulla" passa da `confirmDiscard()`:
+
+```typescript
+const { markClean, confirmDiscard } = useUnsavedChanges(() => form, { active: () => props.modelValue })
+
+// all'apertura, dopo aver riempito il form: markClean()
+async function cancel() {
+  if (await confirmDiscard()) emit('update:modelValue', false)
+}
+```
+
+Il riferimento nel template è `ChangePasswordDialog`, che è anche `persistent`: un clic fuori non
+butta via la password scritta.
+
 La conferma di cancellazione è `ConfirmDialog` di `components/shared/`: `v-model`, `message`,
-`loading`, evento `confirm`. Non se ne scrive una nuova per dominio. Il messaggio dice **che cosa** si
+`loading`, `confirmText` facoltativo, evento `confirm`. Non se ne scrive una nuova per dominio. Dove
+il dialog non può stare nel template di chi chiede — una guardia del router, come quella delle
+modifiche non salvate — si usa `useConfirmStore().ask({ message, title, confirmText })`, che
+restituisce una promise con la risposta; la mostra l'unico `GlobalConfirm`, in `App.vue`. Il messaggio dice **che cosa** si
 elimina — "Eliminare il gruppo 'Amministratori'?" —, così non si conferma sulla riga sbagliata: la
 pagina tiene l'elemento intero, non solo l'id, e la traduzione ha il segnaposto `{name}`, riempito
 con `shortName` (`src/utils/text.ts`), che accorcia con "…" oltre i 40 caratteri.
@@ -286,7 +413,8 @@ italiane come `gg`: si scrive la parola intera, `/giorno` e `/day`.
 
 - Componenti Vuetify per tutto: niente CSS custom se esiste un componente. Icone `mdi-*`.
 - Colori dal tema (`color="primary"`, `color="error"`), mai esadecimali nel template.
-- Layout `v-container` → `v-row` → `v-col`; su mobile si controlla `useDisplay().mobile`.
+- Layout `v-container` → `v-row` → `v-col`; per telefono e tablet verticale si controlla
+  `useDisplay().mobile` (sotto i 960 px), non `smAndDown`.
 - I `defaults` in `plugins/vuetify.ts` fissano `outlined` + `compact` per gli input e `rounded: 0`:
   non si ripetono nei componenti.
 - I testi dei componenti ("Elementi per pagina", "1-2 di 2") seguono la lingua di vue-i18n, tramite
@@ -383,11 +511,21 @@ legge `extractApiError`. Con un `code` mostra la sua traduzione in `errors.codes
 `params`; il `detail` inglese serve solo quando il codice manca. Un `new Error('x')` fa scattare il
 fallback i18n, ed è un caso da testare a parte.
 
+Due cose da sapere quando si testa una pagina:
+
+- **jsdom ha una finestra di 1024 px**, sopra la soglia dei 960: il layout è quello con la tabella.
+  Per provare l'elenco del telefono, o per non dipendere dalla larghezza, si fissa `mobile` con
+  `vi.mock('vuetify', ...)`, come in `listPages.errors.test.ts`.
+- **`useUnsavedChanges` ricorda i form montati**, per "Esci": un form lasciato montato da un test,
+  con modifiche, cambia la risposta del test dopo. Un file che usa `confirmUnsavedChanges` o monta
+  più form con modifiche chiama `enableAutoUnmount(afterEach)`. La domanda si risponde con
+  `useConfirmStore().answer(true)` o `answer(false)`.
+
 Che cosa testare, per tipo di file:
 
 | File | Test | Skill |
 |---|---|---|
-| store | stato iniziale; ogni lettura (dati e parametri); lettura fallita → `error` senza throw; scrittura fallita → `error` e promise rigettata; `reload` con l'ultima query; `loading` durante | `frontend-testing` |
+| store | stato iniziale; ogni lettura (dati e parametri); lettura fallita → `error` e `loadFailed` senza throw, lista svuotata; scrittura fallita → `error` e promise rigettata; `reload` con l'ultima query; `loading` durante | `frontend-testing` |
 | service | URL, parametri e payload con `toHaveBeenCalledWith`; 4xx con ProblemDetails; errore di rete | `frontend-testing` |
 | componente | prop, eventi, `v-model`, slot; per un dialog con form: non valido, salvataggio riuscito (si chiude), fallito (resta aperto con il messaggio del backend) | `frontend-testing` |
 | pagina | mount con router in memoria, service mockato, store reale; caricamento, un'interazione, l'errore visibile, la ricarica dopo una scrittura. `flushPromises()`, mai `setTimeout` | `frontend-testing` |
@@ -417,6 +555,11 @@ Dalla radice del monorepo gli stessi comandi sono `pnpm typecheck:frontend`, `pn
 - Store con `try/catch` a mano invece di `run`/`runOrThrow`.
 - Scrittura con `run`: il dialog si chiude anche se il salvataggio è fallito.
 - Lista che dopo una scrittura ricarica da pagina 1 invece di `reload()`.
+- Un `watch` scritto a mano per riportare a pagina 1 quando cambia un filtro, invece di `filters`;
+  `:sort-by` non legato; lista senza `ListEmptyState`.
+- Store di una lista che dopo una lettura fallita tiene le righe di prima.
+- Form senza `useUnsavedChanges`; dialog con un form non a schermo intero sul telefono.
+- `smAndDown` per decidere fra tabella ed elenco, invece di `mobile`.
 - Rotta con `'\d+'` invece di `'\\d+'`: non matcha mai.
 - Tipo dell'API scritto a mano invece di generato (di solito perché manca `.Produces<T>()` nel backend).
 - `import.meta.env` fuori da `app.config.ts`; `axios` fuori dai service.

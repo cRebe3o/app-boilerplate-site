@@ -139,15 +139,15 @@ le due dovessero divergere, vince il <code>CLAUDE.md</code> del progetto.</p>
 ├── index.html                   # l'unica pagina HTML: monta #app
 ├── src/
 │   ├── main.ts                  # bootstrap: Pinia, router, Vuetify, i18n
-│   ├── App.vue                  # radice: v-app, snackbar globale, titolo del tab, tema
+│   ├── App.vue                  # radice: v-app, snackbar e dialog di conferma globali, titolo del tab, tema
 │   ├── router/index.ts          # tutte le rotte + guard (auth, permessi, accessMode)
 │   ├── config/                  # app.config.ts (import.meta.env) · sections.config.ts (menu)
 │   ├── pages/&lt;dominio&gt;/         # una pagina per rotta
 │   ├── components/
 │   │   ├── layout/              # AppShell, AppTopBar, AppNav, AppBreadcrumb, AppFooter
-│   │   ├── shared/              # ConfirmDialog, ServerWakeBanner
+│   │   ├── shared/              # ConfirmDialog, GlobalConfirm, ListEmptyState, MobileListPager, ServerWakeBanner
 │   │   └── &lt;dominio&gt;/           # dialog, card e picker di una feature
-│   ├── stores/                  # Pinia: uno per dominio + auth, toast, navigation, server-wake
+│   ├── stores/                  # Pinia: uno per dominio + auth, toast, confirm, navigation, server-wake
 │   ├── services/                # le chiamate HTTP, un file per dominio
 │   ├── composables/             # logica riusabile senza stato globale
 │   ├── constants/               # valori condivisi (paginazione, stati di dominio)
@@ -176,8 +176,9 @@ cosa sia un URL; un service non tiene stato. Quando non si sa dove mettere una c
 <li><strong><code>index.html</code></strong> contiene solo <code>&lt;div id=&quot;app&quot;&gt;</code> e carica <code>src/main.ts</code>.</li>
 <li><strong><code>main.ts</code></strong> crea l'app e registra i quattro plugin: Pinia, router, Vuetify, i18n. Non fa altro.</li>
 <li><strong><code>App.vue</code></strong> monta <code>&lt;v-app&gt;</code>, l'unico <code>&lt;v-snackbar&gt;</code> dell'applicazione (alimentato da
-<code>toast.store</code>), il banner &quot;server in riattivazione&quot; e il <code>&lt;router-view&gt;</code>. Al mount ripristina il
-tema salvato e da lì in poi aggiorna il titolo del tab a ogni cambio di rotta.</li>
+<code>toast.store</code>), l'unico <code>GlobalConfirm</code> (le domande di <code>confirm.store</code>), il banner &quot;server in
+riattivazione&quot; e il <code>&lt;router-view&gt;</code>. Al mount ripristina il tema salvato e da lì in poi aggiorna
+il titolo del tab a ogni cambio di rotta.</li>
 <li><strong>Il router</strong> carica <code>AppShell</code> per la rotta <code>/</code>, e dentro AppShell si aprono tutte le pagine
 applicative come rotte figlie. Solo <code>/login</code> sta fuori dallo shell.</li>
 </ol>
@@ -189,12 +190,16 @@ applicative come rotte figlie. Solo <code>/login</code> sta fuori dallo shell.</
 <code>home/HomePage.vue</code>, <code>NotFoundPage.vue</code>.</p>
 <p><strong>Che cosa fa una pagina.</strong> Compone: prende lo store, chiede i dati, mette insieme tabella, filtri e
 dialog. La logica di business non sta qui, e nemmeno le chiamate HTTP. Una pagina lista tipica ha
-tre righe di &quot;impianto&quot;:</p>
+poche righe di &quot;impianto&quot;:</p>
 <pre><code class="language-typescript"><span class="hljs-keyword">const</span> store = <span class="hljs-title function_">useUsersStore</span>()
 <span class="hljs-keyword">const</span> { can } = <span class="hljs-title function_">usePermission</span>()
-<span class="hljs-keyword">const</span> { search, page, itemsPerPage, onOptionsUpdate, reload } =
-  <span class="hljs-title function_">useServerTable</span>(<span class="hljs-function"><span class="hljs-params">query</span> =&gt;</span> store.<span class="hljs-title function_">fetchUsers</span>(query))
+<span class="hljs-keyword">const</span> { mobile } = <span class="hljs-title function_">useDisplay</span>()        <span class="hljs-comment">// sotto i 960 px: elenco al posto della tabella</span>
+<span class="hljs-keyword">const</span> { search, page, itemsPerPage, sortBy, onOptionsUpdate, reload, clearFilters } =
+  <span class="hljs-title function_">useServerTable</span>(<span class="hljs-function"><span class="hljs-params">query</span> =&gt;</span> store.<span class="hljs-title function_">fetchUsers</span>(query), { <span class="hljs-attr">totalCount</span>: <span class="hljs-function">() =&gt;</span> store.<span class="hljs-property">totalCount</span> })
 </code></pre>
+<p>Pagina, ricerca, ordinamento e filtri finiscono nell'indirizzo (<code>?page=3&amp;q=rossi</code>): tornando dal
+dettaglio la lista è com'era. Il giro completo, con i filtri, la lista vuota e l'elenco per
+telefono, è in <a href="convenzioni.html#la-pagina-lista-useservertable">Convenzioni e flussi</a>.</p>
 <p><strong>Le due forme.</strong> Ogni dominio ha di norma <strong>due pagine</strong>:</p>
 <div class="table-wrap">
 <table>
@@ -240,7 +245,7 @@ adatta da solo.</p>
 <tbody>
 <tr>
 <td><code>AppShell.vue</code></td>
-<td>Contenitore delle pagine: top bar, drawer laterale (rail su desktop, overlay su mobile), breadcrumb, <code>&lt;router-view&gt;</code></td>
+<td>Contenitore delle pagine: top bar, drawer laterale (rail su desktop, overlay sotto i 960 px), breadcrumb fisso in cima anche nelle pagine lunghe, <code>&lt;router-view&gt;</code></td>
 </tr>
 <tr>
 <td><code>AppTopBar.vue</code></td>
@@ -265,8 +270,16 @@ adatta da solo.</p>
 <h3 id="components-shared"><code>components/shared/</code></h3>
 <p>Componenti senza dominio, riusati ovunque:</p>
 <ul>
-<li><strong><code>ConfirmDialog.vue</code></strong> — la conferma &quot;sei sicuro?&quot; con <code>v-model</code>, <code>message</code>, <code>loading</code> ed evento
-<code>confirm</code>. Ogni cancellazione nel progetto passa da qui.</li>
+<li><strong><code>ConfirmDialog.vue</code></strong> — la conferma &quot;sei sicuro?&quot; con <code>v-model</code>, <code>message</code>, <code>loading</code>,
+<code>confirmText</code> facoltativo ed evento <code>confirm</code>. Ogni cancellazione nel progetto passa da qui.</li>
+<li><strong><code>GlobalConfirm.vue</code></strong> — la stessa domanda fatta da codice, <code>await useConfirmStore().ask(...)</code>,
+dove il dialog non può stare nel template: una guardia del router, come l'avviso delle modifiche
+non salvate. Ce n'è uno solo, in <code>App.vue</code>.</li>
+<li><strong><code>ListEmptyState.vue</code></strong> — che cosa mostrare quando una lista non ha righe: &quot;Dati non caricati&quot;
+con Riprova, &quot;Nessun risultato&quot; con Azzera filtri, &quot;Ancora nessun elemento&quot; con il pulsante per
+creare. Nello slot <code>#no-data</code> della tabella e sotto l'elenco per telefono.</li>
+<li><strong><code>MobileListPager.vue</code></strong> — la paginazione dell'elenco per telefono, che non ha il piè di pagina
+della tabella; pulsanti da 48 px, per il dito.</li>
 <li><strong><code>ServerWakeBanner.vue</code></strong> — il banner mostrato se la prima richiesta della sessione tarda più di
 tre secondi (cold start di un hosting free tier). Lo pilota <code>server-wake.store</code>, alimentato
 dall'interceptor axios.</li>
@@ -283,7 +296,7 @@ una card con le proprie azioni. Il componente riceve i dati per prop, emette eve
 <p><strong>Quando NON serve.</strong> Per un blocco di template senza logica: un <code>v-card</code> con tre campi in sola
 lettura resta nella pagina. Si spezza per responsabilità, non per lunghezza.</p>
 <h2 id="stores-lo-stato-con-pinia"><code>stores/</code> — lo stato, con Pinia</h2>
-<p><strong>Che cosa contiene.</strong> Uno store per dominio (<code>users.store.ts</code>, <code>groups.store.ts</code>, …) più quattro
+<p><strong>Che cosa contiene.</strong> Uno store per dominio (<code>users.store.ts</code>, <code>groups.store.ts</code>, …) più cinque
 store trasversali:</p>
 <div class="table-wrap">
 <table>
@@ -303,6 +316,10 @@ store trasversali:</p>
 <td>La notifica globale: <code>success</code>, <code>error</code>, <code>warning</code>, <code>info</code>. La <code>v-snackbar</code> è una sola, in <code>App.vue</code></td>
 </tr>
 <tr>
+<td><code>confirm.store</code></td>
+<td>Una domanda sì/no da codice: <code>ask()</code> restituisce una promise con la risposta, <code>answer()</code> la chiude. La mostra <code>GlobalConfirm</code></td>
+</tr>
+<tr>
 <td><code>navigation.store</code></td>
 <td>Sezione attiva, sezioni e voci visibili (filtrate per permesso a partire da <code>SECTIONS</code>)</td>
 </tr>
@@ -314,23 +331,28 @@ store trasversali:</p>
 </table>
 </div>
 <p><strong>La forma di uno store di dominio.</strong> Composition API, mai options API. Lo stato (<code>users</code>,
-<code>totalCount</code>, <code>selectedUser</code>), <code>loading</code> ed <code>error</code> presi da <code>useAsyncAction</code>, e un'azione per ogni
-chiamata al service:</p>
+<code>totalCount</code>, <code>selectedUser</code>), <code>loading</code>, <code>error</code> e <code>loadFailed</code> presi da <code>useAsyncAction</code>, e
+un'azione per ogni chiamata al service:</p>
 <pre><code class="language-typescript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> useUsersStore = <span class="hljs-title function_">defineStore</span>(<span class="hljs-string">&#x27;users&#x27;</span>, <span class="hljs-function">() =&gt;</span> {
   <span class="hljs-keyword">const</span> users = ref&lt;<span class="hljs-title class_">User</span>[]&gt;([])
   <span class="hljs-keyword">const</span> totalCount = <span class="hljs-title function_">ref</span>(<span class="hljs-number">0</span>)                 <span class="hljs-comment">// dal backend, mai users.length</span>
   <span class="hljs-keyword">const</span> selectedUser = ref&lt;<span class="hljs-title class_">User</span> | <span class="hljs-literal">null</span>&gt;(<span class="hljs-literal">null</span>)
-  <span class="hljs-keyword">const</span> { loading, error, run, runOrThrow, clearError } = <span class="hljs-title function_">useAsyncAction</span>()
+  <span class="hljs-keyword">const</span> { loading, error, loadFailed, run, runOrThrow, clearError } = <span class="hljs-title function_">useAsyncAction</span>()
 
   <span class="hljs-keyword">let</span> <span class="hljs-attr">lastQuery</span>: <span class="hljs-title class_">UsersQuery</span> | <span class="hljs-literal">undefined</span>
 
-  <span class="hljs-keyword">const</span> <span class="hljs-title function_">fetchUsers</span> = (<span class="hljs-params"><span class="hljs-attr">params</span>?: <span class="hljs-title class_">UsersQuery</span></span>) =&gt;
-    <span class="hljs-title function_">run</span>(<span class="hljs-title function_">async</span> () =&gt; {                        <span class="hljs-comment">// lettura: l&#x27;errore finisce in `error`</span>
+  <span class="hljs-keyword">const</span> <span class="hljs-title function_">fetchUsers</span> = <span class="hljs-keyword">async</span> (<span class="hljs-params"><span class="hljs-attr">params</span>?: <span class="hljs-title class_">UsersQuery</span></span>) =&gt; {
+    <span class="hljs-keyword">await</span> <span class="hljs-title function_">run</span>(<span class="hljs-title function_">async</span> () =&gt; {                  <span class="hljs-comment">// lettura: l&#x27;errore finisce in `error`</span>
       lastQuery = params
       <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">await</span> usersService.<span class="hljs-title function_">getAll</span>(params)
       users.<span class="hljs-property">value</span> = res.<span class="hljs-property">items</span>
       totalCount.<span class="hljs-property">value</span> = res.<span class="hljs-property">totalCount</span>
     }, <span class="hljs-string">&#x27;errors.loadUsers&#x27;</span>)
+    <span class="hljs-keyword">if</span> (loadFailed.<span class="hljs-property">value</span>) {                  <span class="hljs-comment">// lettura fallita: niente righe vecchie che sembrino caricate</span>
+      users.<span class="hljs-property">value</span> = []
+      totalCount.<span class="hljs-property">value</span> = <span class="hljs-number">0</span>
+    }
+  }
 
   <span class="hljs-keyword">const</span> <span class="hljs-title function_">createUser</span> = (<span class="hljs-params"><span class="hljs-attr">data</span>: <span class="hljs-title class_">CreateUserRequest</span></span>) =&gt;
     <span class="hljs-title function_">runOrThrow</span>(<span class="hljs-title function_">async</span> () =&gt; {                 <span class="hljs-comment">// scrittura: l&#x27;errore viene anche rilanciato</span>
@@ -339,7 +361,7 @@ chiamata al service:</p>
       <span class="hljs-keyword">return</span> created
     }, <span class="hljs-string">&#x27;errors.createUser&#x27;</span>)
 
-  <span class="hljs-keyword">return</span> { users, totalCount, selectedUser, loading, error, fetchUsers, createUser, clearError }
+  <span class="hljs-keyword">return</span> { users, totalCount, selectedUser, loading, error, loadFailed, fetchUsers, createUser, clearError }
 })
 </code></pre>
 <p><strong>Quando serve uno store.</strong> Quando un dominio ha dati che più componenti leggono, o azioni che
@@ -377,11 +399,19 @@ di uno store, un composable <strong>non ha stato globale</strong>: ogni chiamata
 <tbody>
 <tr>
 <td><code>useAsyncAction</code></td>
-<td>In <strong>ogni store</strong>: <code>loading</code>, <code>error</code>, <code>run</code> (letture), <code>runOrThrow</code> (scritture), <code>attempt</code> (nei dialog, restituisce <code>true</code>/<code>false</code>)</td>
+<td>In <strong>ogni store</strong>: <code>loading</code>, <code>error</code>, <code>loadFailed</code> (l'ultima lettura è fallita), <code>run</code> (letture), <code>runOrThrow</code> (scritture), <code>attempt</code> (nei dialog, restituisce <code>true</code>/<code>false</code>)</td>
 </tr>
 <tr>
 <td><code>useServerTable</code></td>
-<td>In ogni <strong>pagina lista</strong> con <code>v-data-table-server</code>: pagina, righe per pagina, ordinamento, ricerca con debounce, <code>reload()</code></td>
+<td>In ogni <strong>pagina lista</strong> con <code>v-data-table-server</code>: pagina, righe per pagina, ordinamento (<code>sortBy</code>), ricerca con debounce, <code>filters</code>, <code>clearFilters()</code>, <code>reload()</code>; tutto nell'indirizzo</td>
+</tr>
+<tr>
+<td><code>useRouteQueryState</code></td>
+<td>Tiene dei <code>ref</code> allineati alla query dell'indirizzo. Lo usa <code>useServerTable</code>, e da solo le liste non paginate dal server (<code>GroupsPage</code>, <code>RolesPage</code>, <code>PermissionsPage</code>)</td>
+</tr>
+<tr>
+<td><code>useUnsavedChanges</code></td>
+<td>Nei <strong>form</strong> di pagine e dialog: chiede conferma prima di perdere modifiche non salvate (<code>markClean()</code>, <code>confirmDiscard()</code>)</td>
 </tr>
 <tr>
 <td><code>useApiErrors</code></td>
@@ -508,7 +538,7 @@ stesso comportamento fra le tre strategie di autenticazione.</p>
 </tr>
 <tr>
 <td><code>vuetify.ts</code></td>
-<td>Tema chiaro e scuro (colori delle barre inclusi), <code>defaults</code> dei componenti: <code>outlined</code> + <code>compact</code> per gli input, <code>rounded: 0</code> ovunque; l'adapter che fa seguire ai componenti la lingua di vue-i18n</td>
+<td>Tema chiaro e scuro (colori delle barre inclusi), <code>defaults</code> dei componenti: <code>outlined</code> + <code>compact</code> per gli input, <code>rounded: 0</code> ovunque; la soglia di telefono e tablet a 960 px (<code>display.mobileBreakpoint: 'md'</code>); l'adapter che fa seguire ai componenti la lingua di vue-i18n</td>
 </tr>
 <tr>
 <td><code>msal.ts</code></td>
@@ -698,8 +728,18 @@ codice; ciò che deve essere servito tale e quale (favicon, <code>_redirects</co
 </tr>
 <tr>
 <td>una conferma &quot;sei sicuro?&quot;</td>
-<td><code>ConfirmDialog</code> già esistente</td>
+<td><code>ConfirmDialog</code> già esistente; da codice, <code>useConfirmStore().ask()</code></td>
 <td>un nuovo dialog</td>
+</tr>
+<tr>
+<td>il messaggio di una lista senza righe</td>
+<td><code>ListEmptyState</code></td>
+<td>un testo nello slot <code>#no-data</code></td>
+</tr>
+<tr>
+<td>lo stato di una lista (pagina, filtri)</td>
+<td>l'indirizzo, con <code>useServerTable</code> o <code>useRouteQueryState</code></td>
+<td><code>ref</code> che si perdono uscendo dalla pagina</td>
 </tr>
 <tr>
 <td>una chiamata HTTP</td>

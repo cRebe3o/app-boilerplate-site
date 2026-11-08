@@ -32,7 +32,7 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 | **`audit-log`** | Come funziona l'audit automatico via `AuditLogInterceptor` e che cosa deve fare un repository perché lo snapshot *prima* sia corretto. Un handler non scrive mai l'audit a mano. Vedi [Audit log](../infrastructure/audit-log.md) |
 | **`permissions`** | Un permesso nuovo end-to-end: policy sull'endpoint, guardia di rotta, `v-if` nella UI e voce nel seed |
 | **`pagination`** | Una lista che deve paginare lato server: `PagedResponse` sul backend, `v-data-table-server` sul frontend |
-| **`search-filter`** | Ricerca testuale o filtri su una lista, con il `Where` dinamico lato EF e il debounce lato Vue |
+| **`search-filter`** | Ricerca testuale o filtri su una lista, con il `Where` dinamico lato EF e, lato Vue, il debounce e `filters`/`clearFilters` di `useServerTable`: lo stato resta nell'indirizzo |
 | **`bulk-operations`** | Cancellazioni o modifiche multiple, con `ExecuteDelete`/`ExecuteUpdate` e la selezione a checkbox |
 | **`export-csv`** | Esportazione dei dati in CSV o Excel: endpoint che genera il file e pulsante di download |
 | **`file-upload`** | Upload di file con `IFormFile`, storage e anteprima lato client |
@@ -43,8 +43,8 @@ Si possono comunque richiamare per nome quando si vuole essere espliciti sul pat
 | Skill | Quando si attiva |
 |---|---|
 | **`vue-feature`** | Una nuova feature di frontend completa: tipi da `pnpm gen:api`, service, store con `useAsyncAction`, pagina, rotta figlia di AppShell, voce di menu in `sections.config.ts`, traduzioni, con le forme singolare e plurale per i numeri accanto a un testo, e conferme che nominano l'elemento su cui si agisce. Vedi [Convenzioni e flussi](../frontend/convenzioni.md) |
-| **`detail-page`** | Una pagina di dettaglio su rotta `:id(\\d+)`, che serve creazione e modifica, con `useBackNavigation` per il ritorno, `useApiErrors` per gli errori per campo e `authStore.refreshAfterSave()` dopo un salvataggio che può cambiare i permessi |
-| **`vuetify-dialog-form`** | Un dialog di creazione o modifica in `components/<dominio>/`: validazione, `attempt()` per chiudersi solo se il salvataggio riesce, reset all'apertura, un solo componente per create ed edit |
+| **`detail-page`** | Una pagina di dettaglio su rotta `:id(\\d+)`, che serve creazione e modifica, con `useBackNavigation` per il ritorno, `useApiErrors` per gli errori per campo, `useUnsavedChanges` per le modifiche non salvate e `authStore.refreshAfterSave()` dopo un salvataggio che può cambiare i permessi |
+| **`vuetify-dialog-form`** | Un dialog di creazione o modifica in `components/<dominio>/`: validazione, `attempt()` per chiudersi solo se il salvataggio riesce, reset all'apertura, un solo componente per create ed edit, schermo intero sul telefono e avviso di modifiche non salvate |
 
 ## Test
 
