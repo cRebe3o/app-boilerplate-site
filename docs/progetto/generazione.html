@@ -284,7 +284,8 @@ qualcosa non torna, si cancella la cartella e si rigenera.</p>
 <li>Copiare <code>apps/backend/&lt;Progetto&gt;.Api/appsettings.local.json.example</code> in
 <code>appsettings.local.json</code> (gitignored) e valorizzarlo: provider, connection string, secret JWT,
 utente amministratore iniziale (<code>Seed:AdminUsername</code>, <code>Seed:AdminEmail</code>,
-<code>Seed:AdminDisplayName</code>, <code>Seed:AdminPassword</code>; i default sono <code>admin</code> / <code>Administrator</code>).</li>
+<code>Seed:AdminDisplayName</code>, <code>Seed:AdminPassword</code>; i default sono <code>admin</code> / <code>Administrator</code>, e in
+sviluppo una password vuota vale <code>Admin@1234</code>, che la pagina di login mostra).</li>
 <li>Copiare <code>apps/frontend/.env.local.example</code> in <code>apps/frontend/.env.local</code> e valorizzarlo.</li>
 <li><strong>Avviare il backend.</strong> La migration <code>InitialCreate</code> è già inclusa per entrambi i provider: si
 applica da sola all'avvio (<code>MigrateAsync</code>), crea il database se non esiste e, su un database
@@ -414,7 +415,7 @@ qualsiasi altra modifica.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.1.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

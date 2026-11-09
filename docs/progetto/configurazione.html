@@ -170,8 +170,9 @@ dopo la generazione, e senza di esso l'applicazione non parte (manca il secret J
 </blockquote>
 <p><code>ASPNETCORE_ENVIRONMENT</code> decide quale file <code>{Environment}</code> viene letto e cambia alcuni
 comportamenti: in <code>Development</code> il CORS accetta qualsiasi porta su <code>localhost</code>, il rate limiting
-del login è più permissivo, i dettagli delle eccezioni arrivano al client, e l'endpoint di login
-Windows accetta l'header <code>X-Dev-Windows-User</code>. <code>launchSettings.json</code> lo imposta a <code>Development</code> per
+del login è più permissivo, i dettagli delle eccezioni arrivano al client, l'endpoint di login
+Windows accetta l'header <code>X-Dev-Windows-User</code>, e il login mostra le credenziali dell'admin, che il
+seed tiene allineate alla configurazione (vedi <a href="#credenziali-di-sviluppo-nel-login">sotto</a>). <code>launchSettings.json</code> lo imposta a <code>Development</code> per
 <code>dotnet run</code>; in produzione va impostato esplicitamente a <code>Production</code>.</p>
 <h2 id="backend-le-chiavi">Backend: le chiavi</h2>
 <h3 id="database-e-connectionstrings"><code>Database</code> e <code>ConnectionStrings</code></h3>
@@ -262,8 +263,10 @@ provider attivo. Cambiare database è cambiare <code>Database:Provider</code>, n
 <p>Il login Windows integrato non ha chiavi: usa Negotiate, e su Windows funziona anche fuori
 dominio.</p>
 <h3 id="seed"><code>Seed</code></h3>
-<p>Letti <strong>solo al primo avvio su un database vuoto</strong>: se esiste già anche un solo ruolo, il seed
-esce senza fare nulla. Cambiarli dopo non ha effetto.</p>
+<p>Letti <strong>al primo avvio su un database vuoto</strong>, per creare gli utenti: se esiste già anche un solo
+ruolo il seed aggiunge soltanto i permessi nuovi del catalogo, e cambiare queste chiavi non ha
+effetto. L'eccezione è <code>Development</code>: lì username e password dell'admin valgono a ogni avvio (vedi
+<a href="#credenziali-di-sviluppo-nel-login">sotto</a>).</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -292,7 +295,7 @@ esce senza fare nulla. Cambiarli dopo non ha effetto.</p>
 <tr>
 <td><code>Seed:AdminPassword</code></td>
 <td>vuoto</td>
-<td>Password dell'admin. Vuota = ne viene generata una casuale, <strong>non stampata</strong>: di fatto va impostata</td>
+<td>Password dell'admin. Vuota in <code>Development</code> = <code>Admin@1234</code>; vuota fuori da <code>Development</code> = ne viene generata una casuale, <strong>non stampata</strong>: in produzione di fatto va impostata</td>
 </tr>
 <tr>
 <td><code>Seed:WindowsUsername</code></td>
@@ -305,6 +308,26 @@ esce senza fare nulla. Cambiarli dopo non ha effetto.</p>
 <p>Il seed crea anche permessi, ruoli (<code>SuperAdmin</code>, <code>Admin</code>, <code>Viewer</code>, <code>Custom</code>) e gruppi
 (<code>Administrators</code>, <code>Viewers</code>): l'elenco è in <code>DataSeeder.cs</code>. I permessi di una feature nuova si
 aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.</p>
+<h4 id="credenziali-di-sviluppo-nel-login">Credenziali di sviluppo nel login</h4>
+<p>In <code>Development</code>, con il login username e password (<code>VITE_AUTH_STRATEGY=jwt</code>), la pagina di login
+mostra username e password dell'admin. Non sono scritte nel frontend: le chiede al backend,
+<code>GET /api/auth/dev-credentials</code>, che restituisce <code>Seed:AdminUsername</code> e <code>Seed:AdminPassword</code> (con i
+default della tabella sopra).</p>
+<p>L'endpoint risponde solo se l'ambiente è <code>Development</code> <strong>e</strong> la richiesta arriva da questo computer
+(loopback). Un <code>X-Forwarded-For: 127.0.0.1</code> scritto a mano non basta: conta anche l'indirizzo della
+connessione vera. In tutti gli altri casi risponde 404 e il riquadro non compare.</p>
+<p>Perché le credenziali mostrate funzionino sempre, in <code>Development</code> il seed a ogni avvio riporta
+l'admin già esistente alla configurazione:</p>
+<ul>
+<li><strong>password e attivazione</strong> sì: se una prova le ha cambiate, al riavvio tornano quelle di
+<code>appsettings.local.json</code>;</li>
+<li><strong>i ruoli</strong> no: una prova sui permessi resta com'è.</li>
+</ul>
+<p>Quindi in sviluppo la password dell'admin si cambia in <code>Seed:AdminPassword</code>, non dall'app: dall'app
+dura fino al riavvio. Se <code>Seed:AdminUsername</code> non corrisponde a nessun utente (cambiato dopo il
+primo avvio), o se l'admin entra con un identity provider e non ha una password locale, il seed lo
+scrive nel log e non tocca niente. Fuori da <code>Development</code> non c'è né il riquadro né il
+riallineamento.</p>
 <h3 id="cors-e-logging"><code>Cors</code> e <code>Logging</code></h3>
 <div class="table-wrap">
 <table>
@@ -536,7 +559,7 @@ prima della build.</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.1.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

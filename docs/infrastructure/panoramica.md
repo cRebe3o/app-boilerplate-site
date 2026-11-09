@@ -159,7 +159,7 @@ Le quattro regole che discendono da questo schema, e che valgono per ogni featur
 | Passo | Che cosa succede |
 |---|---|
 | **Schema** | `Database.MigrateAsync()` applica le migration mancanti del provider attivo e crea il database se non esiste. Mai `EnsureCreated`, mai drop |
-| **Seed** | `SeedAsync()`: popola **solo uno store vuoto**. Se esiste anche un solo ruolo, esce subito |
+| **Seed** | `SeedAsync(isDevelopment)`: popola **solo uno store vuoto**. Se esiste anche un solo ruolo aggiunge soltanto i permessi nuovi e, in `Development`, riporta l'admin alle credenziali della configurazione |
 
 Il seed crea i 18 permessi di sistema, quattro ruoli (`SuperAdmin`, `Admin`, `Viewer`, `Custom`),
 due gruppi e gli utenti iniziali. Gira **dentro una transazione**: senza, un'interruzione a metà

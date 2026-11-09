@@ -601,12 +601,21 @@ Timestamp  = table.Column&lt;DateTime&gt;(type: <span class="hljs-string">&quot;
 }
 
 <span class="hljs-comment">// Seed dei dati iniziali: popola SOLO uno store vuoto — mai wipe, mai reseed.</span>
-<span class="hljs-keyword">await</span> app.SeedAsync();
+<span class="hljs-keyword">await</span> app.Services.SeedAsync(app.Environment.IsDevelopment());
 </code></pre>
 <p>Il gate del seeder è la prima riga utile di <code>DataSeeder</code>:</p>
-<pre><code class="language-csharp"><span class="hljs-comment">// Se esistono già dati non fare nulla</span>
-<span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> db.Set&lt;Role&gt;().AnyAsync(CancellationToken.None)) <span class="hljs-keyword">return</span>;
+<pre><code class="language-csharp"><span class="hljs-comment">// Database già avviato: solo i permessi nuovi e, in Development, l&#x27;admin</span>
+<span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> db.Set&lt;Role&gt;().AnyAsync(CancellationToken.None))
+{
+    <span class="hljs-keyword">await</span> AddMissingPermissionsAsync(db, logger);
+    <span class="hljs-keyword">if</span> (isDevelopment)
+        <span class="hljs-keyword">await</span> RealignDevelopmentAdminAsync(db, config, passwordHasher, logger);
+    <span class="hljs-keyword">return</span>;
+}
 </code></pre>
+<p><code>RealignDevelopmentAdminAsync</code> riporta l'admin a password e attivazione della configurazione, non
+ai ruoli, e scrive solo se qualcosa è cambiato: vedi
+<a href="../progetto/configurazione.html#credenziali-di-sviluppo-nel-login">Credenziali di sviluppo nel login</a>.</p>
 <h3 id="il-seed-gira-in-transazione-dentro-la-strategia-di-retry">Il seed gira in transazione, dentro la strategia di retry</h3>
 <pre><code class="language-csharp"><span class="hljs-comment">// Con EnableRetryOnFailure attivo, una transazione aperta a mano va eseguita DENTRO</span>
 <span class="hljs-comment">// la strategia di esecuzione, altrimenti EF lancia</span>
@@ -630,8 +639,10 @@ via navigation property, lasciando che EF risolva le FK al <code>SaveChanges</co
 <p>L'amministratore iniziale è configurabile: <code>Seed:AdminUsername</code> (default <code>admin</code>),
 <code>Seed:AdminEmail</code> (vuoto = si riusa lo username, se ha la forma di un'email),
 <code>Seed:AdminDisplayName</code> (default <code>Administrator</code>) e <code>Seed:AdminPassword</code>. Con il login MSAL lo
-username dev'essere l'email aziendale con cui si entra. Se la password non è configurata ne viene
-generata una casuale — che, non essendo stampata in chiaro, di fatto obbliga a impostarla.</p>
+username dev'essere l'email aziendale con cui si entra. Se la password non è configurata, in
+<code>Development</code> vale <code>Admin@1234</code>; fuori ne viene generata una casuale — che, non essendo stampata in
+chiaro, di fatto obbliga a impostarla. Username e password stanno in un punto solo,
+<code>AdminCredentials</code>, letto sia dal seed sia dall'endpoint delle credenziali di sviluppo.</p>
 <blockquote>
 <p>Non esiste un comando di reset. Per ripartire da zero il database si droppa a mano.</p>
 </blockquote>
@@ -744,7 +755,7 @@ fanno fallire la build.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.1.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

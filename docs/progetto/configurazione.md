@@ -25,8 +25,9 @@ Le variabili d'ambiente usano il **doppio underscore** al posto dei due punti:
 
 `ASPNETCORE_ENVIRONMENT` decide quale file `{Environment}` viene letto e cambia alcuni
 comportamenti: in `Development` il CORS accetta qualsiasi porta su `localhost`, il rate limiting
-del login è più permissivo, i dettagli delle eccezioni arrivano al client, e l'endpoint di login
-Windows accetta l'header `X-Dev-Windows-User`. `launchSettings.json` lo imposta a `Development` per
+del login è più permissivo, i dettagli delle eccezioni arrivano al client, l'endpoint di login
+Windows accetta l'header `X-Dev-Windows-User`, e il login mostra le credenziali dell'admin, che il
+seed tiene allineate alla configurazione (vedi [sotto](#credenziali-di-sviluppo-nel-login)). `launchSettings.json` lo imposta a `Development` per
 `dotnet run`; in produzione va impostato esplicitamente a `Production`.
 
 ## Backend: le chiavi
@@ -60,20 +61,46 @@ dominio.
 
 ### `Seed`
 
-Letti **solo al primo avvio su un database vuoto**: se esiste già anche un solo ruolo, il seed
-esce senza fare nulla. Cambiarli dopo non ha effetto.
+Letti **al primo avvio su un database vuoto**, per creare gli utenti: se esiste già anche un solo
+ruolo il seed aggiunge soltanto i permessi nuovi del catalogo, e cambiare queste chiavi non ha
+effetto. L'eccezione è `Development`: lì username e password dell'admin valgono a ogni avvio (vedi
+[sotto](#credenziali-di-sviluppo-nel-login)).
 
 | Chiave | Default | Valore |
 |---|---|---|
 | `Seed:AdminUsername` | `admin` | Username dell'amministratore iniziale. Con il login Microsoft dev'essere l'email aziendale con cui si entra (`preferred_username` del token) |
 | `Seed:AdminEmail` | vuoto | Email dell'admin. Vuoto = si riusa lo username, se ha la forma di un'email |
 | `Seed:AdminDisplayName` | `Administrator` | Nome visualizzato |
-| `Seed:AdminPassword` | vuoto | Password dell'admin. Vuota = ne viene generata una casuale, **non stampata**: di fatto va impostata |
+| `Seed:AdminPassword` | vuoto | Password dell'admin. Vuota in `Development` = `Admin@1234`; vuota fuori da `Development` = ne viene generata una casuale, **non stampata**: in produzione di fatto va impostata |
 | `Seed:WindowsUsername` | vuoto | Account per il login Windows, nella forma `DOMINIO\utente`. Vuoto = l'account del processo corrente, che in sviluppo è quasi sempre quello giusto |
 
 Il seed crea anche permessi, ruoli (`SuperAdmin`, `Admin`, `Viewer`, `Custom`) e gruppi
 (`Administrators`, `Viewers`): l'elenco è in `DataSeeder.cs`. I permessi di una feature nuova si
 aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.
+
+#### Credenziali di sviluppo nel login
+
+In `Development`, con il login username e password (`VITE_AUTH_STRATEGY=jwt`), la pagina di login
+mostra username e password dell'admin. Non sono scritte nel frontend: le chiede al backend,
+`GET /api/auth/dev-credentials`, che restituisce `Seed:AdminUsername` e `Seed:AdminPassword` (con i
+default della tabella sopra).
+
+L'endpoint risponde solo se l'ambiente è `Development` **e** la richiesta arriva da questo computer
+(loopback). Un `X-Forwarded-For: 127.0.0.1` scritto a mano non basta: conta anche l'indirizzo della
+connessione vera. In tutti gli altri casi risponde 404 e il riquadro non compare.
+
+Perché le credenziali mostrate funzionino sempre, in `Development` il seed a ogni avvio riporta
+l'admin già esistente alla configurazione:
+
+- **password e attivazione** sì: se una prova le ha cambiate, al riavvio tornano quelle di
+  `appsettings.local.json`;
+- **i ruoli** no: una prova sui permessi resta com'è.
+
+Quindi in sviluppo la password dell'admin si cambia in `Seed:AdminPassword`, non dall'app: dall'app
+dura fino al riavvio. Se `Seed:AdminUsername` non corrisponde a nessun utente (cambiato dopo il
+primo avvio), o se l'admin entra con un identity provider e non ha una password locale, il seed lo
+scrive nel log e non tocca niente. Fuori da `Development` non c'è né il riquadro né il
+riallineamento.
 
 ### `Cors` e `Logging`
 

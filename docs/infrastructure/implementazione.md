@@ -551,15 +551,25 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Seed dei dati iniziali: popola SOLO uno store vuoto — mai wipe, mai reseed.
-await app.SeedAsync();
+await app.Services.SeedAsync(app.Environment.IsDevelopment());
 ```
 
 Il gate del seeder è la prima riga utile di `DataSeeder`:
 
 ```csharp
-// Se esistono già dati non fare nulla
-if (await db.Set<Role>().AnyAsync(CancellationToken.None)) return;
+// Database già avviato: solo i permessi nuovi e, in Development, l'admin
+if (await db.Set<Role>().AnyAsync(CancellationToken.None))
+{
+    await AddMissingPermissionsAsync(db, logger);
+    if (isDevelopment)
+        await RealignDevelopmentAdminAsync(db, config, passwordHasher, logger);
+    return;
+}
 ```
+
+`RealignDevelopmentAdminAsync` riporta l'admin a password e attivazione della configurazione, non
+ai ruoli, e scrive solo se qualcosa è cambiato: vedi
+[Credenziali di sviluppo nel login](../progetto/configurazione.md#credenziali-di-sviluppo-nel-login).
 
 ### Il seed gira in transazione, dentro la strategia di retry
 
@@ -588,8 +598,10 @@ via navigation property, lasciando che EF risolva le FK al `SaveChanges`.
 L'amministratore iniziale è configurabile: `Seed:AdminUsername` (default `admin`),
 `Seed:AdminEmail` (vuoto = si riusa lo username, se ha la forma di un'email),
 `Seed:AdminDisplayName` (default `Administrator`) e `Seed:AdminPassword`. Con il login MSAL lo
-username dev'essere l'email aziendale con cui si entra. Se la password non è configurata ne viene
-generata una casuale — che, non essendo stampata in chiaro, di fatto obbliga a impostarla.
+username dev'essere l'email aziendale con cui si entra. Se la password non è configurata, in
+`Development` vale `Admin@1234`; fuori ne viene generata una casuale — che, non essendo stampata in
+chiaro, di fatto obbliga a impostarla. Username e password stanno in un punto solo,
+`AdminCredentials`, letto sia dal seed sia dall'endpoint delle credenziali di sviluppo.
 
 > Non esiste un comando di reset. Per ripartire da zero il database si droppa a mano.
 

@@ -102,7 +102,8 @@ Il template lo dice da sé, in coda ai task, ma vale la pena averlo qui:
 1. Copiare `apps/backend/<Progetto>.Api/appsettings.local.json.example` in
    `appsettings.local.json` (gitignored) e valorizzarlo: provider, connection string, secret JWT,
    utente amministratore iniziale (`Seed:AdminUsername`, `Seed:AdminEmail`,
-   `Seed:AdminDisplayName`, `Seed:AdminPassword`; i default sono `admin` / `Administrator`).
+   `Seed:AdminDisplayName`, `Seed:AdminPassword`; i default sono `admin` / `Administrator`, e in
+   sviluppo una password vuota vale `Admin@1234`, che la pagina di login mostra).
 2. Copiare `apps/frontend/.env.local.example` in `apps/frontend/.env.local` e valorizzarlo.
 3. **Avviare il backend.** La migration `InitialCreate` è già inclusa per entrambi i provider: si
    applica da sola all'avvio (`MigrateAsync`), crea il database se non esiste e, su un database
