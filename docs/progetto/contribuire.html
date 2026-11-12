@@ -113,6 +113,7 @@
           <li class="lvl-3"><a href="#la-action">La Action</a></li>
           <li class="lvl-2"><a href="#rilasciare-a-lotti">Rilasciare a lotti</a></li>
           <li class="lvl-3"><a href="#l-ordine-template-app-demo-sito">L'ordine: template → app-demo → sito</a></li>
+          <li class="lvl-2"><a href="#aggiornare-le-dipendenze">Aggiornare le dipendenze</a></li>
           <li class="lvl-2"><a href="#aggiornare-questo-sito">Aggiornare questo sito</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
@@ -274,7 +275,8 @@ trovano più i pacchetti. <code>C:\tmp\prova</code> va bene; una cartella annida
 <h3 id="la-action">La Action</h3>
 <p><code>.github/workflows/verify.yml</code> fa la stessa cosa su GitHub a ogni push su <code>main</code> e a ogni pull
 request: genera i quattro progetti e lancia <code>pnpm verify</code> su ciascuno. Non parte quando cambiano solo
-<code>docs/**</code>, <code>CHANGELOG.md</code> e il <code>CLAUDE.md</code> della radice, che non entrano nei progetti generati.</p>
+<code>docs/**</code>, <code>CHANGELOG.md</code>, <code>renovate.json</code> e il <code>CLAUDE.md</code> della radice, che non entrano nei
+progetti generati.</p>
 <p><code>/rilascio-template</code> legge il suo esito: se riguarda esattamente ciò che si sta rilasciando, e i quattro
 job sono verdi, non ripete in locale la verifica dei quattro progetti. Un job rosso è un rosso anche se
 in locale passa. La Action gira su Linux: non prova Windows, ma vede le maiuscole nei percorsi, il
@@ -310,6 +312,23 @@ all'elenco, con il motivo. Un diff già in elenco ma cambiato si rilegge e poi s
 </ol>
 <p>In quest'ordine perché ogni passo documenta quello prima: app-demo prova il tag vero, e il sito
 descrive ciò che è stato rilasciato e provato.</p>
+<h2 id="aggiornare-le-dipendenze">Aggiornare le dipendenze</h2>
+<p>Le regole stanno in <code>docs/aggiornamenti.md</code> del template; in breve:</p>
+<ol>
+<li><strong>Solo versioni LTS</strong>, di .NET e di Node. .NET 11 si salta (finisce il supporto lo stesso giorno
+di .NET 10); i pacchetti legati a .NET restano sulla 10, tutti sulla stessa patch.</li>
+<li><strong>Sicurezza subito</strong>: una patch di .NET con CVE o un advisory su un pacchetto si mette nel
+template e si rilascia senza aspettare.</li>
+<li><strong>Il resto, un lotto al mese</strong>, dopo il Patch Tuesday di Microsoft: patch e versioni minori, uscite
+da almeno 7 giorni. Una versione maggiore diventa una voce del backlog.</li>
+<li><strong>Si aggiorna solo il template</strong>: i progetti generati ricevono tutto con <code>/aggiorna-dal-template</code>
+e non hanno un bot loro.</li>
+</ol>
+<p>Le applica <a href="https://docs.renovatebot.com/" target="_blank" rel="noopener">Renovate</a>, con <code>renovate.json</code> alla radice del template:
+una pull request al mese con gli aggiornamenti del mese, una subito per la sicurezza, e le versioni
+maggiori nella Dependency Dashboard, ferme finché non si approvano. Ogni pull request fa partire la
+Action. Renovate e non Dependabot perché legge i file come testo, e i nomi con <code>[[ project_slug ]]</code>
+non gli danno problemi.</p>
 <h2 id="aggiornare-questo-sito">Aggiornare questo sito</h2>
 <p>Il sito vive in <code>app-boilerplate-site</code>: i Markdown in <code>docs/</code> sono la fonte, <code>npm run build</code>
 genera gli HTML, e si committano entrambi (GitHub Pages serve i file statici, e una GitHub Action

@@ -136,7 +136,8 @@ il controllo sappia diventare rosso.
 
 `.github/workflows/verify.yml` fa la stessa cosa su GitHub a ogni push su `main` e a ogni pull
 request: genera i quattro progetti e lancia `pnpm verify` su ciascuno. Non parte quando cambiano solo
-`docs/**`, `CHANGELOG.md` e il `CLAUDE.md` della radice, che non entrano nei progetti generati.
+`docs/**`, `CHANGELOG.md`, `renovate.json` e il `CLAUDE.md` della radice, che non entrano nei
+progetti generati.
 
 `/rilascio-template` legge il suo esito: se riguarda esattamente ciò che si sta rilasciando, e i quattro
 job sono verdi, non ripete in locale la verifica dei quattro progetti. Un job rosso è un rosso anche se
@@ -179,6 +180,25 @@ dell'impianto, skill rimosse), `minor` per funzionalità nuove compatibili, `pat
 
 In quest'ordine perché ogni passo documenta quello prima: app-demo prova il tag vero, e il sito
 descrive ciò che è stato rilasciato e provato.
+
+## Aggiornare le dipendenze
+
+Le regole stanno in `docs/aggiornamenti.md` del template; in breve:
+
+1. **Solo versioni LTS**, di .NET e di Node. .NET 11 si salta (finisce il supporto lo stesso giorno
+   di .NET 10); i pacchetti legati a .NET restano sulla 10, tutti sulla stessa patch.
+2. **Sicurezza subito**: una patch di .NET con CVE o un advisory su un pacchetto si mette nel
+   template e si rilascia senza aspettare.
+3. **Il resto, un lotto al mese**, dopo il Patch Tuesday di Microsoft: patch e versioni minori, uscite
+   da almeno 7 giorni. Una versione maggiore diventa una voce del backlog.
+4. **Si aggiorna solo il template**: i progetti generati ricevono tutto con `/aggiorna-dal-template`
+   e non hanno un bot loro.
+
+Le applica [Renovate](https://docs.renovatebot.com/), con `renovate.json` alla radice del template:
+una pull request al mese con gli aggiornamenti del mese, una subito per la sicurezza, e le versioni
+maggiori nella Dependency Dashboard, ferme finché non si approvano. Ogni pull request fa partire la
+Action. Renovate e non Dependabot perché legge i file come testo, e i nomi con `[[ project_slug ]]`
+non gli danno problemi.
 
 ## Aggiornare questo sito
 
