@@ -155,7 +155,7 @@ file).
 |---|---|---|
 | `VITE_API_BASE_URL` | `http://localhost:<api_port>` in sviluppo, l'URL pubblico del **backend** in produzione | Senza slash finale |
 | `VITE_AUTH_STRATEGY` | `jwt` · `msal` · `windows` | Quale schermata di login mostrare. Il backend accetta sempre tutte e tre |
-| `VITE_APP_ACCESS_MODE` | `public` · `private` | Impostata dalla variabile Copier `access_mode`. `private` manda al login qualsiasi anonimo |
+| `VITE_APP_ACCESS_MODE` | `public` · `private` | Impostata dalla variabile Copier `access_mode`. `private` manda al login qualsiasi anonimo; con `msal` il login va direttamente a Microsoft (non dopo "Esci", non di ritorno da Microsoft con un errore, non dopo una sessione scaduta) |
 | `VITE_MSAL_CLIENT_ID` · `VITE_MSAL_TENANT_ID` | dal portale Azure | Solo con `msal`: l'app registration della **SPA** |
 | `VITE_MSAL_API_CLIENT_ID` | dal portale Azure | Solo con `msal` e due app registration distinte: l'app dell'**API**, per lo scope del token. Vuota = SPA e API condividono la stessa app |
 | `VITE_APP_VERSION` | per esempio `v1.0.0` | Facoltativa, commentata in `.env.production`. La versione nel piè di pagina viene da `git describe --tags` quando Vite parte; questa serve solo se la build non vede la cartella `.git`, per esempio in un'immagine Docker. Senza nessuna delle due, "sviluppo" |

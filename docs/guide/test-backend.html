@@ -106,6 +106,7 @@
           <li class="lvl-2"><a href="#applicationtests-gli-handler-con-i-sostituti">Application.Tests: gli handler con i sostituti</a></li>
           <li class="lvl-3"><a href="#le-query">Le query</a></li>
           <li class="lvl-2"><a href="#architecturetests-le-regole-che-fanno-fallire-la-build">Architecture.Tests: le regole che fanno fallire la build</a></li>
+          <li class="lvl-2"><a href="#i-servizi-e-gli-analizzatori-errori-che-si-vedono-solo-in-esecuzione">I servizi e gli analizzatori: errori che si vedono solo in esecuzione</a></li>
           <li class="lvl-2"><a href="#scrivere-i-test-di-una-feature-nuova">Scrivere i test di una feature nuova</a></li>
           <li class="lvl-2"><a href="#che-cosa-non-testare">Che cosa non testare</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
@@ -147,9 +148,9 @@ nel template e come se ne scrive uno nuovo per una feature.</p>
 </tr>
 <tr>
 <td><code>&lt;Progetto&gt;.Api.Tests</code></td>
-<td>Il middleware degli errori: che cosa diventa un 500 e finisce in <code>ErrorLog</code></td>
-<td>NSubstitute</td>
-<td>Un errore del client, o una richiesta che il client ha annullato, viene scritto come errore del server</td>
+<td>Il middleware degli errori: che cosa diventa un 500 e finisce in <code>ErrorLog</code>; i servizi di <code>Program.cs</code> costruiti con la validazione completa (<code>ServiceRegistrationTests</code>)</td>
+<td>NSubstitute; il <code>Program</code> vero, fermato appena l'host è costruito</td>
+<td>Un errore del client viene scritto come errore del server; un servizio scoped dentro un singleton, una dipendenza non registrata</td>
 </tr>
 <tr>
 <td><code>&lt;Progetto&gt;.Architecture.Tests</code></td>
@@ -373,6 +374,47 @@ verificano che nessuno abbia rotto le convenzioni. Falliscono per un <code>using
 <p>Non si modificano quando si aggiunge una feature: si modificano quando si cambia <strong>una regola del
 progetto</strong>, ed è raro. Se un test di architettura fallisce, la risposta giusta è quasi sempre
 spostare il codice, non allargare l'eccezione.</p>
+<h2 id="i-servizi-e-gli-analizzatori-errori-che-si-vedono-solo-in-esecuzione">I servizi e gli analizzatori: errori che si vedono solo in esecuzione</h2>
+<p>Alcuni errori compilano e passano i test degli handler, e si vedono solo all'avvio, alla prima
+richiesta o sotto carico. Due controlli li fermano prima.</p>
+<p><strong><code>ServiceRegistrationTests</code></strong>, in Api.Tests, avvia il <code>Program</code> vero e lo ferma appena l'host è
+costruito, prima delle migration: nessun database, nessuna porta aperta. Lo costruisce con la
+validazione completa del container (<code>ValidateOnBuild</code>, <code>ValidateScopes</code>), in Development e in
+Production e con i due provider. Fallisce con &quot;Cannot consume scoped service&quot; se un singleton
+dipende da un servizio scoped (che vivrebbe per sempre con il <code>DbContext</code> della prima richiesta), e
+con &quot;Unable to resolve service&quot; se una dipendenza non è registrata.</p>
+<p><strong>Gli analizzatori di .NET</strong> sono errori di build, scritti in <code>apps/backend/.editorconfig</code>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Regola</th>
+<th>Che cosa trova</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CA2016</td>
+<td>Un <code>CancellationToken</code> ricevuto e non passato al metodo che lo accetta</td>
+</tr>
+<tr>
+<td>CA1849</td>
+<td>Un metodo sincrono dove esiste la versione async (<code>Validate</code> invece di <code>ValidateAsync</code>, <code>app.Run()</code>)</td>
+</tr>
+<tr>
+<td>CA2012</td>
+<td>Un <code>ValueTask</code> atteso due volte, ignorato o letto con <code>.Result</code></td>
+</tr>
+<tr>
+<td>CA2254</td>
+<td>Un messaggio di log costruito con l'interpolazione invece del template</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Una violazione si corregge. Un'eccezione vera si dichiara sul punto, con <code>#pragma warning disable</code>
+e il motivo, senza spegnere la regola. Gli altri errori tipici (<code>async void</code>, <code>.Result</code>,
+<code>new HttpClient()</code>, <code>DbContext</code> in parallelo…) sono nella checklist di <code>/review</code>.</p>
 <h2 id="scrivere-i-test-di-una-feature-nuova">Scrivere i test di una feature nuova</h2>
 <p>Per un'entità <code>Category</code> con le sue slice, i test da aggiungere sono:</p>
 <pre><code>tests/

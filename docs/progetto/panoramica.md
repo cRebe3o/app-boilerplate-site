@@ -227,7 +227,7 @@ centralizzata in `config/app.config.ts`:
 | Modalità | Comportamento |
 |---|---|
 | `public` | L'utente anonimo atterra sulla home pubblica e da lì può accedere. Le rotte con `meta.requiresAuth` restano comunque protette |
-| `private` | Nessuna pagina è visibile agli anonimi: qualsiasi rotta diversa da `/login` redirige al login finché l'utente non è autenticato |
+| `private` | Nessuna pagina è visibile agli anonimi: qualsiasi rotta diversa da `/login` redirige al login finché l'utente non è autenticato. Con l'accesso Microsoft la pagina di login va direttamente a Microsoft, senza il pulsante intermedio; con Windows si entra da soli. Dopo "Esci" no: si resta sulla pagina con il pulsante, altrimenti uscire sarebbe impossibile |
 
 ## Permessi
 

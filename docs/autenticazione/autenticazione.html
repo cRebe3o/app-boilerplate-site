@@ -296,8 +296,16 @@ cambia il comportamento del backend.</p>
 <span class="hljs-attr">VITE_AUTH_STRATEGY</span>=windows   <span class="hljs-comment"># nessun form: SSO Windows automatico all&#x27;apertura della pagina</span>
 </code></pre>
 <p>In <code>LoginPage.vue</code> il form classico compare <strong>solo</strong> con <code>'jwt'</code>; <code>'msal'</code> mostra il pulsante
-Microsoft; <code>'windows'</code> non mostra nulla e tenta subito il Single Sign-On, con un pulsante &quot;Riprova&quot;
-se qualcosa va storto.</p>
+Microsoft; <code>'windows'</code> non mostra un form e tenta subito il Single Sign-On, con il pulsante &quot;Accedi
+con Windows&quot; se qualcosa va storto.</p>
+<p>Con la home non pubblica (<code>VITE_APP_ACCESS_MODE=private</code>) anche <code>'msal'</code> non aspetta il clic: la
+pagina di login va direttamente a Microsoft. Si ferma sulla pagina in tre casi: di ritorno da
+Microsoft con un errore (accesso annullato, consenso negato), che viene mostrato; dopo una
+sessione scaduta, che la pagina spiega; dopo &quot;Esci&quot;.</p>
+<p><strong>Dopo &quot;Esci&quot; non si rientra da soli</strong>, né con Windows né con Microsoft: la pagina mostra il
+pulsante e aspetta un clic, anche ricaricandola, fino al login successivo. Altrimenti uscire
+sarebbe impossibile: il browser ha ancora l'identità Windows o la sessione Microsoft.
+<code>authStore.endedByLogout()</code> dice se l'ultima sessione è finita così.</p>
 <p>Per usare MSAL servono anche le variabili descritte nella <a href="azure-app-registration.html">guida ad Azure</a>;
 il backend, dal canto suo, ha bisogno di <code>Auth:Msal:TenantId</code> e <code>Auth:Msal:ClientId</code> per validare il
 token in arrivo. Per Windows, invece, <strong>non serve configurare nulla</strong>.</p>

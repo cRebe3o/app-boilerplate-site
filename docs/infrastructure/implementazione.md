@@ -278,6 +278,9 @@ Le due conseguenze pratiche, valide per ogni slice che si aggiungerà:
 - **Un validator non va registrato né invocato.** Basta che esista una classe
   `AbstractValidator<TCommand>` nell'assembly: `AddValidatorsFromAssemblyContaining` la trova, e il
   `ValidationBehavior` la esegue prima dell'handler. Se fallisce, l'handler non viene mai raggiunto.
+  Con più validator per la stessa richiesta li esegue uno alla volta, ognuno con il suo contesto:
+  due regole `MustAsync` che leggono dal database userebbero lo stesso `DbContext` in parallelo, ed
+  EF lo rifiuta solo in esecuzione.
 - **Un handler non va registrato.** `RegisterServicesFromAssemblyContaining` scopre da sé ogni
   `IRequestHandler`.
 

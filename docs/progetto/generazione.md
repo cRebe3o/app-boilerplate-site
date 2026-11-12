@@ -36,7 +36,7 @@ il progetto che ne esce:
 | `api_port` | Porta dell'API in sviluppo | `5080` | `launchSettings.json`, `VITE_API_BASE_URL` |
 | `frontend_port` | Porta del dev server Vite | `5173` | `vite.config.ts`, origin CORS di sviluppo |
 | `db_provider` | `SqlServer` o `PostgreSQL` | `SqlServer` | `Database:Provider` in `appsettings.json`, immagine del `docker-compose.yml` |
-| `access_mode` | `public` o `private` | `public` | `VITE_APP_ACCESS_MODE`, comportamento del router |
+| `access_mode` | `public` o `private` | `public` | `VITE_APP_ACCESS_MODE`, comportamento del router e della pagina di login |
 | `include_docker` | Generare o no il `docker-compose.yml` del database | `true` | Presenza del file in radice |
 | `include_jobs` | I lavori programmati con Hangfire, e il loro pannello | `false` | Cartelle `Jobs` in Api, Application, Infrastructure e test; voce "Lavori programmati" in Sistema; permesso `jobs.dashboard` |
 

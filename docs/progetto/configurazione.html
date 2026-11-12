@@ -446,7 +446,7 @@ file).</p>
 <tr>
 <td><code>VITE_APP_ACCESS_MODE</code></td>
 <td><code>public</code> · <code>private</code></td>
-<td>Impostata dalla variabile Copier <code>access_mode</code>. <code>private</code> manda al login qualsiasi anonimo</td>
+<td>Impostata dalla variabile Copier <code>access_mode</code>. <code>private</code> manda al login qualsiasi anonimo; con <code>msal</code> il login va direttamente a Microsoft (non dopo &quot;Esci&quot;, non di ritorno da Microsoft con un errore, non dopo una sessione scaduta)</td>
 </tr>
 <tr>
 <td><code>VITE_MSAL_CLIENT_ID</code> · <code>VITE_MSAL_TENANT_ID</code></td>

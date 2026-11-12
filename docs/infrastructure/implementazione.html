@@ -367,7 +367,10 @@ e in <code>validation.maxRecordsRange</code>: cambiandola, va cambiata anche lì
 <ul>
 <li><strong>Un validator non va registrato né invocato.</strong> Basta che esista una classe
 <code>AbstractValidator&lt;TCommand&gt;</code> nell'assembly: <code>AddValidatorsFromAssemblyContaining</code> la trova, e il
-<code>ValidationBehavior</code> la esegue prima dell'handler. Se fallisce, l'handler non viene mai raggiunto.</li>
+<code>ValidationBehavior</code> la esegue prima dell'handler. Se fallisce, l'handler non viene mai raggiunto.
+Con più validator per la stessa richiesta li esegue uno alla volta, ognuno con il suo contesto:
+due regole <code>MustAsync</code> che leggono dal database userebbero lo stesso <code>DbContext</code> in parallelo, ed
+EF lo rifiuta solo in esecuzione.</li>
 <li><strong>Un handler non va registrato.</strong> <code>RegisterServicesFromAssemblyContaining</code> scopre da sé ogni
 <code>IRequestHandler</code>.</li>
 </ul>

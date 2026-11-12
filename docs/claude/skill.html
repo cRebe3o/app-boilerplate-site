@@ -264,7 +264,7 @@ genera migration).</p>
 </tr>
 <tr>
 <td><code>/review</code></td>
-<td>Rilegge le modifiche del branch rispetto a <code>main</code> (o i percorsi indicati) contro le convenzioni del progetto, comprese le forme singolare e plurale dei numeri nei testi, i codici di errore, le conferme che nominano l'elemento e le regex nuove su input dell'utente (ancorate, senza quantificatori che si contendono i caratteri, su un campo con lunghezza massima), senza modificare file</td>
+<td>Rilegge le modifiche del branch rispetto a <code>main</code> (o i percorsi indicati) contro le convenzioni del progetto, comprese le forme singolare e plurale dei numeri nei testi, i codici di errore, le conferme che nominano l'elemento, le regex nuove su input dell'utente (ancorate, senza quantificatori che si contendono i caratteri, su un campo con lunghezza massima) e gli errori tipici di .NET che non trovano né il compilatore né i test (<code>async void</code>, <code>.Result</code> e <code>.Wait()</code>, <code>new HttpClient()</code>, <code>DbContext</code> in un singleton o in parallelo, scope mancanti, lavoro &quot;fire-and-forget&quot; in una richiesta, <code>catch</code> che inghiotte), senza modificare file</td>
 </tr>
 <tr>
 <td><code>/fix &lt;descrizione&gt;</code></td>

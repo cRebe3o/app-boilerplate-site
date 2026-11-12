@@ -134,8 +134,18 @@ VITE_AUTH_STRATEGY=windows   # nessun form: SSO Windows automatico all'apertura 
 ```
 
 In `LoginPage.vue` il form classico compare **solo** con `'jwt'`; `'msal'` mostra il pulsante
-Microsoft; `'windows'` non mostra nulla e tenta subito il Single Sign-On, con un pulsante "Riprova"
-se qualcosa va storto.
+Microsoft; `'windows'` non mostra un form e tenta subito il Single Sign-On, con il pulsante "Accedi
+con Windows" se qualcosa va storto.
+
+Con la home non pubblica (`VITE_APP_ACCESS_MODE=private`) anche `'msal'` non aspetta il clic: la
+pagina di login va direttamente a Microsoft. Si ferma sulla pagina in tre casi: di ritorno da
+Microsoft con un errore (accesso annullato, consenso negato), che viene mostrato; dopo una
+sessione scaduta, che la pagina spiega; dopo "Esci".
+
+**Dopo "Esci" non si rientra da soli**, né con Windows né con Microsoft: la pagina mostra il
+pulsante e aspetta un clic, anche ricaricandola, fino al login successivo. Altrimenti uscire
+sarebbe impossibile: il browser ha ancora l'identità Windows o la sessione Microsoft.
+`authStore.endedByLogout()` dice se l'ultima sessione è finita così.
 
 Per usare MSAL servono anche le variabili descritte nella [guida ad Azure](azure-app-registration.md);
 il backend, dal canto suo, ha bisogno di `Auth:Msal:TenantId` e `Auth:Msal:ClientId` per validare il

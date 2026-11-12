@@ -13,7 +13,7 @@ dotnet test apps/backend/<Progetto>.sln      # tutti, è anche `pnpm test:backen
 | `<Progetto>.Domain.Tests` | Invarianti di aggregati e value object | `new` e basta: nessun mock, nessun database | Una regola di business è sbagliata o aggirabile |
 | `<Progetto>.Application.Tests` | Gli handler: orchestrazione, eccezioni, cosa viene salvato | NSubstitute sulle astrazioni (`IUserRepository`, `IUnitOfWork`, …) | Un handler salva due volte, non lancia il 404, non normalizza l'input |
 | `<Progetto>.Infrastructure.Tests` | Ciò che si vede solo davanti a EF: value object ricostruiti dal database, specification tradotte in SQL, seed | SQLite in memoria, con EF Core vero | Un valore non si rilegge, un predicato non si traduce, il seed non aggiunge un permesso nuovo |
-| `<Progetto>.Api.Tests` | Il middleware degli errori: che cosa diventa un 500 e finisce in `ErrorLog` | NSubstitute | Un errore del client, o una richiesta che il client ha annullato, viene scritto come errore del server |
+| `<Progetto>.Api.Tests` | Il middleware degli errori: che cosa diventa un 500 e finisce in `ErrorLog`; i servizi di `Program.cs` costruiti con la validazione completa (`ServiceRegistrationTests`) | NSubstitute; il `Program` vero, fermato appena l'host è costruito | Un errore del client viene scritto come errore del server; un servizio scoped dentro un singleton, una dipendenza non registrata |
 | `<Progetto>.Architecture.Tests` | La direzione delle dipendenze e le convenzioni del modello | Reflection sugli assembly compilati | Un `using` sbagliato, un setter pubblico, una `List<T>` esposta |
 
 Tutti usano **xUnit**; i nomi dei test sono frasi in italiano con gli underscore
@@ -192,6 +192,31 @@ verificano che nessuno abbia rotto le convenzioni. Falliscono per un `using`, no
 Non si modificano quando si aggiunge una feature: si modificano quando si cambia **una regola del
 progetto**, ed è raro. Se un test di architettura fallisce, la risposta giusta è quasi sempre
 spostare il codice, non allargare l'eccezione.
+
+## I servizi e gli analizzatori: errori che si vedono solo in esecuzione
+
+Alcuni errori compilano e passano i test degli handler, e si vedono solo all'avvio, alla prima
+richiesta o sotto carico. Due controlli li fermano prima.
+
+**`ServiceRegistrationTests`**, in Api.Tests, avvia il `Program` vero e lo ferma appena l'host è
+costruito, prima delle migration: nessun database, nessuna porta aperta. Lo costruisce con la
+validazione completa del container (`ValidateOnBuild`, `ValidateScopes`), in Development e in
+Production e con i due provider. Fallisce con "Cannot consume scoped service" se un singleton
+dipende da un servizio scoped (che vivrebbe per sempre con il `DbContext` della prima richiesta), e
+con "Unable to resolve service" se una dipendenza non è registrata.
+
+**Gli analizzatori di .NET** sono errori di build, scritti in `apps/backend/.editorconfig`:
+
+| Regola | Che cosa trova |
+|---|---|
+| CA2016 | Un `CancellationToken` ricevuto e non passato al metodo che lo accetta |
+| CA1849 | Un metodo sincrono dove esiste la versione async (`Validate` invece di `ValidateAsync`, `app.Run()`) |
+| CA2012 | Un `ValueTask` atteso due volte, ignorato o letto con `.Result` |
+| CA2254 | Un messaggio di log costruito con l'interpolazione invece del template |
+
+Una violazione si corregge. Un'eccezione vera si dichiara sul punto, con `#pragma warning disable`
+e il motivo, senza spegnere la regola. Gli altri errori tipici (`async void`, `.Result`,
+`new HttpClient()`, `DbContext` in parallelo…) sono nella checklist di `/review`.
 
 ## Scrivere i test di una feature nuova
 
