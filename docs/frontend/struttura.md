@@ -119,7 +119,7 @@ adatta da solo.
 | `AppTopBar.vue` | Le **tab di sezione** (una per voce di `SECTIONS`), il toggle del tema, il menu utente con logout, il pulsante Login per l'anonimo |
 | `AppNav.vue` | Le voci della sezione attiva, già filtrate per permesso da `navigation.store` |
 | `AppBreadcrumb.vue` | Le briciole generate da `useBreadcrumb` dai `meta.title` delle rotte |
-| `AppFooter.vue` | Logo e versione (letta da `package.json` via `useAppVersion`) |
+| `AppFooter.vue` | Logo e versione del progetto via `useAppVersion`, con la versione del template nel tooltip |
 
 Una voce di menu nuova **non** è un `v-if` in `AppNav`: è una riga in `sections.config.ts`.
 
@@ -253,7 +253,7 @@ di uno store, un composable **non ha stato globale**: ogni chiamata crea il prop
 | `useBreadcrumb` | Solo in `AppBreadcrumb`: costruisce le briciole. Non lo chiama una pagina |
 | `useFormatters` | Valute e date nel formato della lingua corrente (`currency`, `date`). Un solo posto, così nessuna pagina hardcoda `'it-IT'` |
 | `useTheme` (`useAppTheme`) | Toggle chiaro/scuro con persistenza. Lo usano `App.vue` e la top bar |
-| `useAppVersion` | La versione da `package.json`, per il footer |
+| `useAppVersion` | Per il footer: `version`, il tag git del progetto (`v1.4.0`, `v1.4.0-3-gabc1234`, `-dirty`) letto da `git describe` quando Vite parte (`app-version.ts`), oppure `VITE_APP_VERSION`, oppure "sviluppo"; `templateVersion`, il `_commit` di `.copier-answers.yml` |
 
 **Quando aggiungerne uno.** Quando lo stesso blocco di logica (non di template) compare in due
 componenti: un timer, una trasformazione di dati, la meccanica di un controllo. Se ha bisogno di
@@ -344,7 +344,10 @@ Nei template si scrive sempre `t('chiave')`: nessun testo fisso, nemmeno un'etic
 
 `locales.test.ts` controlla che le due lingue abbiano le stesse chiavi e gli stessi segnaposto, che
 ogni chiave usata nel codice con testo fisso (`t('...')`, `$t('...')`, `i18n.global.t('...')`) esista
-in entrambe, e che ogni codice di `errorCodeValues` abbia la sua `errors.codes.<Codice>`. Vede anche
+in entrambe, che ogni codice di `errorCodeValues` abbia la sua `errors.codes.<Codice>` e che ogni
+segnaposto di quel testo, in it e in en, sia un parametro del codice (`errorCodeParams`): un
+segnaposto senza parametro diventerebbe un vuoto nel testo. Un parametro che il testo non usa va
+bene. Vede anche
 le chiavi calcolate più comuni: quelle di `sections.config.ts` (menu, dashboard, breadcrumb) e i
 `meta.title` delle rotte, letti dai dati veri, le proprietà che finiscono in `Key` e la chiave di
 riserva di `run`/`runOrThrow`/`attempt`. I commenti non contano come uso di una chiave.

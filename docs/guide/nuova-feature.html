@@ -469,11 +469,14 @@ factory <code>Category.Create</code> impedisce che la regola sia aggirabile da u
 </ul>
 <p><strong>I codici di errore.</strong> Ogni eccezione porta un valore di <code>ErrorCode</code>, un messaggio <strong>inglese</strong>,
 che serve per i log e di riserva, e i parametri. I codici del progetto si scrivono in
-<code>Domain/Exceptions/ErrorCode.Project.cs</code>, uno per campo, con i parametri nel commento:</p>
+<code>Domain/Exceptions/ErrorCode.Project.cs</code>, uno per campo, con i nomi dei parametri dopo il nome:</p>
 <pre><code class="language-csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">readonly</span> <span class="hljs-keyword">partial</span> <span class="hljs-keyword">record</span> <span class="hljs-title">struct</span> <span class="hljs-title">ErrorCode</span>
 {
-    <span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span>Parametri: id.<span class="hljs-doctag">&lt;/summary&gt;</span></span>
-    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> ErrorCode CategoryNotFound = <span class="hljs-keyword">new</span>(<span class="hljs-keyword">nameof</span>(CategoryNotFound));
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> ErrorCode CategoryNotFound = <span class="hljs-keyword">new</span>(<span class="hljs-keyword">nameof</span>(CategoryNotFound), <span class="hljs-string">&quot;id&quot;</span>);
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> ErrorCode CategoryAlreadyExists = <span class="hljs-keyword">new</span>(<span class="hljs-keyword">nameof</span>(CategoryAlreadyExists), <span class="hljs-string">&quot;name&quot;</span>);
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> ErrorCode CategoryDescriptionRequired = <span class="hljs-keyword">new</span>(<span class="hljs-keyword">nameof</span>(CategoryDescriptionRequired), <span class="hljs-string">&quot;field&quot;</span>);
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> ErrorCode CategoryDescriptionTooLong = <span class="hljs-keyword">new</span>(<span class="hljs-keyword">nameof</span>(CategoryDescriptionTooLong), <span class="hljs-string">&quot;max&quot;</span>);
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">readonly</span> ErrorCode CategoryInUse = <span class="hljs-keyword">new</span>(<span class="hljs-keyword">nameof</span>(CategoryInUse), <span class="hljs-string">&quot;count&quot;</span>);
 }
 </code></pre>
 <p><code>ErrorCode.cs</code>, accanto, ha i codici del template e si aggiorna con il template: lì non si scrive.
@@ -482,7 +485,12 @@ Il valore di un codice è il nome del campo, e non si ripete: lo controlla un te
 <code>errors.codes.&lt;Codice&gt;</code> (vedi il punto 12). Nei validator <code>NotEmpty</code>, <code>NotNull</code>, <code>MinimumLength</code>,
 <code>MaximumLength</code> ed <code>EmailAddress</code> hanno già un codice generico (<code>Required</code>, <code>TooShort</code>, <code>TooLong</code>,
 <code>InvalidEmail</code>): niente <code>WithMessage</code>. Le altre regole usano <code>WithErrorCode(ErrorCode.X, (&quot;max&quot;, 100))</code>.
-Un codice si aggiunge e non si rinomina: cambiarlo rompe le traduzioni. La skill <code>backend-slice</code>
+Chi lancia l'errore passa proprio i parametri dichiarati, in qualunque ordine: un nome diverso, in
+più o mancante, fuori da Production lancia <code>InvalidOperationException</code>, quindi lo trovano già i
+test; in Production scrive un avviso nel log (<code>ErrorParamsCheck</code>) e l'errore arriva al client come
+sempre. Una regola che vale sia nel validator sia nel dominio usa lo stesso codice con gli stessi
+parametri: un valore che conosce solo il dominio, come il valore inserito, resta nel messaggio
+inglese. Un codice si aggiunge e non si rinomina: cambiarlo rompe le traduzioni. La skill <code>backend-slice</code>
 (sezione &quot;Codici di errore&quot;) ha i dettagli.</p>
 <p>L'update ha la stessa forma, e la modifica passa da un metodo dell'aggregato:</p>
 <pre><code class="language-csharp"><span class="hljs-comment">// UpdateCategoryHandler</span>

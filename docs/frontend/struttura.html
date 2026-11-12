@@ -262,7 +262,7 @@ adatta da solo.</p>
 </tr>
 <tr>
 <td><code>AppFooter.vue</code></td>
-<td>Logo e versione (letta da <code>package.json</code> via <code>useAppVersion</code>)</td>
+<td>Logo e versione del progetto via <code>useAppVersion</code>, con la versione del template nel tooltip</td>
 </tr>
 </tbody>
 </table>
@@ -440,7 +440,7 @@ di uno store, un composable <strong>non ha stato globale</strong>: ogni chiamata
 </tr>
 <tr>
 <td><code>useAppVersion</code></td>
-<td>La versione da <code>package.json</code>, per il footer</td>
+<td>Per il footer: <code>version</code>, il tag git del progetto (<code>v1.4.0</code>, <code>v1.4.0-3-gabc1234</code>, <code>-dirty</code>) letto da <code>git describe</code> quando Vite parte (<code>app-version.ts</code>), oppure <code>VITE_APP_VERSION</code>, oppure &quot;sviluppo&quot;; <code>templateVersion</code>, il <code>_commit</code> di <code>.copier-answers.yml</code></td>
 </tr>
 </tbody>
 </table>
@@ -592,7 +592,10 @@ aggiungere a tutte le richieste va in <code>axios.ts</code>. Non contengono logi
 <p>Nei template si scrive sempre <code>t('chiave')</code>: nessun testo fisso, nemmeno un'etichetta.</p>
 <p><code>locales.test.ts</code> controlla che le due lingue abbiano le stesse chiavi e gli stessi segnaposto, che
 ogni chiave usata nel codice con testo fisso (<code>t('...')</code>, <code>$t('...')</code>, <code>i18n.global.t('...')</code>) esista
-in entrambe, e che ogni codice di <code>errorCodeValues</code> abbia la sua <code>errors.codes.&lt;Codice&gt;</code>. Vede anche
+in entrambe, che ogni codice di <code>errorCodeValues</code> abbia la sua <code>errors.codes.&lt;Codice&gt;</code> e che ogni
+segnaposto di quel testo, in it e in en, sia un parametro del codice (<code>errorCodeParams</code>): un
+segnaposto senza parametro diventerebbe un vuoto nel testo. Un parametro che il testo non usa va
+bene. Vede anche
 le chiavi calcolate più comuni: quelle di <code>sections.config.ts</code> (menu, dashboard, breadcrumb) e i
 <code>meta.title</code> delle rotte, letti dai dati veri, le proprietà che finiscono in <code>Key</code> e la chiave di
 riserva di <code>run</code>/<code>runOrThrow</code>/<code>attempt</code>. I commenti non contano come uso di una chiave.</p>

@@ -326,8 +326,11 @@ l'admin già esistente alla configurazione:</p>
 <p>Quindi in sviluppo la password dell'admin si cambia in <code>Seed:AdminPassword</code>, non dall'app: dall'app
 dura fino al riavvio. Se <code>Seed:AdminUsername</code> non corrisponde a nessun utente (cambiato dopo il
 primo avvio), o se l'admin entra con un identity provider e non ha una password locale, il seed lo
-scrive nel log e non tocca niente. Fuori da <code>Development</code> non c'è né il riquadro né il
-riallineamento.</p>
+scrive nel log e non tocca niente. Anche l'endpoint se ne accorge: risponde <code>userExists: false</code>
+oppure <code>hasLocalPassword: false</code>, senza la password, e il login mostra al posto delle credenziali un
+avviso, in italiano e in inglese, con che cosa fare (correggere <code>Seed:AdminUsername</code> e riavviare il
+backend, svuotare il database, oppure entrare con l'identity provider impostando
+<code>VITE_AUTH_STRATEGY</code>). Fuori da <code>Development</code> non c'è né il riquadro né il riallineamento.</p>
 <h3 id="cors-e-logging"><code>Cors</code> e <code>Logging</code></h3>
 <div class="table-wrap">
 <table>
@@ -454,6 +457,11 @@ file).</p>
 <td><code>VITE_MSAL_API_CLIENT_ID</code></td>
 <td>dal portale Azure</td>
 <td>Solo con <code>msal</code> e due app registration distinte: l'app dell'<strong>API</strong>, per lo scope del token. Vuota = SPA e API condividono la stessa app</td>
+</tr>
+<tr>
+<td><code>VITE_APP_VERSION</code></td>
+<td>per esempio <code>v1.0.0</code></td>
+<td>Facoltativa, commentata in <code>.env.production</code>. La versione nel piè di pagina viene da <code>git describe --tags</code> quando Vite parte; questa serve solo se la build non vede la cartella <code>.git</code>, per esempio in un'immagine Docker. Senza nessuna delle due, &quot;sviluppo&quot;</td>
 </tr>
 </tbody>
 </table>

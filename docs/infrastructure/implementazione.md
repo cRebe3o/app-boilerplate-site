@@ -320,8 +320,14 @@ confermato che rifiuta una modifica sta esprimendo una regola di business, non u
 Il formato è sempre **ProblemDetails** (RFC 7807), con due campi in più: `code` e `params`. Un
 errore di validazione ha anche `fieldErrors`, con codice, parametri e messaggio per ogni campo. Un
 500 ha sempre `InternalError`, una richiesta malformata `BadRequest`. Lo schema OpenAPI descrive
-questi campi e l'enum (`ProblemDetailsSchemaTransformer`), quindi `api.generated.ts` esporta anche
-`errorCodeValues`. Il frontend traduce ogni errore con `errors.codes.<code>` in un unico punto
+questi campi e l'enum (`ProblemDetailsSchemaTransformer`), con i parametri di ogni codice
+(`x-error-params`), quindi `api.generated.ts` esporta anche `errorCodeValues` ed `errorCodeParams`.
+
+I parametri di un codice si dichiarano dove nasce, `new(nameof(UserNotFound), "id")`, e chi lancia
+l'errore, un'eccezione di dominio o `WithErrorCode` di un validator, deve passare proprio quelli
+(`ErrorCode.EnsureParams`). Fuori da Production un nome diverso, in più o mancante lancia
+`InvalidOperationException`, così lo trovano i test. In Production scrive un avviso nel log, categoria
+`ErrorParamsCheck`, e l'errore originale arriva al client invece di diventare un 500. Il frontend traduce ogni errore con `errors.codes.<code>` in un unico punto
 (`useApiErrors`) invece che caso per caso, e senza traduzione mostra il `detail`.
 
 ## 4. Gli handler: astrazioni, mai `AppDbContext`

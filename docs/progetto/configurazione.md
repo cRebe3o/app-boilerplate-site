@@ -99,8 +99,11 @@ l'admin già esistente alla configurazione:
 Quindi in sviluppo la password dell'admin si cambia in `Seed:AdminPassword`, non dall'app: dall'app
 dura fino al riavvio. Se `Seed:AdminUsername` non corrisponde a nessun utente (cambiato dopo il
 primo avvio), o se l'admin entra con un identity provider e non ha una password locale, il seed lo
-scrive nel log e non tocca niente. Fuori da `Development` non c'è né il riquadro né il
-riallineamento.
+scrive nel log e non tocca niente. Anche l'endpoint se ne accorge: risponde `userExists: false`
+oppure `hasLocalPassword: false`, senza la password, e il login mostra al posto delle credenziali un
+avviso, in italiano e in inglese, con che cosa fare (correggere `Seed:AdminUsername` e riavviare il
+backend, svuotare il database, oppure entrare con l'identity provider impostando
+`VITE_AUTH_STRATEGY`). Fuori da `Development` non c'è né il riquadro né il riallineamento.
 
 ### `Cors` e `Logging`
 
@@ -155,6 +158,7 @@ file).
 | `VITE_APP_ACCESS_MODE` | `public` · `private` | Impostata dalla variabile Copier `access_mode`. `private` manda al login qualsiasi anonimo |
 | `VITE_MSAL_CLIENT_ID` · `VITE_MSAL_TENANT_ID` | dal portale Azure | Solo con `msal`: l'app registration della **SPA** |
 | `VITE_MSAL_API_CLIENT_ID` | dal portale Azure | Solo con `msal` e due app registration distinte: l'app dell'**API**, per lo scope del token. Vuota = SPA e API condividono la stessa app |
+| `VITE_APP_VERSION` | per esempio `v1.0.0` | Facoltativa, commentata in `.env.production`. La versione nel piè di pagina viene da `git describe --tags` quando Vite parte; questa serve solo se la build non vede la cartella `.git`, per esempio in un'immagine Docker. Senza nessuna delle due, "sviluppo" |
 
 Nel codice nessun file legge `import.meta.env` direttamente: lo fa solo `config/app.config.ts`,
 che espone valori già normalizzati. Una variabile nuova si aggiunge in tre posti: `.env`,

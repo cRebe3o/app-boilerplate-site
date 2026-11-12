@@ -345,13 +345,16 @@ Tre punti da non perdere:
 
 **I codici di errore.** Ogni eccezione porta un valore di `ErrorCode`, un messaggio **inglese**,
 che serve per i log e di riserva, e i parametri. I codici del progetto si scrivono in
-`Domain/Exceptions/ErrorCode.Project.cs`, uno per campo, con i parametri nel commento:
+`Domain/Exceptions/ErrorCode.Project.cs`, uno per campo, con i nomi dei parametri dopo il nome:
 
 ```csharp
 public readonly partial record struct ErrorCode
 {
-    /// <summary>Parametri: id.</summary>
-    public static readonly ErrorCode CategoryNotFound = new(nameof(CategoryNotFound));
+    public static readonly ErrorCode CategoryNotFound = new(nameof(CategoryNotFound), "id");
+    public static readonly ErrorCode CategoryAlreadyExists = new(nameof(CategoryAlreadyExists), "name");
+    public static readonly ErrorCode CategoryDescriptionRequired = new(nameof(CategoryDescriptionRequired), "field");
+    public static readonly ErrorCode CategoryDescriptionTooLong = new(nameof(CategoryDescriptionTooLong), "max");
+    public static readonly ErrorCode CategoryInUse = new(nameof(CategoryInUse), "count");
 }
 ```
 
@@ -361,7 +364,12 @@ Il valore di un codice è il nome del campo, e non si ripete: lo controlla un te
 `errors.codes.<Codice>` (vedi il punto 12). Nei validator `NotEmpty`, `NotNull`, `MinimumLength`,
 `MaximumLength` ed `EmailAddress` hanno già un codice generico (`Required`, `TooShort`, `TooLong`,
 `InvalidEmail`): niente `WithMessage`. Le altre regole usano `WithErrorCode(ErrorCode.X, ("max", 100))`.
-Un codice si aggiunge e non si rinomina: cambiarlo rompe le traduzioni. La skill `backend-slice`
+Chi lancia l'errore passa proprio i parametri dichiarati, in qualunque ordine: un nome diverso, in
+più o mancante, fuori da Production lancia `InvalidOperationException`, quindi lo trovano già i
+test; in Production scrive un avviso nel log (`ErrorParamsCheck`) e l'errore arriva al client come
+sempre. Una regola che vale sia nel validator sia nel dominio usa lo stesso codice con gli stessi
+parametri: un valore che conosce solo il dominio, come il valore inserito, resta nel messaggio
+inglese. Un codice si aggiunge e non si rinomina: cambiarlo rompe le traduzioni. La skill `backend-slice`
 (sezione "Codici di errore") ha i dettagli.
 
 L'update ha la stessa forma, e la modifica passa da un metodo dell'aggregato:

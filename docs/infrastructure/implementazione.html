@@ -400,8 +400,13 @@ confermato che rifiuta una modifica sta esprimendo una regola di business, non u
 <p>Il formato è sempre <strong>ProblemDetails</strong> (RFC 7807), con due campi in più: <code>code</code> e <code>params</code>. Un
 errore di validazione ha anche <code>fieldErrors</code>, con codice, parametri e messaggio per ogni campo. Un
 500 ha sempre <code>InternalError</code>, una richiesta malformata <code>BadRequest</code>. Lo schema OpenAPI descrive
-questi campi e l'enum (<code>ProblemDetailsSchemaTransformer</code>), quindi <code>api.generated.ts</code> esporta anche
-<code>errorCodeValues</code>. Il frontend traduce ogni errore con <code>errors.codes.&lt;code&gt;</code> in un unico punto
+questi campi e l'enum (<code>ProblemDetailsSchemaTransformer</code>), con i parametri di ogni codice
+(<code>x-error-params</code>), quindi <code>api.generated.ts</code> esporta anche <code>errorCodeValues</code> ed <code>errorCodeParams</code>.</p>
+<p>I parametri di un codice si dichiarano dove nasce, <code>new(nameof(UserNotFound), &quot;id&quot;)</code>, e chi lancia
+l'errore, un'eccezione di dominio o <code>WithErrorCode</code> di un validator, deve passare proprio quelli
+(<code>ErrorCode.EnsureParams</code>). Fuori da Production un nome diverso, in più o mancante lancia
+<code>InvalidOperationException</code>, così lo trovano i test. In Production scrive un avviso nel log, categoria
+<code>ErrorParamsCheck</code>, e l'errore originale arriva al client invece di diventare un 500. Il frontend traduce ogni errore con <code>errors.codes.&lt;code&gt;</code> in un unico punto
 (<code>useApiErrors</code>) invece che caso per caso, e senza traduzione mostra il <code>detail</code>.</p>
 <h2 id="4-gli-handler-astrazioni-mai-appdbcontext">4. Gli handler: astrazioni, mai <code>AppDbContext</code></h2>
 <p>Gli handler vivono in <code>&lt;Progetto&gt;.Application</code> e non conoscono EF Core. Che cosa iniettano dipende
