@@ -14,8 +14,8 @@ migliorie fatte al template dopo.
 | Strumento | Versione | Note |
 |---|---|---|
 | **.NET SDK** | 10 | `dotnet --version`. Il tool `dotnet-ef` non va installato globalmente: è un tool locale del progetto, ripristinato da `dotnet tool restore` (il manifest è nella cartella del progetto Api) |
-| **Node.js** | 22 LTS (minimo 20.19) | Richiesto da Vite 8 |
-| **pnpm** | 12 | Il `packageManager` del progetto è `pnpm@12.18.0`: con `corepack enable` Node usa da solo la versione giusta, e così un pnpm 10 o successivo installato a parte. Un pnpm 9 installato con `npm install -g pnpm` avvisa ma resta alla 9: va aggiornato o tolto |
+| **Node.js** | 26 LTS (minimo 22.22.2, o 24.15.0 sulla 24) | Il minimo lo fissano Vitest 5, vue-i18n 11 e `nopt` (da `@vue/test-utils`). Node 20 non è più supportato |
+| **pnpm** | 10 o successivo | Il `packageManager` del progetto è `pnpm@12.18.0`: un pnpm dalla 10 in poi, installato in qualsiasi modo (per esempio `npm install -g pnpm`), passa da solo a quella versione. Node 26 non contiene più Corepack: chi lo preferisce lo installa con `npm install -g corepack`, poi `corepack enable`. Un pnpm 9 avvisa ma resta alla 9: va aggiornato o tolto |
 | **Python + Copier** | Python 3.10+, Copier 9 | Solo per generare e aggiornare; conviene un ambiente virtuale dedicato (sotto) |
 | **Git** | qualsiasi recente | Copier lavora sui tag del template e `git init` fa parte dei task post-generazione |
 | **Database** | SQL Server o PostgreSQL | In locale: LocalDB (arriva con Visual Studio), un container Docker (`include_docker=true` genera il `docker-compose.yml`), o un'installazione nativa di PostgreSQL |

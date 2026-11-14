@@ -77,10 +77,15 @@ con `npm install && npm run build`.
 
 | Variabile | Valore |
 |---|---|
+| `NODE_VERSION` | `26` |
 | `VITE_API_BASE_URL` | `https://<progetto>-backend.onrender.com` |
 | `VITE_AUTH_STRATEGY` | `jwt`, `msal` oppure `windows` |
 | `VITE_APP_ACCESS_MODE` | `public` o `private` |
 | `VITE_MSAL_CLIENT_ID` · `VITE_MSAL_TENANT_ID` · `VITE_MSAL_API_CLIENT_ID` | Solo con `msal` |
+
+`NODE_VERSION` sceglie la versione di Node e vale prima di ogni altra indicazione. Senza, Render usa
+la sua di default, che per i servizi creati dal 21 ottobre 2026 è la 24.22.1: il template è
+verificato su Node 26.
 
 > **`VITE_AUTH_STRATEGY=windows` non ha senso su un hosting pubblico.** L'autenticazione integrata
 > richiede che il browser possa negoziare Kerberos/NTLM con il server, cioè una rete aziendale

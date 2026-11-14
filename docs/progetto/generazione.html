@@ -140,13 +140,13 @@ ne è il riassunto ragionato.</p>
 </tr>
 <tr>
 <td><strong>Node.js</strong></td>
-<td>22 LTS (minimo 20.19)</td>
-<td>Richiesto da Vite 8</td>
+<td>26 LTS (minimo 22.22.2, o 24.15.0 sulla 24)</td>
+<td>Il minimo lo fissano Vitest 5, vue-i18n 11 e <code>nopt</code> (da <code>@vue/test-utils</code>). Node 20 non è più supportato</td>
 </tr>
 <tr>
 <td><strong>pnpm</strong></td>
-<td>12</td>
-<td>Il <code>packageManager</code> del progetto è <code>pnpm@12.18.0</code>: con <code>corepack enable</code> Node usa da solo la versione giusta, e così un pnpm 10 o successivo installato a parte. Un pnpm 9 installato con <code>npm install -g pnpm</code> avvisa ma resta alla 9: va aggiornato o tolto</td>
+<td>10 o successivo</td>
+<td>Il <code>packageManager</code> del progetto è <code>pnpm@12.18.0</code>: un pnpm dalla 10 in poi, installato in qualsiasi modo (per esempio <code>npm install -g pnpm</code>), passa da solo a quella versione. Node 26 non contiene più Corepack: chi lo preferisce lo installa con <code>npm install -g corepack</code>, poi <code>corepack enable</code>. Un pnpm 9 avvisa ma resta alla 9: va aggiornato o tolto</td>
 </tr>
 <tr>
 <td><strong>Python + Copier</strong></td>

@@ -283,6 +283,10 @@ con <code>npm install &amp;&amp; npm run build</code>.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>NODE_VERSION</code></td>
+<td><code>26</code></td>
+</tr>
+<tr>
 <td><code>VITE_API_BASE_URL</code></td>
 <td><code>https://&lt;progetto&gt;-backend.onrender.com</code></td>
 </tr>
@@ -301,6 +305,9 @@ con <code>npm install &amp;&amp; npm run build</code>.</p>
 </tbody>
 </table>
 </div>
+<p><code>NODE_VERSION</code> sceglie la versione di Node e vale prima di ogni altra indicazione. Senza, Render usa
+la sua di default, che per i servizi creati dal 21 ottobre 2026 è la 24.22.1: il template è
+verificato su Node 26.</p>
 <blockquote>
 <p><strong><code>VITE_AUTH_STRATEGY=windows</code> non ha senso su un hosting pubblico.</strong> L'autenticazione integrata
 richiede che il browser possa negoziare Kerberos/NTLM con il server, cioè una rete aziendale

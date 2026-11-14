@@ -253,7 +253,7 @@ di uno store, un composable **non ha stato globale**: ogni chiamata crea il prop
 | `useBreadcrumb` | Solo in `AppBreadcrumb`: costruisce le briciole. Non lo chiama una pagina |
 | `useFormatters` | Valute e date nel formato della lingua corrente (`currency`, `date`). Un solo posto, così nessuna pagina hardcoda `'it-IT'` |
 | `useTheme` (`useAppTheme`) | Toggle chiaro/scuro con persistenza. Lo usano `App.vue` e la top bar |
-| `useAppVersion` | Per il footer: `version`, il tag git del progetto (`v1.4.0`, `v1.4.0-3-gabc1234`, `-dirty`) letto da `git describe` quando Vite parte (`app-version.ts`), oppure `VITE_APP_VERSION`, oppure "sviluppo"; `templateVersion`, il `_commit` di `.copier-answers.yml` |
+| `useAppVersion` | Per il footer: `version`, letta da `git describe` quando Vite parte (`app-version.ts`) e composta da `formatVersion`: `v1.4.0` sul commit del tag, `v1.4.0 (abc1234)` con commit dopo il tag, "sviluppo (abc1234)" senza tag, con " *" in fondo se c'erano modifiche non committate; senza git `VITE_APP_VERSION` così com'è, senza nemmeno quella "sviluppo". `dirty`, che aggiunge al tooltip "* modifiche non committate"; `templateVersion`, il `_commit` di `.copier-answers.yml` |
 
 **Quando aggiungerne uno.** Quando lo stesso blocco di logica (non di template) compare in due
 componenti: un timer, una trasformazione di dati, la meccanica di un controllo. Se ha bisogno di

@@ -440,7 +440,7 @@ di uno store, un composable <strong>non ha stato globale</strong>: ogni chiamata
 </tr>
 <tr>
 <td><code>useAppVersion</code></td>
-<td>Per il footer: <code>version</code>, il tag git del progetto (<code>v1.4.0</code>, <code>v1.4.0-3-gabc1234</code>, <code>-dirty</code>) letto da <code>git describe</code> quando Vite parte (<code>app-version.ts</code>), oppure <code>VITE_APP_VERSION</code>, oppure &quot;sviluppo&quot;; <code>templateVersion</code>, il <code>_commit</code> di <code>.copier-answers.yml</code></td>
+<td>Per il footer: <code>version</code>, letta da <code>git describe</code> quando Vite parte (<code>app-version.ts</code>) e composta da <code>formatVersion</code>: <code>v1.4.0</code> sul commit del tag, <code>v1.4.0 (abc1234)</code> con commit dopo il tag, &quot;sviluppo (abc1234)&quot; senza tag, con &quot; <em>&quot; in fondo se c'erano modifiche non committate; senza git <code>VITE_APP_VERSION</code> così com'è, senza nemmeno quella &quot;sviluppo&quot;. <code>dirty</code>, che aggiunge al tooltip &quot;</em> modifiche non committate&quot;; <code>templateVersion</code>, il <code>_commit</code> di <code>.copier-answers.yml</code></td>
 </tr>
 </tbody>
 </table>
