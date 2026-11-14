@@ -15,7 +15,7 @@ migliorie fatte al template dopo.
 |---|---|---|
 | **.NET SDK** | 10 | `dotnet --version`. Il tool `dotnet-ef` non va installato globalmente: è un tool locale del progetto, ripristinato da `dotnet tool restore` (il manifest è nella cartella del progetto Api) |
 | **Node.js** | 22 LTS (minimo 20.19) | Richiesto da Vite 8 |
-| **pnpm** | 9 | Il `packageManager` del progetto è `pnpm@9`: con `corepack enable` Node usa da solo la versione giusta |
+| **pnpm** | 12 | Il `packageManager` del progetto è `pnpm@12.18.0`: con `corepack enable` Node usa da solo la versione giusta, e così un pnpm 10 o successivo installato a parte. Un pnpm 9 installato con `npm install -g pnpm` avvisa ma resta alla 9: va aggiornato o tolto |
 | **Python + Copier** | Python 3.10+, Copier 9 | Solo per generare e aggiornare; conviene un ambiente virtuale dedicato (sotto) |
 | **Git** | qualsiasi recente | Copier lavora sui tag del template e `git init` fa parte dei task post-generazione |
 | **Database** | SQL Server o PostgreSQL | In locale: LocalDB (arriva con Visual Studio), un container Docker (`include_docker=true` genera il `docker-compose.yml`), o un'installazione nativa di PostgreSQL |
