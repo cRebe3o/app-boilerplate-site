@@ -122,7 +122,7 @@ tutte le feature:
 ```
 HTTP
  │
- ├─ UseForwardedHeaders     IP e schema reali del client, prima di chiunque li legga
+ ├─ UseForwardedHeaders     IP e schema reali del client, solo dai proxy configurati
  ├─ UseCors                 preflight OPTIONS
  ├─ ExceptionHandling       ogni eccezione → ProblemDetails (RFC 7807)
  ├─ RateLimiter             partizionato per IP

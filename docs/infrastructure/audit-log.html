@@ -136,7 +136,7 @@ traccia, che cosa non traccia di proposito e che cosa deve fare chi aggiunge un'
 <tr>
 <td><code>ActorId</code> · <code>ActorEmail</code></td>
 <td>l'utente della richiesta</td>
-<td><code>ICurrentUser</code> (claim <code>sub</code> ed <code>email</code> del JWT)</td>
+<td><code>ICurrentUser</code> (claim <code>sub</code> del JWT; <code>email</code>, o lo <code>username</code> per chi non ha email: &quot;system&quot; vuol dire solo il sistema)</td>
 </tr>
 <tr>
 <td><code>EntityType</code></td>
@@ -150,7 +150,7 @@ traccia, che cosa non traccia di proposito e che cosa deve fare chi aggiunge un'
 </tr>
 <tr>
 <td><code>Action</code></td>
-<td><code>Created</code> · <code>Updated</code> · <code>Deleted</code></td>
+<td><code>Created</code> · <code>Updated</code> · <code>Deleted</code> · <code>Reset</code></td>
 <td>costanti in <code>AuditActions</code></td>
 </tr>
 <tr>
@@ -166,7 +166,7 @@ traccia, che cosa non traccia di proposito e che cosa deve fare chi aggiunge un'
 <tr>
 <td><code>IpAddress</code></td>
 <td>IP del client</td>
-<td><code>ICurrentUser</code>, già ripristinato da <code>UseForwardedHeaders</code> dietro un proxy</td>
+<td><code>ICurrentUser</code>. Dietro un proxy è quello vero solo con <code>ForwardedHeaders</code> configurato (<a href="../progetto/configurazione.html#forwardedheaders">Configurazione</a>); altrimenti è quello del proxy</td>
 </tr>
 </tbody>
 </table>
@@ -240,7 +240,9 @@ aggregato viene catturato due volte, vince il primo snapshot, che è lo stato in
 <h2 id="che-cosa-viene-tracciato-e-che-cosa-no">Che cosa viene tracciato, e che cosa no</h2>
 <p>Tracciato: <strong>ogni radice di aggregato</strong> (<code>AggregateRoot</code>) creata, modificata o cancellata da un
 utente autenticato, qualunque sia la strada — handler, evento di dominio, operazione futura che
-oggi non esiste. È il vantaggio di un interceptor rispetto a una chiamata negli handler.</p>
+oggi non esiste. È il vantaggio di un interceptor rispetto a una chiamata negli handler. Anche
+la configurazione di sistema (<code>SystemConfig</code>, radice di aggregato) si traccia così, come ogni
+altra modifica.</p>
 <p>Non tracciato, di proposito:</p>
 <div class="table-wrap">
 <table>
@@ -318,7 +320,10 @@ documenta il motivo. È l'eccezione.</p>
 riga.</p>
 <p>La retention è configurabile dalla pagina <strong>Configurazione</strong> (<code>SystemConfig.AuditLogs</code>): abilitato
 sì/no e numero massimo di record, da 1 a 100.000. Il reset (<code>audit.write</code>) cancella i record oltre
-la soglia configurata. Di base il taglio avviene solo così; con i
+la soglia configurata, o tutti se l'audit è disabilitato. <strong>Ogni reset lascia una riga</strong> nel
+registro di audit, anche quello del registro degli errori: azione <code>Reset</code>, <code>EntityType</code> <code>AuditLog</code> o
+<code>ErrorLog</code>, e in <code>After</code> le righe eliminate e quelle conservate (<code>deleted</code>, <code>kept</code>). Chi svuota un
+registro non cancella anche la traccia di averlo fatto. Di base il taglio avviene solo così; con i
 <a href="lavori-programmati.html">lavori programmati</a> lo stesso reset gira anche ogni notte, per l'audit e
 per l'error log. I record non si modificano
 né si cancellano uno per uno.</p>
@@ -376,7 +381,7 @@ né si cancellano uno per uno.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

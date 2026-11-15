@@ -15,7 +15,7 @@ migliorie fatte al template dopo.
 |---|---|---|
 | **.NET SDK** | 10 | `dotnet --version`. Il tool `dotnet-ef` non va installato globalmente: è un tool locale del progetto, ripristinato da `dotnet tool restore` (il manifest è nella cartella del progetto Api) |
 | **Node.js** | 26 LTS (minimo 22.22.2, o 24.15.0 sulla 24) | Il minimo lo fissano Vitest 5, vue-i18n 11 e `nopt` (da `@vue/test-utils`). Node 20 non è più supportato |
-| **pnpm** | 10 o successivo | Il `packageManager` del progetto è `pnpm@12.18.0`: un pnpm dalla 10 in poi, installato in qualsiasi modo (per esempio `npm install -g pnpm`), passa da solo a quella versione. Node 26 non contiene più Corepack: chi lo preferisce lo installa con `npm install -g corepack`, poi `corepack enable`. Un pnpm 9 avvisa ma resta alla 9: va aggiornato o tolto |
+| **pnpm** | 12 | Il `packageManager` del progetto è `pnpm@12.18.0`. Si installa in qualsiasi modo, per esempio `npm install -g pnpm`; un pnpm 10 o 11 già installato va bene lo stesso, perché passa da solo alla 12. Node 26 non contiene più Corepack: chi lo preferisce lo installa con `npm install -g corepack`, poi `corepack enable`. Un pnpm 9 avvisa ma resta alla 9: va aggiornato o tolto |
 | **Python + Copier** | Python 3.10+, Copier 9 | Solo per generare e aggiornare; conviene un ambiente virtuale dedicato (sotto) |
 | **Git** | qualsiasi recente | Copier lavora sui tag del template e `git init` fa parte dei task post-generazione |
 | **Database** | SQL Server o PostgreSQL | In locale: LocalDB (arriva con Visual Studio), un container Docker (`include_docker=true` genera il `docker-compose.yml`), o un'installazione nativa di PostgreSQL |
@@ -178,6 +178,33 @@ tag", e senza tag non ha una versione a cui puntare.
 
 > Finché non committi, l'update vive solo nel working tree: se va storto, si scarta con Git come
 > qualsiasi altra modifica.
+
+### Le versioni che chiedono qualcosa a mano
+
+Una versione **maggiore** del template vuol dire che dopo l'update qualcosa si fa a mano. Il
+dettaglio è nel `CHANGELOG.md` del template, alla voce *Che cosa fa chi aggiorna* di ogni versione.
+
+**7.0.0 — correzioni di sicurezza.** Dopo l'update:
+
+| Chi | Che cosa fa |
+|---|---|
+| Tutti | Niente, ma lo sa: **tutti gli utenti escono una volta**. I refresh token salvati prima non valgono più (ora c'è l'hash) e i token di accesso senza impronta vengono rifiutati: si rientra con un login |
+| Chi pubblica dietro un proxy (Render, IIS, nginx) | Configura `ForwardedHeaders`, **altrimenti il login con password si blocca per tutti** dopo dieci errori. Vedi [Configurazione](configurazione.md#forwardedheaders) e, per Render, [Deploy su Render](../deploy/render.md#indirizzo-del-client-e-limite-dei-login) |
+| Chi usa il login Windows fuori da Development | Imposta `Auth__Windows__Enabled=true`: senza, `/api/auth/windows-login` risponde 404 |
+| Chi ha un database creato fuori da Development con una versione precedente | Controlla nella pagina Utenti: il seed creava un utente Windows SuperAdmin senza password, con il nome dell'account del servizio. Se nessuno lo usa, va eliminato |
+| Chi è in produzione | Controlla che `Auth__Jwt__Secret` sia casuale e lungo almeno 32 caratteri: altrimenti l'API non parte |
+| Chi usa Swagger in produzione | Lo riaccende con `OpenApi__Enabled=true` |
+| Chi aveva dato apposta `permissions.read` ai Viewer | Lo dà a un ruolo personalizzato: il seed lo toglie ai ruoli di sistema (lo scrive nel log, una volta). Per il resto i database esistenti non chiedono niente |
+| Chi ha scritto codice nel progetto | Un handler che assegna ruoli, gruppi o permessi usa `IAdministrationRules`; un endpoint anonimo nuovo va nell'elenco di `EndpointAuthorizationTests`; un test che costruisce a mano `CreateUserHandler`, `ChangePasswordHandler`, `SystemConfigRepository` o i due handler di reset riceve i parametri nuovi dei costruttori; una `v-snackbar` copiata fuori da `App.vue` prende `:close-on-back="false"` |
+
+Che cosa cambia, nel dettaglio: [Autenticazione](../autenticazione/autenticazione.md#sicurezza-che-cosa-e-in-piedi)
+per sessioni, ruoli e intestazioni, [Configurazione](configurazione.md) per le chiavi nuove,
+[Audit log](../infrastructure/audit-log.md) per i reset registrati.
+
+**7.0.1** riporta la barra in alto al blu della 6.1.0 (la 7.0.0 l'aveva resa grigio scuro): chi
+passa dalla 6.1.0 direttamente alla 7.0.1 o successiva non vede cambiamenti di colore. **7.0.2**
+non chiede niente: cambia solo l'intestazione di `api.generated.ts`, e se l'update la segna in
+conflitto si tiene una delle due versioni e si lancia `pnpm gen:api`.
 
 ## Da qui
 

@@ -349,19 +349,25 @@ setter pubblici. Il dettaglio completo è nella sezione
 </div>
 <p>Sono le rotte dell'impianto: quelle del dominio si aggiungono accanto, registrandole in
 <code>&lt;Progetto&gt;.Api/Extensions/EndpointExtensions.cs</code>.</p>
-<p>In esecuzione l'API espone la propria specifica OpenAPI (<code>/openapi/v1.json</code>), navigabile con
-Swagger UI su <code>/swagger</code>. È lo stesso schema da cui il frontend genera i propri tipi con
-<code>pnpm gen:api</code>: perché un tipo compaia, l'endpoint deve dichiarare <code>.Produces&lt;T&gt;()</code>.</p>
+<p>In <code>Development</code> l'API espone la propria specifica OpenAPI (<code>/openapi/v1.json</code>), navigabile con
+Swagger UI su <code>/swagger</code>; fuori da <code>Development</code> solo con <code>OpenApi:Enabled</code>. Il frontend genera i
+propri tipi dallo stesso schema con <code>pnpm gen:api</code>, che lo ottiene dalla build del backend, senza
+avviarlo: perché un tipo compaia, l'endpoint deve dichiarare <code>.Produces&lt;T&gt;()</code>.</p>
 <h3 id="cosa-c-e-in-programcs">Cosa c'è in <code>Program.cs</code></h3>
 <p>Oltre alla registrazione dei servizi, alcune scelte che vale la pena conoscere perché si notano
 solo quando mancano:</p>
 <ul>
-<li><strong><code>UseForwardedHeaders</code> come primissimo middleware.</strong> Dietro un reverse proxy l'IP del client
-arriva in <code>X-Forwarded-For</code>: senza questo, ogni richiesta sembrerebbe provenire dal load balancer
-e il rate limiting per IP diventerebbe di fatto globale.</li>
+<li><strong><code>UseForwardedHeaders</code> come primissimo middleware, solo per i proxy configurati.</strong> Dietro un
+reverse proxy l'IP del client arriva in un'intestazione (<code>X-Forwarded-For</code>, o <code>CF-Connecting-IP</code>
+su Render): senza, ogni richiesta sembrerebbe provenire dal proxy e il rate limiting per IP
+diventerebbe di fatto globale. L'intestazione vale solo dai proxy della sezione
+<code>ForwardedHeaders</code>, di base spenta: da un client qualsiasi sarebbe inventata. Vedi
+<a href="configurazione.html#forwardedheaders">Configurazione</a>.</li>
 <li><strong>Rate limiting partizionato per IP</strong>, non globale: 10 richieste ogni 15 minuti sul login con
 username e password in produzione (100 in <code>Development</code>), 300 ogni 15 minuti su refresh, login
-Microsoft e login Windows, 20 al minuto sull'endpoint pubblico di raccolta errori.</li>
+Microsoft e login Windows, 5 al minuto sull'endpoint pubblico di raccolta errori, che accetta corpi fino a 64 KB.</li>
+<li><strong>Intestazioni di sicurezza</strong> su ogni risposta (<code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>,
+<code>Referrer-Policy</code>), una CSP e <code>Cache-Control: no-store</code> su <code>/api</code>, HSTS fuori da <code>Development</code>.</li>
 <li><strong>Timeout di 1 secondo per ogni regex del backend</strong> (<code>RegexTimeout</code>, in un inizializzatore del
 modulo): una regex lenta su un input costruito apposta (ReDoS) si ferma con
 <code>RegexMatchTimeoutException</code>, cioè un 500 con ErrorLog, invece di tenere occupato il server.</li>
@@ -462,7 +468,7 @@ vuoto da personalizzare — e i gruppi <code>Administrators</code> e <code>Viewe
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

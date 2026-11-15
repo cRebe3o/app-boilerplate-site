@@ -116,9 +116,17 @@ Windows** a seconda dell'infrastruttura del cliente.
 
 Qui c'è un punto che sorprende, ed è bene saperlo perché fa risparmiare tempo:
 
-> **Il backend non ha una strategia.** Tutti e tre gli endpoint (`/login`, `/msal-login`,
-> `/windows-login`) sono **sempre** attivi, e il backend emette e valida sempre e solo i propri JWT.
-> Non esiste alcun interruttore lato server.
+> **Il backend non ha una strategia.** Non sceglie quale schermata mostrare, ed emette e valida
+> sempre e solo i propri JWT. Ogni endpoint di login esiste quando ha ciò che gli serve:
+>
+> | Endpoint | Attivo | Altrimenti |
+> |---|---|---|
+> | `/login` | sempre | — |
+> | `/msal-login` | con `Auth:Msal:TenantId` e `Auth:Msal:ClientId` valorizzati | 404 |
+> | `/windows-login` | con `Auth:Windows:Enabled` a `true`: già così in `appsettings.Development.json`, fuori da Development va acceso | 404 |
+>
+> Il login Windows è spento di base perché, acceso, chiunque abbia un account Windows valido per il
+> server può provare a entrare.
 >
 > In `appsettings.local.json.example` compare una chiave `Auth:Strategy`: **non è letta da nessuna
 > parte del codice**, è lì solo come promemoria di quale schermata si sta usando. Cambiarla non
@@ -149,7 +157,8 @@ sarebbe impossibile: il browser ha ancora l'identità Windows o la sessione Micr
 
 Per usare MSAL servono anche le variabili descritte nella [guida ad Azure](azure-app-registration.md);
 il backend, dal canto suo, ha bisogno di `Auth:Msal:TenantId` e `Auth:Msal:ClientId` per validare il
-token in arrivo. Per Windows, invece, **non serve configurare nulla**.
+token in arrivo. Per Windows basta `Auth:Windows:Enabled`, già attivo in sviluppo: fuori da
+Development si imposta `Auth__Windows__Enabled=true`.
 
 ## Il flusso completo
 
@@ -220,7 +229,7 @@ zero** su `/login`. Il codice che tiene insieme i due tronconi è distribuito su
         ▼  plugins/msal.ts, a modulo caricato:
    msalReady = initialize().then(() => handleRedirectPromise())
         │                     handleRedirectPromise() vede il #code=…, lo scambia con Azure
-        │                     per un access token e lo mette nella cache (localStorage)
+        │                     per un access token e lo mette nella cache (sessionStorage)
         ▼  LoginPage.vue  onMounted(), strategia === "msal":
    const token = await msalService.handleRedirectResult()
         │                     → result?.accessToken  (null se non stiamo tornando da un redirect)
@@ -238,7 +247,7 @@ export const msalInstance = new PublicClientApplication({
     authority: `https://login.microsoftonline.com/${import.meta.env.VITE_MSAL_TENANT_ID}`,
     redirectUri: window.location.origin + '/login',   // Azure rimanda QUI dopo il login
   },
-  cache: { cacheLocation: 'localStorage' },
+  cache: { cacheLocation: 'sessionStorage' },   // i token di Microsoft muoiono con la scheda
 })
 
 // initialize() e handleRedirectPromise() vengono eseguiti una volta sola, all'import del
@@ -334,24 +343,35 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)   // JWT rest
 ```
 
 ```csharp
-// AuthEndpoints.cs — l'endpoint richiede esplicitamente lo schema Negotiate
-group.MapPost("/windows-login", async (/* … */) => { /* … */ })
-    .RequireAuthorization(new AuthorizeAttribute
-    {
-        AuthenticationSchemes = NegotiateDefaults.AuthenticationScheme
-    })
-    .RequireRateLimiting(RateLimits.Session);
+// AuthEndpoints.cs — l'endpoint chiede lui l'handshake Negotiate
+group.MapPost("/windows-login", async (/* … */) =>
+{
+    if (!config.GetValue<bool>("Auth:Windows:Enabled"))
+        return Results.NotFound();                         // login Windows spento
+
+    var windows = await ctx.AuthenticateAsync(NegotiateDefaults.AuthenticationScheme);
+    if (windows.Succeeded)
+        ctx.User = windows.Principal;
+    var accountName = WindowsAccountName(ctx, env);         // l'handshake, o l'header di sviluppo
+
+    if (string.IsNullOrWhiteSpace(accountName))             // nessuna identità: il browser ritenta
+        return Results.Challenge(new AuthenticationProperties(), [NegotiateDefaults.AuthenticationScheme]);
+    /* … WindowsLoginCommand, cookie, risposta … */
+})
+.AllowAnonymous()
+.RequireRateLimiting(RateLimits.Session);
 ```
 
 Tutti gli altri endpoint continuano a usare JWT Bearer. Su Windows il pacchetto
 `Microsoft.AspNetCore.Authentication.Negotiate` funziona **anche fuori dominio**, con il fallback NTLM
 sull'account locale della macchina.
 
-> **Bypass di sviluppo.** In `Development` — e solo lì — l'endpoint accetta l'header
-> `X-Dev-Windows-User: DOMINIO\utente` e lo usa come identità, saltando del tutto l'handshake. Serve
-> per i test di integrazione, per `curl`/Postman (dove non c'è un browser che negozia Kerberos) e per
-> simulare utenti diversi senza cambiare l'account Windows della macchina. In `Production` il ramo è
-> irraggiungibile: `IWebHostEnvironment.IsDevelopment()` è `false` e l'header viene ignorato.
+> **Bypass di sviluppo.** In `Development`, e **solo da questo computer** (richiesta da loopback),
+> l'endpoint accetta l'header `X-Dev-Windows-User: DOMINIO\utente` e lo usa come identità, senza
+> handshake. Serve per `curl`/Postman, dove non c'è un browser che negozia Kerberos, e per simulare
+> utenti diversi senza cambiare l'account Windows della macchina. Da un altro computer l'header non
+> vale, anche in Development: chiunque in rete potrebbe dichiararsi admin. Fuori da Development il
+> ramo è irraggiungibile.
 
 ### 4. Uso del token, e rinnovo
 
@@ -363,20 +383,36 @@ POST /api/auth/refresh          (il cookie viaggia da solo)
         │
         ▼  RefreshTokenHandler
    ┌──────────────────────────────────────────────┐
-   │ 1. Cerca il refresh token nel database       │
-   │ 2. Se scaduto → 401                          │
-   │ 3. Utente inesistente o disattivato → 401    │
-   │ 4. REVOCA il token appena usato  ← rotation  │
-   │ 5. Ririsolve i permessi (aggiornati!)        │
-   │ 6. Emette un nuovo JWT + un nuovo refresh    │
+   │ 1. Cerca il refresh token (per hash)         │
+   │ 2. Già speso → revoca TUTTI quelli           │
+   │    dell'utente, 401                          │
+   │ 3. Se scaduto → 401                          │
+   │ 4. Utente inesistente o disattivato → 401    │
+   │ 5. REVOCA il token appena usato  ← rotation  │
+   │ 6. Ririsolve i permessi (aggiornati!)        │
+   │ 7. Emette un nuovo JWT + un nuovo refresh    │
    └──────────────────────────────────────────────┘
 ```
 
-**Rotation.** Ogni refresh consuma il token e ne emette uno nuovo: chi rubasse un refresh token
-potrebbe usarlo una volta sola, e solo se arriva prima del legittimo proprietario.
+**Nel database c'è l'hash, non il token.** Il refresh token si salva come hash SHA-256: chi legge
+la tabella non ha token da usare.
 
-**I permessi vengono ririsolti a ogni refresh**: una modifica ai ruoli di un utente diventa effettiva
-al più tardi dopo un'ora, senza bisogno che l'utente rifaccia il login.
+**Rotation.** Ogni refresh consuma il token e ne emette uno nuovo. Se torna indietro un token già
+speso, o il cookie è stato rubato o qualcun altro lo usa insieme all'utente: non si sa quale dei
+due sia quello vero, quindi si chiudono **tutte** le sessioni dell'utente, compresa quella nata dal
+rinnovo. Chi ruba un cookie vecchio chiude la sessione invece di affiancarla.
+
+**Il token di accesso vale finché l'utente è quello di quando è stato emesso.** A ogni richiesta
+l'autenticazione controlla che l'utente esista, sia attivo e abbia password, ruoli e gruppi di
+allora (`UserSessions`). Il confronto passa da un'impronta nel token, il claim `sst`, senza colonne
+nel database; lo stato di ogni utente resta in cache per un minuto, e `UnitOfWork` lo toglie dalla
+cache quando salva l'utente. Così un utente eliminato, disattivato, con la password o i ruoli
+cambiati riceve 401 alla richiesta successiva, invece di usare il token fino alla scadenza. Con
+più istanze dell'API l'effetto arriva entro il minuto della cache.
+
+Il cambio di ruoli o gruppi revoca anche i refresh token, come eliminazione, disattivazione e cambio
+password: l'utente rientra con un login. Un permesso aggiunto o tolto **a un ruolo** non cambia
+l'impronta degli utenti che lo hanno: arriva con il refresh successivo, al più tardi dopo un'ora.
 
 ### 5. Uscita
 
@@ -416,6 +452,7 @@ Il JWT che ne esce:
   "name": "Mario Rossi",
   "jti": "550e8400-e29b-41d4-a716-446655440000",
   "permissions": ["users.read", "groups.write"],
+  "sst": "Xk2pQ9rT0bWc8vLs1aZy3w==",            // impronta di password, ruoli e gruppi (UserSessions)
   "iss": "MioProgetto",
   "aud": "MioProgettoClients",
   "exp": 1695315600
@@ -431,6 +468,23 @@ Gli endpoint verificano il claim, non il ruolo:
 group.MapDelete("/{id:int}", …)
     .RequireAuthorization(p => p.RequireClaim("permissions", "groups.delete"));
 ```
+
+Ogni endpoint chiede un permesso del catalogo del seed, oppure sta nell'elenco degli endpoint
+anonimi di `EndpointAuthorizationTests` (in `Architecture.Tests`): un endpoint nuovo senza permesso
+fa fallire la build dei test finché non si decide quale dei due.
+
+### Chi può dare ruoli e permessi
+
+Con `users.write` si modifica un utente, ma non si assegna qualunque cosa. Le regole stanno in
+`IAdministrationRules`, che ogni handler che assegna ruoli, gruppi o permessi usa:
+
+- **nessuno cambia i propri ruoli o gruppi** (`OwnAccessNotEditable`);
+- **solo un SuperAdmin** assegna il ruolo SuperAdmin, direttamente o con un gruppo, e modifica,
+  elimina o cambia la password di un SuperAdmin (`SuperAdminRequired`);
+- **nessuno dà permessi che non ha**, né con un ruolo, né con un gruppo, né aggiungendo un permesso
+  a un ruolo (`PermissionsNotHeld`).
+
+I tre codici rispondono 403. Senza queste regole un Admin poteva farsi SuperAdmin da solo.
 
 ## Configurazione
 
@@ -449,19 +503,21 @@ group.MapDelete("/{id:int}", …)
       "Instance": "https://login.microsoftonline.com/",
       "TenantId": "…",
       "ClientId": "…"     // l'app registration dell'API — non quella della SPA
+    },
+    "Windows": {
+      "Enabled": false    // true in appsettings.Development.json
     }
-    // Windows: nessuna sezione. L'autenticazione integrata non legge alcuna chiave.
   }
 }
 ```
 
 | Parametro | Note |
 |---|---|
-| `Jwt:Secret` | **Obbligatorio.** Se manca, l'applicazione non si avvia. Minimo 32 caratteri |
+| `Jwt:Secret` | **Obbligatorio.** Se manca, l'applicazione non si avvia. Fuori da Development deve essere casuale, lungo almeno 32 caratteri e diverso da quello di esempio (`CAMBIA_…`), altrimenti l'API non parte: chi conosce il segreto firma token validi per qualunque utente |
 | `Jwt:ExpiresInMinutes` | Default 60. Valori sensati: 15–60 |
 | `Jwt:RefreshExpiresInDays` | Default 7. Decide per quanto l'utente resta connesso senza riautenticarsi |
-| `Msal:ClientId` | Il ClientId dell'**API** su Azure: è quello che il backend si aspetta come `aud` del token |
-| *(Windows)* | Nessun parametro. Serve solo il pacchetto NuGet `Microsoft.AspNetCore.Authentication.Negotiate` |
+| `Msal:TenantId` · `Msal:ClientId` | Il ClientId dell'**API** su Azure: è quello che il backend si aspetta come `aud` del token. Vuoti, `/msal-login` risponde 404 |
+| `Windows:Enabled` | Accende `/windows-login`. `true` in `Development`, `false` altrove: fuori da Development si imposta `Auth__Windows__Enabled=true`. Serve anche il pacchetto NuGet `Microsoft.AspNetCore.Authentication.Negotiate`, già nel progetto |
 
 Generare un secret:
 
@@ -489,7 +545,7 @@ Windows Auth **funziona sulla macchina di sviluppo** anche senza un dominio Acti
 Windows il pacchetto Negotiate fa il fallback NTLM con l'account locale.
 
 **Opzione A — Kestrel + NTLM locale (consigliata per iniziare).**
-`dotnet run` normale. Il browser chiama `POST http://localhost:<porta>/api/auth/windows-login`,
+`dotnet run` normale (in Development `Auth:Windows:Enabled` è già `true`). Il browser chiama `POST http://localhost:<porta>/api/auth/windows-login`,
 riceve `401 WWW-Authenticate: Negotiate` e Chrome/Edge rispediscono in automatico le credenziali
 dell'account Windows corrente (`localhost` è zona intranet). `HttpContext.User.Identity.Name` diventa
 `NOMEPC\tuoutente`: perché il login riesca, serve un utente nel seed con
@@ -505,7 +561,8 @@ curl -X POST http://localhost:<porta>/api/auth/windows-login \
   -c cookies.txt
 ```
 
-Non serve un browser, e si può simulare qualsiasi utente cambiando il valore dell'header.
+Non serve un browser, e si può simulare qualsiasi utente cambiando il valore dell'header. Vale
+solo da questo computer: la stessa richiesta da un'altra macchina ignora l'header.
 
 **Opzione C — IIS Express (più simile alla produzione su IIS).**
 In `launchSettings.json`, profilo IIS Express:
@@ -525,15 +582,20 @@ credenziali, perché il browser considera comunque `localhost` intranet.
 
 | Protezione | Come |
 |---|---|
-| Password | Hash **BCrypt** (lento, con salt): dall'hash non si risale alla password. Massimo 64 caratteri in creazione e nel cambio password (`PasswordRules`): BCrypt usa solo i primi 72 byte, e oltre due password con lo stesso inizio darebbero lo stesso hash. Il login non ha massimo, così chi ha già una password più lunga entra |
+| Password | Hash **BCrypt** (lento, con salt): dall'hash non si risale alla password. Massimo 64 caratteri in creazione e nel cambio password (`PasswordRules`): BCrypt usa solo i primi 72 byte, e oltre due password con lo stesso inizio darebbero lo stesso hash. Il login non ha massimo, così chi ha già una password più lunga entra. Creazione e cambio password chiedono le stesse regole: almeno una maiuscola e una cifra |
 | Firma del JWT | HMAC-SHA256 con il secret; alla validazione `ClockSkew = 0`, nessuna tolleranza sulla scadenza |
-| Refresh token | 64 byte casuali crittografici, salvati nel database, **ruotati** a ogni uso, revocabili |
+| Segreto del JWT | Controllato all'avvio: fuori da Development, se è quello di esempio o più corto di 32 caratteri, l'API non parte |
+| Refresh token | 64 byte casuali crittografici, salvati come **hash SHA-256**, **ruotati** a ogni uso, revocabili. Il riuso di un token già speso revoca tutti quelli dell'utente |
+| Token di accesso | Valido solo finché l'utente esiste, è attivo e ha password, ruoli e gruppi di quando è stato emesso (`UserSessions`, claim `sst`) |
 | Cookie | `HttpOnly` (JavaScript non lo può leggere, neanche in caso di XSS), `Secure` fuori da sviluppo, `Path=/api/auth` |
-| Brute force | Rate limiting **per IP** (`RateLimits` in `Api/Extensions`). Login con username e password: 10 tentativi ogni 15 minuti in produzione (100 in `Development`, per non intralciare il prova-riprova). Refresh, msal-login e windows-login: 300 ogni 15 minuti, perché non hanno una password da indovinare e un ufficio dietro un solo IP deve poter accedere tutto insieme |
+| Brute force | Rate limiting **per indirizzo del client** (`RateLimits` in `Api/Extensions`). Login con username e password: 10 tentativi ogni 15 minuti in produzione (100 in `Development`, per non intralciare il prova-riprova). Refresh, msal-login e windows-login: 300 ogni 15 minuti, perché non hanno una password da indovinare e un ufficio dietro un solo IP deve poter accedere tutto insieme. Dietro un proxy l'indirizzo vero arriva solo con `ForwardedHeaders` configurato: vedi [Configurazione](../progetto/configurazione.md#forwardedheaders) |
 | Enumerazione utenti | Codice di errore identico per username sconosciuto e password errata; l'account disabilitato si rivela solo con la password giusta |
-| Account disattivati | `IsActive` verificato al login **e a ogni refresh** |
-| Token Azure | Firma (JWKS), issuer, audience e scadenza validati **dal backend** |
-| Identità Windows | Handshake Negotiate gestito dal middleware ASP.NET; header di bypass attivo **solo** in Development |
+| Account disattivati | `IsActive` verificato al login, a ogni refresh **e a ogni richiesta** |
+| Ruoli e permessi | Nessuno cambia i propri, solo un SuperAdmin tocca il ruolo SuperAdmin, nessuno dà permessi che non ha (`IAdministrationRules`) |
+| Token Azure | Firma (JWKS), issuer, audience e scadenza validati **dal backend**. Nel browser i token di Microsoft stanno in `sessionStorage` |
+| Identità Windows | Login attivo solo con `Auth:Windows:Enabled`; handshake Negotiate gestito dal middleware ASP.NET; header di bypass solo in Development e solo da questo computer |
+| Intestazioni HTTP | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` su ogni risposta; su `/api` anche una CSP e `Cache-Control: no-store`; HSTS fuori da Development |
+| Swagger e schema OpenAPI | Solo in Development, o con `OpenApi:Enabled` |
 
 ### Il cookie e il `SameSite`
 
@@ -643,6 +705,12 @@ username locale, email per MSAL, `DOMINIO\utente` per Windows); **Email** è fac
 | Sintomo | Causa più probabile |
 |---|---|
 | **401 subito dopo il login** | Il JWT è scaduto (60 minuti) o il `Jwt:Secret` non è lo stesso con cui era stato firmato — tipico dopo un riavvio con secret diverso |
+| **401 a una richiesta qualsiasi, con la sessione ancora nei tempi** | L'utente è stato disattivato, eliminato, o ha cambiato password, ruoli o gruppi: il token non vale più. Si rientra con un login |
+| **Dopo l'aggiornamento alla 7.0 tutti sono usciti** | Atteso, una volta sola: i refresh token salvati prima non valgono più (ora c'è l'hash) e i token di accesso senza claim `sst` vengono rifiutati |
+| **`/msal-login` o `/windows-login` rispondono 404** | Login non attivo: mancano `Auth:Msal:TenantId`/`ClientId`, o `Auth:Windows:Enabled` non è `true` |
+| **L'API non parte: "Auth:Jwt:Secret non valido fuori da Development"** | Segreto di esempio o più corto di 32 caratteri: generane uno (sopra) |
+| **403 assegnando un ruolo, un gruppo o un permesso** | `OwnAccessNotEditable`, `SuperAdminRequired` o `PermissionsNotHeld`: vedi [Chi può dare ruoli e permessi](#chi-puo-dare-ruoli-e-permessi) |
+| **Il login con password si blocca per tutti dopo pochi errori** | L'API è dietro un proxy e `ForwardedHeaders` non è configurato: tutti i client hanno l'indirizzo del proxy e condividono il limite. Vedi [Configurazione](../progetto/configurazione.md#forwardedheaders) |
 | **401 su `/api/auth/refresh`** | Il cookie non è arrivato. Controlla `withCredentials: true` sul client, `Secure`/`SameSite` sul server e che la richiesta sia su HTTPS in produzione |
 | **"Nessun utente locale con username …"** | *MSAL o Windows.* L'identità è valida ma non c'è un utente locale con quello `Username`. Va creato nel pannello, con lo `Username` esatto (per MSAL: la email aziendale; per Windows: `DOMINIO\utente`) |
 | **"Token Azure non valido: IDX10214"** | Il claim `aud` del token non corrisponde a `Auth:Msal:ClientId`. È il caso classico di SPA e API confuse: vedi la [guida ad Azure](azure-app-registration.md). Lato SPA l'`aud` lo fissa lo scope in `loginRequest` (`VITE_MSAL_API_CLIENT_ID`) |
@@ -650,7 +718,7 @@ username locale, email per MSAL, `DOMINIO\utente` per Windows); **Email** è fac
 | **`AADSTS50011: redirect URI mismatch`** | Il `redirectUri` calcolato (`window.location.origin + '/login'`) non è tra quelli registrati sull'app SPA in Entra ID — vanno aggiunti sia l'URL locale sia quello di produzione |
 | **"Token Azure non valido: IDX10205"** (issuer `sts.windows.net/…`) | L'app registration dell'API emette token **v1.0**: nel suo Manifest `requestedAccessTokenVersion` è `null` invece di `2`. Vedi la [guida ad Azure](azure-app-registration.md#forzare-i-token-in-versione-20) |
 | **"Token Azure non valido: IDX10223"** o scadenza | Orologio del server disallineato (la tolleranza è 2 minuti) o token già scaduto |
-| **SSO Windows: 401 e nessun popup** | Il browser non invia le credenziali. Chrome/Edge: l'host non è in zona intranet. Firefox: manca `network.negotiate-auth.trusted-uris`. In alternativa usa l'header `X-Dev-Windows-User` in Development |
+| **SSO Windows: 401 e nessun popup** | Il browser non invia le credenziali. Chrome/Edge: l'host non è in zona intranet. Firefox: manca `network.negotiate-auth.trusted-uris`. In alternativa usa l'header `X-Dev-Windows-User` in Development, da questo computer |
 | **SSO Windows: `NU1903` a `dotnet build`** | Pacchetto Negotiate su una versione < 10.0.10: aggiorna |
 | **Il pulsante Microsoft non appare** | `VITE_AUTH_STRATEGY` non vale esattamente `msal` |
 | **Il form username/password non appare** | `VITE_AUTH_STRATEGY` vale `msal` o `windows`: rimettilo a `jwt` |
@@ -671,6 +739,8 @@ token di produzione.
 | `Application/Auth/Logout/LogoutHandler.cs` | Revoca |
 | `Application/Abstractions/Identity/` | Le astrazioni: `ITokenService`, `IPasswordHasher`, `IPermissionResolver`, `IExternalTokenValidator`, `ICurrentUser` |
 | `Infrastructure/Identity/JwtTokenService.cs` | Generazione del JWT e del refresh token |
+| `Infrastructure/Identity/UserSessions.cs` | L'impronta `sst` e il controllo, a ogni richiesta, che il token valga ancora |
+| `Application/Common/AdministrationRules.cs` | Chi può assegnare ruoli, gruppi e permessi |
 | `Infrastructure/Identity/BcryptPasswordHasher.cs` | Hashing delle password |
 | `Infrastructure/Identity/AzureAdTokenValidator.cs` | Validazione del token Azure |
 | `Infrastructure/Identity/PermissionResolver.cs` | Ruoli diretti + ereditati dai gruppi → permessi |

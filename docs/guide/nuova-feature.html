@@ -663,9 +663,9 @@ si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
 <h1 id="frontend">Frontend</h1>
 <p>La catena è sempre la stessa, e non si salta un anello: <strong>tipi → service → store → pagina</strong>.</p>
 <h2 id="10-tipi-service-store">10. Tipi, service, store</h2>
-<p>I tipi <strong>non si scrivono</strong>: si generano dallo schema OpenAPI del backend, avviato.</p>
+<p>I tipi <strong>non si scrivono</strong>: si generano dallo schema OpenAPI del backend. Il backend non serve avviato: lo schema esce dalla sua build.</p>
 <pre><code class="language-bash"><span class="hljs-built_in">cd</span> apps/frontend
-pnpm gen:api          <span class="hljs-comment"># rigenera src/types/api.generated.ts da /openapi/v1.json</span>
+pnpm gen:api          <span class="hljs-comment"># build del backend, schema OpenAPI, src/types/api.generated.ts</span>
 </code></pre>
 <p>Poi gli alias con i nomi brevi, in <code>types/api.types.ts</code>:</p>
 <pre><code class="language-typescript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">Category</span> = <span class="hljs-title class_">Schemas</span>[<span class="hljs-string">&#x27;CategoryResponse&#x27;</span>]
@@ -981,7 +981,7 @@ dichiarano <code>query: { from: '...' }</code></li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

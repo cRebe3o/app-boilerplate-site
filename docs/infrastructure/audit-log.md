@@ -17,13 +17,13 @@ handler → repository.Add / Remove, o un metodo dell'aggregato
 
 | Campo | Valore | Da dove |
 |---|---|---|
-| `ActorId` · `ActorEmail` | l'utente della richiesta | `ICurrentUser` (claim `sub` ed `email` del JWT) |
+| `ActorId` · `ActorEmail` | l'utente della richiesta | `ICurrentUser` (claim `sub` del JWT; `email`, o lo `username` per chi non ha email: "system" vuol dire solo il sistema) |
 | `EntityType` | il nome del tipo, es. `"User"` | il change tracker |
 | `EntityId` | l'id dell'entità toccata | il change tracker; per le cancellazioni è fissato **prima** del commit |
-| `Action` | `Created` · `Updated` · `Deleted` | costanti in `AuditActions` |
+| `Action` | `Created` · `Updated` · `Deleted` · `Reset` | costanti in `AuditActions` |
 | `Before` · `After` | snapshot JSON camelCase | `AuditSnapshotTracker` e `IAuditSnapshotWriter` |
 | `Timestamp` | ora UTC | `IDateTimeProvider` |
-| `IpAddress` | IP del client | `ICurrentUser`, già ripristinato da `UseForwardedHeaders` dietro un proxy |
+| `IpAddress` | IP del client | `ICurrentUser`. Dietro un proxy è quello vero solo con `ForwardedHeaders` configurato ([Configurazione](../progetto/configurazione.md#forwardedheaders)); altrimenti è quello del proxy |
 
 `ActorId` ed `EntityId` **non sono chiavi esterne**, ed è voluto: lo storico deve sopravvivere alla
 cancellazione di utenti ed entità. Con una FK verso `Users`, cancellare un utente cancellerebbe (o
@@ -83,7 +83,9 @@ aggregato viene catturato due volte, vince il primo snapshot, che è lo stato in
 
 Tracciato: **ogni radice di aggregato** (`AggregateRoot`) creata, modificata o cancellata da un
 utente autenticato, qualunque sia la strada — handler, evento di dominio, operazione futura che
-oggi non esiste. È il vantaggio di un interceptor rispetto a una chiamata negli handler.
+oggi non esiste. È il vantaggio di un interceptor rispetto a una chiamata negli handler. Anche
+la configurazione di sistema (`SystemConfig`, radice di aggregato) si traccia così, come ogni
+altra modifica.
 
 Non tracciato, di proposito:
 
@@ -154,7 +156,10 @@ riga.
 
 La retention è configurabile dalla pagina **Configurazione** (`SystemConfig.AuditLogs`): abilitato
 sì/no e numero massimo di record, da 1 a 100.000. Il reset (`audit.write`) cancella i record oltre
-la soglia configurata. Di base il taglio avviene solo così; con i
+la soglia configurata, o tutti se l'audit è disabilitato. **Ogni reset lascia una riga** nel
+registro di audit, anche quello del registro degli errori: azione `Reset`, `EntityType` `AuditLog` o
+`ErrorLog`, e in `After` le righe eliminate e quelle conservate (`deleted`, `kept`). Chi svuota un
+registro non cancella anche la traccia di averlo fatto. Di base il taglio avviene solo così; con i
 [lavori programmati](lavori-programmati.md) lo stesso reset gira anche ogni notte, per l'audit e
 per l'error log. I record non si modificano
 né si cancellano uno per uno.

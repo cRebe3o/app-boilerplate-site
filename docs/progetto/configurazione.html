@@ -108,6 +108,8 @@
           <li class="lvl-3"><a href="#auth"><code>Auth</code></a></li>
           <li class="lvl-3"><a href="#seed"><code>Seed</code></a></li>
           <li class="lvl-3"><a href="#cors-e-logging"><code>Cors</code> e <code>Logging</code></a></li>
+          <li class="lvl-3"><a href="#forwardedheaders"><code>ForwardedHeaders</code></a></li>
+          <li class="lvl-3"><a href="#openapi"><code>OpenApi</code></a></li>
           <li class="lvl-3"><a href="#telemetry"><code>Telemetry</code></a></li>
           <li class="lvl-3"><a href="#come-arrivano-agli-handler">Come arrivano agli handler</a></li>
           <li class="lvl-2"><a href="#frontend-le-variabili-vite">Frontend: le variabili <code>VITE_*</code></a></li>
@@ -144,7 +146,7 @@ in quest'ordine:</p>
 <td>2</td>
 <td><code>appsettings.{Environment}.json</code></td>
 <td>sì</td>
-<td>Le differenze per ambiente. Nel template solo <code>Development</code> (livelli di log)</td>
+<td>Le differenze per ambiente. <code>Development</code>: livelli di log, login Windows acceso, telemetria verso l'Aspire Dashboard; <code>Production</code>: livelli di log, origin CORS</td>
 </tr>
 <tr>
 <td>3</td>
@@ -156,7 +158,13 @@ in quest'ordine:</p>
 <td>4</td>
 <td>Variabili d'ambiente</td>
 <td>—</td>
-<td>Il deploy. Vincono su tutto</td>
+<td>Il deploy. Vincono sui file</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Argomenti della riga di comando</td>
+<td>—</td>
+<td>Vincono su tutto. Fra questi arrivano anche le impostazioni dei test (<code>UseSetting</code> di <code>WebApplicationFactory</code>), che così non vengono coperte dall'<code>appsettings.local.json</code> di chi lancia i test</td>
 </tr>
 </tbody>
 </table>
@@ -170,10 +178,12 @@ dopo la generazione, e senza di esso l'applicazione non parte (manca il secret J
 </blockquote>
 <p><code>ASPNETCORE_ENVIRONMENT</code> decide quale file <code>{Environment}</code> viene letto e cambia alcuni
 comportamenti: in <code>Development</code> il CORS accetta qualsiasi porta su <code>localhost</code>, il rate limiting
-del login è più permissivo, i dettagli delle eccezioni arrivano al client, l'endpoint di login
-Windows accetta l'header <code>X-Dev-Windows-User</code>, e il login mostra le credenziali dell'admin, che il
-seed tiene allineate alla configurazione (vedi <a href="#credenziali-di-sviluppo-nel-login">sotto</a>). <code>launchSettings.json</code> lo imposta a <code>Development</code> per
-<code>dotnet run</code>; in produzione va impostato esplicitamente a <code>Production</code>.</p>
+del login è più permissivo, i dettagli delle eccezioni arrivano al client, il login Windows è
+acceso e, da questo computer, accetta l'header <code>X-Dev-Windows-User</code>, Swagger UI e lo schema OpenAPI
+sono pubblicati, il segreto JWT di esempio è accettato, e il login mostra le credenziali dell'admin,
+che il seed tiene allineate alla configurazione (vedi <a href="#credenziali-di-sviluppo-nel-login">sotto</a>).
+<code>launchSettings.json</code> lo imposta a <code>Development</code> per <code>dotnet run</code>; in produzione va impostato
+esplicitamente a <code>Production</code>.</p>
 <h2 id="backend-le-chiavi">Backend: le chiavi</h2>
 <h3 id="database-e-connectionstrings"><code>Database</code> e <code>ConnectionStrings</code></h3>
 <div class="table-wrap">
@@ -225,7 +235,7 @@ provider attivo. Cambiare database è cambiare <code>Database:Provider</code>, n
 <tr>
 <td><code>Auth:Jwt:Secret</code></td>
 <td><strong>sì, sempre</strong></td>
-<td>Almeno 32 caratteri. Firma i JWT interni; senza, l'app lancia <code>InvalidOperationException</code> all'avvio</td>
+<td>Firma i JWT interni; senza, l'app lancia <code>InvalidOperationException</code> all'avvio. Fuori da <code>Development</code> deve essere casuale, di almeno 32 caratteri e diverso da quello di esempio, altrimenti l'API non parte</td>
 </tr>
 <tr>
 <td><code>Auth:Jwt:ExpiresInMinutes</code></td>
@@ -245,7 +255,7 @@ provider attivo. Cambiare database è cambiare <code>Database:Provider</code>, n
 <tr>
 <td><code>Auth:Msal:TenantId</code> · <code>ClientId</code></td>
 <td>solo con login Microsoft</td>
-<td>Tenant Entra ID e client id dell'<strong>app API</strong>, contro cui viene validato il token Azure — vedi <a href="../autenticazione/azure-app-registration.html">App registration Azure</a></td>
+<td>Tenant Entra ID e client id dell'<strong>app API</strong>, contro cui viene validato il token Azure — vedi <a href="../autenticazione/azure-app-registration.html">App registration Azure</a>. Vuoti, <code>/api/auth/msal-login</code> risponde 404</td>
 </tr>
 <tr>
 <td><code>Auth:Msal:Instance</code></td>
@@ -253,15 +263,18 @@ provider attivo. Cambiare database è cambiare <code>Database:Provider</code>, n
 <td><code>https://login.microsoftonline.com/</code></td>
 </tr>
 <tr>
+<td><code>Auth:Windows:Enabled</code></td>
+<td>solo con login Windows (<code>false</code>)</td>
+<td>Accende <code>/api/auth/windows-login</code>, che altrimenti risponde 404. È <code>true</code> in <code>appsettings.Development.json</code>; fuori da <code>Development</code> si imposta <code>Auth__Windows__Enabled=true</code>. Usa Negotiate, e su Windows funziona anche fuori dominio</td>
+</tr>
+<tr>
 <td><code>Auth:Strategy</code></td>
 <td>no</td>
-<td><strong>Solo documentazione</strong>: il backend accetta sempre tutti e tre i login. La schermata la sceglie il frontend con <code>VITE_AUTH_STRATEGY</code></td>
+<td><strong>Solo documentazione</strong>: non è letta dal codice. La schermata la sceglie il frontend con <code>VITE_AUTH_STRATEGY</code></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Il login Windows integrato non ha chiavi: usa Negotiate, e su Windows funziona anche fuori
-dominio.</p>
 <h3 id="seed"><code>Seed</code></h3>
 <p>Letti <strong>al primo avvio su un database vuoto</strong>, per creare gli utenti: se esiste già anche un solo
 ruolo il seed aggiunge soltanto i permessi nuovi del catalogo, e cambiare queste chiavi non ha
@@ -300,7 +313,7 @@ effetto. L'eccezione è <code>Development</code>: lì username e password dell'a
 <tr>
 <td><code>Seed:WindowsUsername</code></td>
 <td>vuoto</td>
-<td>Account per il login Windows, nella forma <code>DOMINIO\utente</code>. Vuoto = l'account del processo corrente, che in sviluppo è quasi sempre quello giusto</td>
+<td>Account per il login Windows, nella forma <code>DOMINIO\utente</code>, letto solo con <code>Auth:Windows:Enabled</code>. Vuoto = in <code>Development</code> l'account del processo corrente, che lì è quasi sempre quello giusto; fuori da <code>Development</code> nessun utente Windows</td>
 </tr>
 </tbody>
 </table>
@@ -308,6 +321,12 @@ effetto. L'eccezione è <code>Development</code>: lì username e password dell'a
 <p>Il seed crea anche permessi, ruoli (<code>SuperAdmin</code>, <code>Admin</code>, <code>Viewer</code>, <code>Custom</code>) e gruppi
 (<code>Administrators</code>, <code>Viewers</code>): l'elenco è in <code>DataSeeder.cs</code>. I permessi di una feature nuova si
 aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.</p>
+<p><code>Viewer</code> legge tutto ciò che legge <code>Admin</code>, e niente di più: i permessi riservati al SuperAdmin
+(<code>permissions.*</code> e, con i lavori programmati, <code>jobs.dashboard</code>) restano solo suoi, perché nessuno
+può dare un permesso che non ha (vedi <a href="../autenticazione/autenticazione.html#chi-puo-dare-ruoli-e-permessi">Chi può dare ruoli e permessi</a>).
+Un ruolo di sistema non si modifica dalla UI, quindi a ogni avvio il seed toglie ai ruoli di
+sistema diversi da SuperAdmin quei permessi, se li trova, e lo scrive nel log (&quot;Seed: tolti ai
+ruoli di sistema…&quot;).</p>
 <h4 id="credenziali-di-sviluppo-nel-login">Credenziali di sviluppo nel login</h4>
 <p>In <code>Development</code>, con il login username e password (<code>VITE_AUTH_STRATEGY=jwt</code>), la pagina di login
 mostra username e password dell'admin. Non sono scritte nel frontend: le chiede al backend,
@@ -348,6 +367,83 @@ backend, svuotare il database, oppure entrare con l'identity provider impostando
 <tr>
 <td><code>Logging:LogLevel:*</code></td>
 <td>Standard .NET. Per vedere le query EF: <code>Microsoft.EntityFrameworkCore.Database.Command</code> a <code>Information</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="forwardedheaders"><code>ForwardedHeaders</code></h3>
+<p>I limiti di frequenza (il login con password, gli errori del frontend) contano per indirizzo del
+client, e anche il registro di audit lo scrive. Dietro un proxy (Render, IIS, nginx) l'indirizzo
+della connessione è quello del proxy, e quello vero arriva in un'intestazione. L'API la accetta
+<strong>solo dai proxy configurati qui</strong>: da un client qualsiasi sarebbe inventata, e cambiandola a ogni
+tentativo si aggirerebbe il limite del login.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Default</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ForwardedHeaders:Enabled</code></td>
+<td><code>false</code></td>
+<td>Accende la lettura dell'intestazione. Spento, l'indirizzo è quello della connessione</td>
+</tr>
+<tr>
+<td><code>ForwardedHeaders:KnownProxies</code></td>
+<td>vuoto</td>
+<td>Indirizzi dei proxy da cui accettarla, es. <code>ForwardedHeaders__KnownProxies__0=10.0.0.5</code></td>
+</tr>
+<tr>
+<td><code>ForwardedHeaders:KnownNetworks</code></td>
+<td>vuoto</td>
+<td>Reti dei proxy, es. <code>ForwardedHeaders__KnownNetworks__0=10.0.0.0/8</code></td>
+</tr>
+<tr>
+<td><code>ForwardedHeaders:TrustAllProxies</code></td>
+<td><code>false</code></td>
+<td>Accetta l'intestazione da qualunque connessione. Solo con un'intestazione che il proxy <strong>riscrive sempre</strong>, mai con <code>X-Forwarded-For</code></td>
+</tr>
+<tr>
+<td><code>ForwardedHeaders:ForwardedForHeader</code></td>
+<td><code>X-Forwarded-For</code></td>
+<td>Il nome dell'intestazione con l'indirizzo del client</td>
+</tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p><strong>Con un proxy davanti va configurata, altrimenti il login con password si blocca per tutti.</strong>
+Senza, ogni richiesta ha l'indirizzo del proxy, e i limiti diventano uno solo per tutti gli
+utenti: dieci password sbagliate in 15 minuti, di chiunque, bloccano il login con password di
+tutti per il resto dei 15 minuti; anche gli errori del frontend si fermano a 5 al minuto per
+tutta l'app, e l'audit scrive per tutti l'indirizzo del proxy.</p>
+</blockquote>
+<p>Due configurazioni tipiche:</p>
+<ul>
+<li><strong>IIS, nginx, un proxy con indirizzo noto</strong>: <code>ForwardedHeaders__Enabled=true</code> e
+<code>ForwardedHeaders__KnownProxies__0=&lt;indirizzo del proxy&gt;</code> (o <code>KnownNetworks__0</code>).</li>
+<li><strong>Render</strong>: gli indirizzi dei suoi proxy non sono pubblicati. Vedi
+<a href="../deploy/render.html#indirizzo-del-client-e-limite-dei-login">Deploy su Render</a>.</li>
+</ul>
+<h3 id="openapi"><code>OpenApi</code></h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Default</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OpenApi:Enabled</code></td>
+<td><code>false</code></td>
+<td>Pubblica Swagger UI (<code>/swagger</code>) e lo schema (<code>/openapi/v1.json</code>) anche fuori da <code>Development</code>, dove altrimenti non ci sono. In <code>Development</code> ci sono sempre</td>
 </tr>
 </tbody>
 </table>
@@ -487,7 +583,7 @@ configurazione a runtime: sono il punto di partenza.</p>
 </tr>
 <tr>
 <td><code>api_port</code></td>
-<td><code>launchSettings.json</code>, <code>VITE_API_BASE_URL</code>, <code>scripts/generate-api-types.mjs</code></td>
+<td><code>launchSettings.json</code>, <code>VITE_API_BASE_URL</code></td>
 </tr>
 <tr>
 <td><code>frontend_port</code></td>
@@ -521,7 +617,7 @@ configurazione a runtime: sono il punto di partenza.</p>
 <td>Backend</td>
 <td><code>appsettings.local.json</code></td>
 <td>idem, con la connection string del container</td>
-<td>Variabili d'ambiente (<code>Auth__Jwt__Secret</code>, <code>ConnectionStrings__*</code>, <code>Cors__AllowedOrigins__0</code>, <code>Seed__*</code>)</td>
+<td>Variabili d'ambiente (<code>Auth__Jwt__Secret</code>, <code>ConnectionStrings__*</code>, <code>Cors__AllowedOrigins__0</code>, <code>Seed__*</code>, <code>ForwardedHeaders__*</code> dietro un proxy)</td>
 </tr>
 <tr>
 <td>Frontend</td>
@@ -543,6 +639,8 @@ configurazione a runtime: sono il punto di partenza.</p>
 <ul>
 <li><strong><code>JWT Secret is missing</code></strong> → manca <code>Auth:Jwt:Secret</code>: <code>appsettings.local.json</code> non esiste o non è
 nella cartella del progetto Api.</li>
+<li><strong><code>Auth:Jwt:Secret non valido fuori da Development</code></strong> → in produzione il segreto è quello di
+esempio o è più corto di 32 caratteri: ne serve uno casuale.</li>
 <li><strong>Provider sbagliato</strong> → <code>Database:Provider</code> in <code>appsettings.local.json</code> o in una variabile
 d'ambiente <code>Database__Provider</code> che vince sul file.</li>
 <li><strong><code>database does not exist</code> su Postgres</strong> → <code>MigrateAsync</code> non ha il permesso di creare il
@@ -567,7 +665,7 @@ prima della build.</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

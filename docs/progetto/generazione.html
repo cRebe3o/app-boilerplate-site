@@ -110,6 +110,7 @@
           <li class="lvl-3"><a href="#verificare-che-il-progetto-sia-sano">Verificare che il progetto sia sano</a></li>
           <li class="lvl-2"><a href="#aggiornare-un-progetto-quando-il-template-cambia">Aggiornare un progetto quando il template cambia</a></li>
           <li class="lvl-3"><a href="#la-procedura-in-breve">La procedura, in breve</a></li>
+          <li class="lvl-3"><a href="#le-versioni-che-chiedono-qualcosa-a-mano">Le versioni che chiedono qualcosa a mano</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
@@ -145,8 +146,8 @@ ne è il riassunto ragionato.</p>
 </tr>
 <tr>
 <td><strong>pnpm</strong></td>
-<td>10 o successivo</td>
-<td>Il <code>packageManager</code> del progetto è <code>pnpm@12.18.0</code>: un pnpm dalla 10 in poi, installato in qualsiasi modo (per esempio <code>npm install -g pnpm</code>), passa da solo a quella versione. Node 26 non contiene più Corepack: chi lo preferisce lo installa con <code>npm install -g corepack</code>, poi <code>corepack enable</code>. Un pnpm 9 avvisa ma resta alla 9: va aggiornato o tolto</td>
+<td>12</td>
+<td>Il <code>packageManager</code> del progetto è <code>pnpm@12.18.0</code>. Si installa in qualsiasi modo, per esempio <code>npm install -g pnpm</code>; un pnpm 10 o 11 già installato va bene lo stesso, perché passa da solo alla 12. Node 26 non contiene più Corepack: chi lo preferisce lo installa con <code>npm install -g corepack</code>, poi <code>corepack enable</code>. Un pnpm 9 avvisa ma resta alla 9: va aggiornato o tolto</td>
 </tr>
 <tr>
 <td><strong>Python + Copier</strong></td>
@@ -401,6 +402,61 @@ tag&quot;, e senza tag non ha una versione a cui puntare.</p>
 <p>Finché non committi, l'update vive solo nel working tree: se va storto, si scarta con Git come
 qualsiasi altra modifica.</p>
 </blockquote>
+<h3 id="le-versioni-che-chiedono-qualcosa-a-mano">Le versioni che chiedono qualcosa a mano</h3>
+<p>Una versione <strong>maggiore</strong> del template vuol dire che dopo l'update qualcosa si fa a mano. Il
+dettaglio è nel <code>CHANGELOG.md</code> del template, alla voce <em>Che cosa fa chi aggiorna</em> di ogni versione.</p>
+<p><strong>7.0.0 — correzioni di sicurezza.</strong> Dopo l'update:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chi</th>
+<th>Che cosa fa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tutti</td>
+<td>Niente, ma lo sa: <strong>tutti gli utenti escono una volta</strong>. I refresh token salvati prima non valgono più (ora c'è l'hash) e i token di accesso senza impronta vengono rifiutati: si rientra con un login</td>
+</tr>
+<tr>
+<td>Chi pubblica dietro un proxy (Render, IIS, nginx)</td>
+<td>Configura <code>ForwardedHeaders</code>, <strong>altrimenti il login con password si blocca per tutti</strong> dopo dieci errori. Vedi <a href="configurazione.html#forwardedheaders">Configurazione</a> e, per Render, <a href="../deploy/render.html#indirizzo-del-client-e-limite-dei-login">Deploy su Render</a></td>
+</tr>
+<tr>
+<td>Chi usa il login Windows fuori da Development</td>
+<td>Imposta <code>Auth__Windows__Enabled=true</code>: senza, <code>/api/auth/windows-login</code> risponde 404</td>
+</tr>
+<tr>
+<td>Chi ha un database creato fuori da Development con una versione precedente</td>
+<td>Controlla nella pagina Utenti: il seed creava un utente Windows SuperAdmin senza password, con il nome dell'account del servizio. Se nessuno lo usa, va eliminato</td>
+</tr>
+<tr>
+<td>Chi è in produzione</td>
+<td>Controlla che <code>Auth__Jwt__Secret</code> sia casuale e lungo almeno 32 caratteri: altrimenti l'API non parte</td>
+</tr>
+<tr>
+<td>Chi usa Swagger in produzione</td>
+<td>Lo riaccende con <code>OpenApi__Enabled=true</code></td>
+</tr>
+<tr>
+<td>Chi aveva dato apposta <code>permissions.read</code> ai Viewer</td>
+<td>Lo dà a un ruolo personalizzato: il seed lo toglie ai ruoli di sistema (lo scrive nel log, una volta). Per il resto i database esistenti non chiedono niente</td>
+</tr>
+<tr>
+<td>Chi ha scritto codice nel progetto</td>
+<td>Un handler che assegna ruoli, gruppi o permessi usa <code>IAdministrationRules</code>; un endpoint anonimo nuovo va nell'elenco di <code>EndpointAuthorizationTests</code>; un test che costruisce a mano <code>CreateUserHandler</code>, <code>ChangePasswordHandler</code>, <code>SystemConfigRepository</code> o i due handler di reset riceve i parametri nuovi dei costruttori; una <code>v-snackbar</code> copiata fuori da <code>App.vue</code> prende <code>:close-on-back=&quot;false&quot;</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Che cosa cambia, nel dettaglio: <a href="../autenticazione/autenticazione.html#sicurezza-che-cosa-e-in-piedi">Autenticazione</a>
+per sessioni, ruoli e intestazioni, <a href="configurazione.html">Configurazione</a> per le chiavi nuove,
+<a href="../infrastructure/audit-log.html">Audit log</a> per i reset registrati.</p>
+<p><strong>7.0.1</strong> riporta la barra in alto al blu della 6.1.0 (la 7.0.0 l'aveva resa grigio scuro): chi
+passa dalla 6.1.0 direttamente alla 7.0.1 o successiva non vede cambiamenti di colore. <strong>7.0.2</strong>
+non chiede niente: cambia solo l'intestazione di <code>api.generated.ts</code>, e se l'update la segna in
+conflitto si tiene una delle due versioni e si lancia <code>pnpm gen:api</code>.</p>
 <h2 id="da-qui">Da qui</h2>
 <ul>
 <li><a href="panoramica.html">Panoramica</a> — che cosa contiene il progetto che hai appena generato</li>
@@ -415,7 +471,7 @@ qualsiasi altra modifica.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

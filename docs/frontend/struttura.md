@@ -356,7 +356,7 @@ riserva di `run`/`runOrThrow`/`attempt`. I commenti non contano come uso di una 
 
 | File | Origine | Si modifica? |
 |---|---|---|
-| `api.generated.ts` | **generato** da `pnpm gen:api` dallo schema OpenAPI del backend (`/openapi/v1.json`) | mai a mano |
+| `api.generated.ts` | **generato** da `pnpm gen:api` dallo schema OpenAPI del backend, prodotto dalla sua build | mai a mano |
 | `api.types.ts` | alias con i nomi brevi (`User`, `Group`, `PagedResponse<T>`, `ProblemDetails`) verso gli schemi generati | sì: un alias per ogni tipo nuovo |
 | `auth.types.ts` | i tipi della sessione (`LoginRequest`, `AuthState`) | raramente |
 
@@ -395,7 +395,7 @@ codice; ciò che deve essere servito tale e quale (favicon, `_redirects` per l'h
 | `vitest.setup.ts` | i plugin i18n e Vuetify dell'app, mock di `matchMedia`, `ResizeObserver` e `localStorage`; un errore non gestito o un `[Vue warn]` fa fallire il test | per un mock globale nuovo |
 | `.env` · `.env.local.example` · `.env.production` | Le variabili `VITE_*`. `.env.local` è gitignored ed è dove si mettono i valori locali | per una variabile nuova |
 | `project.json` | I target Nx: `build`, `serve`, `test`, `lint`, `typecheck`. Sono ciò che `pnpm build`, `pnpm lint:frontend` e `pnpm typecheck:frontend` dalla radice invocano | per un target nuovo |
-| `scripts/generate-api-types.mjs` | `pnpm gen:api`: legge lo schema dal backend avviato e scrive `api.generated.ts` | mai |
+| `scripts/generate-api-types.mjs` | `pnpm gen:api`: genera lo schema con la build del backend, senza avviarlo (`scripts/openapi-schema.mjs` nella radice, lo stesso di `pnpm verify`), e scrive `api.generated.ts` | mai |
 
 ## Dove va una cosa: la tabella di decisione
 

@@ -12,9 +12,10 @@ in quest'ordine:
 | # | Sorgente | Committata? | A che cosa serve |
 |---|---|---|---|
 | 1 | `appsettings.json` | sì | I default e la **forma** della configurazione: ogni chiave esiste qui, anche vuota |
-| 2 | `appsettings.{Environment}.json` | sì | Le differenze per ambiente. Nel template solo `Development` (livelli di log) |
+| 2 | `appsettings.{Environment}.json` | sì | Le differenze per ambiente. `Development`: livelli di log, login Windows acceso, telemetria verso l'Aspire Dashboard; `Production`: livelli di log, origin CORS |
 | 3 | `appsettings.local.json` | **no** (gitignored) | I segreti e i valori della tua macchina: connection string, secret JWT, admin del seed |
-| 4 | Variabili d'ambiente | — | Il deploy. Vincono su tutto |
+| 4 | Variabili d'ambiente | — | Il deploy. Vincono sui file |
+| 5 | Argomenti della riga di comando | — | Vincono su tutto. Fra questi arrivano anche le impostazioni dei test (`UseSetting` di `WebApplicationFactory`), che così non vengono coperte dall'`appsettings.local.json` di chi lancia i test |
 
 Le variabili d'ambiente usano il **doppio underscore** al posto dei due punti:
 `Auth__Jwt__Secret` è `Auth:Jwt:Secret`. Un elemento di array si indicizza: `Cors__AllowedOrigins__0`.
@@ -25,10 +26,12 @@ Le variabili d'ambiente usano il **doppio underscore** al posto dei due punti:
 
 `ASPNETCORE_ENVIRONMENT` decide quale file `{Environment}` viene letto e cambia alcuni
 comportamenti: in `Development` il CORS accetta qualsiasi porta su `localhost`, il rate limiting
-del login è più permissivo, i dettagli delle eccezioni arrivano al client, l'endpoint di login
-Windows accetta l'header `X-Dev-Windows-User`, e il login mostra le credenziali dell'admin, che il
-seed tiene allineate alla configurazione (vedi [sotto](#credenziali-di-sviluppo-nel-login)). `launchSettings.json` lo imposta a `Development` per
-`dotnet run`; in produzione va impostato esplicitamente a `Production`.
+del login è più permissivo, i dettagli delle eccezioni arrivano al client, il login Windows è
+acceso e, da questo computer, accetta l'header `X-Dev-Windows-User`, Swagger UI e lo schema OpenAPI
+sono pubblicati, il segreto JWT di esempio è accettato, e il login mostra le credenziali dell'admin,
+che il seed tiene allineate alla configurazione (vedi [sotto](#credenziali-di-sviluppo-nel-login)).
+`launchSettings.json` lo imposta a `Development` per `dotnet run`; in produzione va impostato
+esplicitamente a `Production`.
 
 ## Backend: le chiavi
 
@@ -48,16 +51,14 @@ provider attivo. Cambiare database è cambiare `Database:Provider`, niente altro
 
 | Chiave | Obbligatoria | Valore |
 |---|---|---|
-| `Auth:Jwt:Secret` | **sì, sempre** | Almeno 32 caratteri. Firma i JWT interni; senza, l'app lancia `InvalidOperationException` all'avvio |
+| `Auth:Jwt:Secret` | **sì, sempre** | Firma i JWT interni; senza, l'app lancia `InvalidOperationException` all'avvio. Fuori da `Development` deve essere casuale, di almeno 32 caratteri e diverso da quello di esempio, altrimenti l'API non parte |
 | `Auth:Jwt:ExpiresInMinutes` | no (60) | Durata dell'access token |
 | `Auth:Jwt:RefreshExpiresInDays` | no (7) | Durata del refresh token (cookie HttpOnly) |
 | `Auth:Jwt:Issuer` · `Audience` | no (`<Progetto>` / `<Progetto>Clients`) | Claim di validazione del token |
-| `Auth:Msal:TenantId` · `ClientId` | solo con login Microsoft | Tenant Entra ID e client id dell'**app API**, contro cui viene validato il token Azure — vedi [App registration Azure](../autenticazione/azure-app-registration.md) |
+| `Auth:Msal:TenantId` · `ClientId` | solo con login Microsoft | Tenant Entra ID e client id dell'**app API**, contro cui viene validato il token Azure — vedi [App registration Azure](../autenticazione/azure-app-registration.md). Vuoti, `/api/auth/msal-login` risponde 404 |
 | `Auth:Msal:Instance` | no | `https://login.microsoftonline.com/` |
-| `Auth:Strategy` | no | **Solo documentazione**: il backend accetta sempre tutti e tre i login. La schermata la sceglie il frontend con `VITE_AUTH_STRATEGY` |
-
-Il login Windows integrato non ha chiavi: usa Negotiate, e su Windows funziona anche fuori
-dominio.
+| `Auth:Windows:Enabled` | solo con login Windows (`false`) | Accende `/api/auth/windows-login`, che altrimenti risponde 404. È `true` in `appsettings.Development.json`; fuori da `Development` si imposta `Auth__Windows__Enabled=true`. Usa Negotiate, e su Windows funziona anche fuori dominio |
+| `Auth:Strategy` | no | **Solo documentazione**: non è letta dal codice. La schermata la sceglie il frontend con `VITE_AUTH_STRATEGY` |
 
 ### `Seed`
 
@@ -72,11 +73,18 @@ effetto. L'eccezione è `Development`: lì username e password dell'admin valgon
 | `Seed:AdminEmail` | vuoto | Email dell'admin. Vuoto = si riusa lo username, se ha la forma di un'email |
 | `Seed:AdminDisplayName` | `Administrator` | Nome visualizzato |
 | `Seed:AdminPassword` | vuoto | Password dell'admin. Vuota in `Development` = `Admin@1234`; vuota fuori da `Development` = ne viene generata una casuale, **non stampata**: in produzione di fatto va impostata |
-| `Seed:WindowsUsername` | vuoto | Account per il login Windows, nella forma `DOMINIO\utente`. Vuoto = l'account del processo corrente, che in sviluppo è quasi sempre quello giusto |
+| `Seed:WindowsUsername` | vuoto | Account per il login Windows, nella forma `DOMINIO\utente`, letto solo con `Auth:Windows:Enabled`. Vuoto = in `Development` l'account del processo corrente, che lì è quasi sempre quello giusto; fuori da `Development` nessun utente Windows |
 
 Il seed crea anche permessi, ruoli (`SuperAdmin`, `Admin`, `Viewer`, `Custom`) e gruppi
 (`Administrators`, `Viewers`): l'elenco è in `DataSeeder.cs`. I permessi di una feature nuova si
 aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.
+
+`Viewer` legge tutto ciò che legge `Admin`, e niente di più: i permessi riservati al SuperAdmin
+(`permissions.*` e, con i lavori programmati, `jobs.dashboard`) restano solo suoi, perché nessuno
+può dare un permesso che non ha (vedi [Chi può dare ruoli e permessi](../autenticazione/autenticazione.md#chi-puo-dare-ruoli-e-permessi)).
+Un ruolo di sistema non si modifica dalla UI, quindi a ogni avvio il seed toglie ai ruoli di
+sistema diversi da SuperAdmin quei permessi, se li trova, e lo scrive nel log ("Seed: tolti ai
+ruoli di sistema…").
 
 #### Credenziali di sviluppo nel login
 
@@ -111,6 +119,41 @@ backend, svuotare il database, oppure entrare con l'identity provider impostando
 |---|---|
 | `Cors:AllowedOrigins` | Array degli origin del frontend, esatti (`https://app.example.com`). In `Development` è ignorato: qualsiasi porta su `localhost` è ammessa |
 | `Logging:LogLevel:*` | Standard .NET. Per vedere le query EF: `Microsoft.EntityFrameworkCore.Database.Command` a `Information` |
+
+### `ForwardedHeaders`
+
+I limiti di frequenza (il login con password, gli errori del frontend) contano per indirizzo del
+client, e anche il registro di audit lo scrive. Dietro un proxy (Render, IIS, nginx) l'indirizzo
+della connessione è quello del proxy, e quello vero arriva in un'intestazione. L'API la accetta
+**solo dai proxy configurati qui**: da un client qualsiasi sarebbe inventata, e cambiandola a ogni
+tentativo si aggirerebbe il limite del login.
+
+| Chiave | Default | Valore |
+|---|---|---|
+| `ForwardedHeaders:Enabled` | `false` | Accende la lettura dell'intestazione. Spento, l'indirizzo è quello della connessione |
+| `ForwardedHeaders:KnownProxies` | vuoto | Indirizzi dei proxy da cui accettarla, es. `ForwardedHeaders__KnownProxies__0=10.0.0.5` |
+| `ForwardedHeaders:KnownNetworks` | vuoto | Reti dei proxy, es. `ForwardedHeaders__KnownNetworks__0=10.0.0.0/8` |
+| `ForwardedHeaders:TrustAllProxies` | `false` | Accetta l'intestazione da qualunque connessione. Solo con un'intestazione che il proxy **riscrive sempre**, mai con `X-Forwarded-For` |
+| `ForwardedHeaders:ForwardedForHeader` | `X-Forwarded-For` | Il nome dell'intestazione con l'indirizzo del client |
+
+> **Con un proxy davanti va configurata, altrimenti il login con password si blocca per tutti.**
+> Senza, ogni richiesta ha l'indirizzo del proxy, e i limiti diventano uno solo per tutti gli
+> utenti: dieci password sbagliate in 15 minuti, di chiunque, bloccano il login con password di
+> tutti per il resto dei 15 minuti; anche gli errori del frontend si fermano a 5 al minuto per
+> tutta l'app, e l'audit scrive per tutti l'indirizzo del proxy.
+
+Due configurazioni tipiche:
+
+- **IIS, nginx, un proxy con indirizzo noto**: `ForwardedHeaders__Enabled=true` e
+  `ForwardedHeaders__KnownProxies__0=<indirizzo del proxy>` (o `KnownNetworks__0`).
+- **Render**: gli indirizzi dei suoi proxy non sono pubblicati. Vedi
+  [Deploy su Render](../deploy/render.md#indirizzo-del-client-e-limite-dei-login).
+
+### `OpenApi`
+
+| Chiave | Default | Valore |
+|---|---|---|
+| `OpenApi:Enabled` | `false` | Pubblica Swagger UI (`/swagger`) e lo schema (`/openapi/v1.json`) anche fuori da `Development`, dove altrimenti non ci sono. In `Development` ci sono sempre |
 
 ### `Telemetry`
 
@@ -172,7 +215,7 @@ configurazione a runtime: sono il punto di partenza.
 | Variabile Copier | Dove finisce |
 |---|---|
 | `project_slug` | Namespace, `.sln`, `Issuer`/`Audience` del JWT, nome del database nelle connection string d'esempio |
-| `api_port` | `launchSettings.json`, `VITE_API_BASE_URL`, `scripts/generate-api-types.mjs` |
+| `api_port` | `launchSettings.json`, `VITE_API_BASE_URL` |
 | `frontend_port` | `vite.config.ts`, `Cors:AllowedOrigins` |
 | `db_provider` | `Database:Provider`, immagine del `docker-compose.yml` |
 | `access_mode` | `VITE_APP_ACCESS_MODE` |
@@ -183,7 +226,7 @@ Vedi [Generare e aggiornare](generazione.md) per il resto.
 
 | | Sviluppo locale | Docker (solo il DB) | Produzione |
 |---|---|---|---|
-| Backend | `appsettings.local.json` | idem, con la connection string del container | Variabili d'ambiente (`Auth__Jwt__Secret`, `ConnectionStrings__*`, `Cors__AllowedOrigins__0`, `Seed__*`) |
+| Backend | `appsettings.local.json` | idem, con la connection string del container | Variabili d'ambiente (`Auth__Jwt__Secret`, `ConnectionStrings__*`, `Cors__AllowedOrigins__0`, `Seed__*`, `ForwardedHeaders__*` dietro un proxy) |
 | Frontend | `.env.local` | idem | Variabili dell'hosting o `.env.production` al build |
 | `ASPNETCORE_ENVIRONMENT` | `Development` (da `launchSettings.json`) | `Development` | `Production` |
 
@@ -193,6 +236,8 @@ La tabella completa per il deploy, con i valori, è in [Deploy su Render](../dep
 
 - **`JWT Secret is missing`** → manca `Auth:Jwt:Secret`: `appsettings.local.json` non esiste o non è
   nella cartella del progetto Api.
+- **`Auth:Jwt:Secret non valido fuori da Development`** → in produzione il segreto è quello di
+  esempio o è più corto di 32 caratteri: ne serve uno casuale.
 - **Provider sbagliato** → `Database:Provider` in `appsettings.local.json` o in una variabile
   d'ambiente `Database__Provider` che vince sul file.
 - **`database does not exist` su Postgres** → `MigrateAsync` non ha il permesso di creare il

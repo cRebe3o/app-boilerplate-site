@@ -38,7 +38,10 @@ default e obbligatorietà, è in [Configurazione](../progetto/configurazione.md)
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Production` | Carica `appsettings.Production.json` |
 | `ConnectionStrings__SqlServer` | `Server=…;Database=…;…` | Connection string di produzione (provider di default) |
-| `Auth__Jwt__Secret` | *(casuale, min 32 caratteri)* | **Obbligatorio**: senza, l'app non si avvia |
+| `Auth__Jwt__Secret` | *(casuale, min 32 caratteri)* | **Obbligatorio**: senza, o con quello di esempio, o più corto di 32 caratteri, l'app non si avvia |
+| `ForwardedHeaders__Enabled` | `true` | **Necessarie**, tutte e tre: senza, il login con password si blocca per tutti. Vedi [sotto](#indirizzo-del-client-e-limite-dei-login) |
+| `ForwardedHeaders__TrustAllProxies` | `true` | |
+| `ForwardedHeaders__ForwardedForHeader` | `CF-Connecting-IP` | |
 | `Seed__AdminPassword` | *(password dell'admin iniziale)* | Usata **solo** al primo seed, su database vuoto |
 | `Cors__AllowedOrigins__0` | `https://<progetto>-frontend.onrender.com` | L'URL del frontend, esatto |
 | `Database__SizeLimitMb` | *(es. `512`)* | Facoltativa: il tetto di spazio del piano, che il motore non conosce. Senza, la pagina Monitoraggio usa un riferimento indicativo e lo segnala |
@@ -58,6 +61,51 @@ Le migration si applicano da sole al primo avvio. Vedi
 > l'utente ha il permesso di farlo. Dietro un pooler — Neon, per esempio, che espone host `*-pooler`
 > — la `CREATE DATABASE` non è consentita e il login viene rifiutato con `08P01 database does not
 > exist`. In quel caso il database va creato a monte, prima del primo deploy.
+
+Swagger UI e lo schema OpenAPI fuori da `Development` non ci sono: per averli anche su Render,
+`OpenApi__Enabled=true`.
+
+### Indirizzo del client e limite dei login
+
+Il backend limita i tentativi **per indirizzo del client**: 10 login con password sbagliata ogni 15
+minuti, 5 errori del frontend al minuto. Su Render, però, ogni richiesta arriva dal proxy di Render
+(lo dice Render stesso: *"your app sees the proxy's IP by default"*), e l'indirizzo vero sta in
+un'intestazione che l'API legge solo se configurata (vedi
+[Configurazione](../progetto/configurazione.md#forwardedheaders)).
+
+**Senza configurazione, tutti gli utenti hanno lo stesso indirizzo e condividono un solo limite.**
+Dieci password sbagliate in 15 minuti, di chiunque, bloccano il login con password **di tutti** per
+il resto dei 15 minuti (429); anche gli errori del frontend si fermano a 5 al minuto per tutta
+l'app, e il registro di audit scrive per tutti l'indirizzo del proxy. Fino alla 6.1.0 il problema non
+si vedeva perché l'API accettava `X-Forwarded-For` da chiunque, anche quello inventato da un
+attaccante per aggirare il limite: la 7.0.0 ha chiuso quel buco, e da lì la configurazione serve.
+
+Render non pubblica gli indirizzi dei suoi proxy, quindi non si possono elencare in `KnownProxies`,
+e su Render `X-Forwarded-For` conserva ciò che il client scrive: fidarsi di quello rimetterebbe in
+mano all'attaccante il limite. Davanti a Render c'è Cloudflare, che scrive `CF-Connecting-IP`
+**sovrascrivendo** quella mandata dal client. La configurazione è quindi:
+
+```bash
+ForwardedHeaders__Enabled=true
+ForwardedHeaders__TrustAllProxies=true
+ForwardedHeaders__ForwardedForHeader=CF-Connecting-IP
+```
+
+`TrustAllProxies` va bene solo perché `CF-Connecting-IP` lo riscrive sempre il proxy: con
+`X-Forwarded-For` sarebbe un errore.
+
+> **Da verificare dopo il deploy.** È la soluzione proposta, non ancora provata su un deploy vero.
+> Due prove: undici login sbagliati di fila, ognuno con un `CF-Connecting-IP` inventato diverso,
+> devono dare **429 all'undicesimo** (vuol dire che il valore inventato viene ignorato); due persone
+> da due reti diverse non devono bloccarsi a vicenda.
+>
+> ```bash
+> for i in $(seq 1 11); do
+>   curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<progetto>-backend.onrender.com/api/auth/login \
+>     -H "Content-Type: application/json" -H "CF-Connecting-IP: 203.0.113.$i" \
+>     -d '{"username":"prova","password":"sbagliata"}'
+> done
+> ```
 
 ## 2. Frontend — Static Site
 
@@ -186,7 +234,7 @@ MediatR, query SQL — invece che come una riga di log con un tempo complessivo.
 
 **Il backend non parte.**
 Guarda i log (*Logs*). Le cause tipiche falliscono tutte all'avvio con un messaggio esplicito:
-`Auth__Jwt__Secret` mancante, connection string mancante, `Database__Provider` con un valore non
+`Auth__Jwt__Secret` mancante, di esempio o più corto di 32 caratteri, connection string mancante, `Database__Provider` con un valore non
 ammesso (i soli ammessi sono `SqlServer` e `PostgreSQL`). Se il database è esterno a Render,
 controlla che il firewall consenta le connessioni in ingresso da Render.
 
@@ -211,6 +259,11 @@ essere `SameSite=None; Secure`, e quindi la connessione **deve** essere HTTPS. V
 L'utente `admin` viene creato dal seed con la password di `Seed__AdminPassword`. Se la variabile non
 era impostata al primo avvio, la password è casuale e non recuperabile: il modo più rapido è
 svuotare il database e ripartire con la variabile valorizzata — il seed gira solo su database vuoto.
+
+**Il login con password risponde 429 a tutti, anche a chi non ha sbagliato.**
+Mancano le variabili `ForwardedHeaders__*`: tutti gli utenti hanno l'indirizzo del proxy e
+condividono il limite di dieci tentativi ogni 15 minuti. Vedi
+[Indirizzo del client e limite dei login](#indirizzo-del-client-e-limite-dei-login).
 
 **La prima richiesta dopo un po' di inattività va in timeout.**
 È il piano gratuito: i servizi vanno in sleep dopo 15 minuti e il risveglio richiede 30–60 secondi.

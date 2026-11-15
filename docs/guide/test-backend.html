@@ -148,9 +148,9 @@ nel template e come se ne scrive uno nuovo per una feature.</p>
 </tr>
 <tr>
 <td><code>&lt;Progetto&gt;.Api.Tests</code></td>
-<td>Il middleware degli errori: che cosa diventa un 500 e finisce in <code>ErrorLog</code>; i servizi di <code>Program.cs</code> costruiti con la validazione completa (<code>ServiceRegistrationTests</code>)</td>
-<td>NSubstitute; il <code>Program</code> vero, fermato appena l'host è costruito</td>
-<td>Un errore del client viene scritto come errore del server; un servizio scoped dentro un singleton, una dipendenza non registrata</td>
+<td>Il middleware degli errori: che cosa diventa un 500 e finisce in <code>ErrorLog</code>; i servizi di <code>Program.cs</code> costruiti con la validazione completa (<code>ServiceRegistrationTests</code>); in <code>Security/</code>, gli attacchi della revisione di sicurezza riprodotti con richieste HTTP</td>
+<td>NSubstitute; il <code>Program</code> vero, fermato appena l'host è costruito; il <code>Program</code> vero in memoria con SQLite (<code>ApiFactory</code>)</td>
+<td>Un errore del client viene scritto come errore del server; un servizio scoped dentro un singleton, una dipendenza non registrata; un token che vale dopo la disattivazione, un Admin che si fa SuperAdmin, un limite aggirabile</td>
 </tr>
 <tr>
 <td><code>&lt;Progetto&gt;.Architecture.Tests</code></td>
@@ -169,8 +169,10 @@ infrastruttura e gli handler con i sostituti delle astrazioni. <code>Infrastruct
 da lì non si vede: <code>SystemConfigPersistenceTests</code>, per esempio, salva e rilegge
 <code>LogRetentionConfig</code>, che non ha costruttore vuoto né setter, quindi EF deve ricostruirlo dal
 costruttore con i parametri. Non sostituisce un database vero: SQL Server e PostgreSQL non girano
-nei test, e le migration si applicano all'avvio. <code>Program</code> è comunque <code>public partial</code>, quindi
-<code>WebApplicationFactory&lt;Program&gt;</code> è pronta se un progetto ne avrà bisogno.</p>
+nei test, e le migration si applicano all'avvio. <code>Program</code> è <code>public partial</code>, e i test di
+<code>Api.Tests/Security/</code> lo avviano con <code>WebApplicationFactory&lt;Program&gt;</code> (<code>ApiFactory</code>) su SQLite.
+Partono da una cartella con la sola configurazione di base (<code>TestContentRoot</code>): l'<code>appsettings.local.json</code>
+di chi lancia i test non li tocca, e <code>LocalSettingsTests</code> lo controlla.</p>
 </blockquote>
 <h2 id="domaintests-il-dominio-si-testa-con-new">Domain.Tests: il dominio si testa con <code>new</code></h2>
 <p>Un test di dominio costruisce un oggetto tramite il suo factory, chiama un metodo e controlla lo
@@ -455,7 +457,7 @@ basta; <code>NotEmpty()</code> non ha bisogno di un test.</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

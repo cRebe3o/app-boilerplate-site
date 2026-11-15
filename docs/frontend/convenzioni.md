@@ -29,8 +29,11 @@ backend) e si arriva alla rotta, che dipende da tutto.
 ## Tipi: generati dal backend
 
 ```bash
-pnpm gen:api      # con il backend avviato: legge /openapi/v1.json e scrive api.generated.ts
+pnpm gen:api      # genera lo schema con la build del backend (non serve avviarlo) e scrive api.generated.ts
 ```
+
+Lo schema è lo stesso che `pnpm verify` confronta con il file committato: ciò che scrive
+`gen:api` passa sempre la verifica.
 
 Poi l'alias, in `api.types.ts`:
 

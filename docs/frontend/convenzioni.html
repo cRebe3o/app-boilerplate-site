@@ -205,8 +205,10 @@ backend) e si arriva alla rotta, che dipende da tutto.</p>
 </table>
 </div>
 <h2 id="tipi-generati-dal-backend">Tipi: generati dal backend</h2>
-<pre><code class="language-bash">pnpm gen:api      <span class="hljs-comment"># con il backend avviato: legge /openapi/v1.json e scrive api.generated.ts</span>
+<pre><code class="language-bash">pnpm gen:api      <span class="hljs-comment"># genera lo schema con la build del backend (non serve avviarlo) e scrive api.generated.ts</span>
 </code></pre>
+<p>Lo schema è lo stesso che <code>pnpm verify</code> confronta con il file committato: ciò che scrive
+<code>gen:api</code> passa sempre la verifica.</p>
 <p>Poi l'alias, in <code>api.types.ts</code>:</p>
 <pre><code class="language-typescript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">Supplier</span> = <span class="hljs-title class_">Schemas</span>[<span class="hljs-string">&#x27;SupplierResponse&#x27;</span>]
 <span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> <span class="hljs-title class_">CreateSupplierRequest</span> = <span class="hljs-title class_">Schemas</span>[<span class="hljs-string">&#x27;CreateSupplierCommand&#x27;</span>]
@@ -755,7 +757,7 @@ pnpm build                <span class="hljs-comment"># vue-tsc + vite build, lo 
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

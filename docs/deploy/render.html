@@ -104,6 +104,7 @@
         <ul>
           <li class="lvl-2"><a href="#1-backend-web-service">1. Backend — Web Service</a></li>
           <li class="lvl-3"><a href="#variabili-d-ambiente">Variabili d'ambiente</a></li>
+          <li class="lvl-3"><a href="#indirizzo-del-client-e-limite-dei-login">Indirizzo del client e limite dei login</a></li>
           <li class="lvl-2"><a href="#2-frontend-static-site">2. Frontend — Static Site</a></li>
           <li class="lvl-3"><a href="#variabili-d-ambiente-2">Variabili d'ambiente</a></li>
           <li class="lvl-3"><a href="#il-routing-della-spa">Il routing della SPA</a></li>
@@ -204,7 +205,22 @@ default e obbligatorietà, è in <a href="../progetto/configurazione.html">Confi
 <tr>
 <td><code>Auth__Jwt__Secret</code></td>
 <td><em>(casuale, min 32 caratteri)</em></td>
-<td><strong>Obbligatorio</strong>: senza, l'app non si avvia</td>
+<td><strong>Obbligatorio</strong>: senza, o con quello di esempio, o più corto di 32 caratteri, l'app non si avvia</td>
+</tr>
+<tr>
+<td><code>ForwardedHeaders__Enabled</code></td>
+<td><code>true</code></td>
+<td><strong>Necessarie</strong>, tutte e tre: senza, il login con password si blocca per tutti. Vedi <a href="#indirizzo-del-client-e-limite-dei-login">sotto</a></td>
+</tr>
+<tr>
+<td><code>ForwardedHeaders__TrustAllProxies</code></td>
+<td><code>true</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>ForwardedHeaders__ForwardedForHeader</code></td>
+<td><code>CF-Connecting-IP</code></td>
+<td></td>
 </tr>
 <tr>
 <td><code>Seed__AdminPassword</code></td>
@@ -239,6 +255,42 @@ ConnectionStrings__PostgreSQL=<span class="hljs-string">&quot;Host=…;Database=
 <p>⚠️ <strong>Attenzione ai connection pooler.</strong> <code>MigrateAsync</code> crea il database se non esiste, ma solo dove
 l'utente ha il permesso di farlo. Dietro un pooler — Neon, per esempio, che espone host <code>*-pooler</code>
 — la <code>CREATE DATABASE</code> non è consentita e il login viene rifiutato con <code>08P01 database does not exist</code>. In quel caso il database va creato a monte, prima del primo deploy.</p>
+</blockquote>
+<p>Swagger UI e lo schema OpenAPI fuori da <code>Development</code> non ci sono: per averli anche su Render,
+<code>OpenApi__Enabled=true</code>.</p>
+<h3 id="indirizzo-del-client-e-limite-dei-login">Indirizzo del client e limite dei login</h3>
+<p>Il backend limita i tentativi <strong>per indirizzo del client</strong>: 10 login con password sbagliata ogni 15
+minuti, 5 errori del frontend al minuto. Su Render, però, ogni richiesta arriva dal proxy di Render
+(lo dice Render stesso: <em>&quot;your app sees the proxy's IP by default&quot;</em>), e l'indirizzo vero sta in
+un'intestazione che l'API legge solo se configurata (vedi
+<a href="../progetto/configurazione.html#forwardedheaders">Configurazione</a>).</p>
+<p><strong>Senza configurazione, tutti gli utenti hanno lo stesso indirizzo e condividono un solo limite.</strong>
+Dieci password sbagliate in 15 minuti, di chiunque, bloccano il login con password <strong>di tutti</strong> per
+il resto dei 15 minuti (429); anche gli errori del frontend si fermano a 5 al minuto per tutta
+l'app, e il registro di audit scrive per tutti l'indirizzo del proxy. Fino alla 6.1.0 il problema non
+si vedeva perché l'API accettava <code>X-Forwarded-For</code> da chiunque, anche quello inventato da un
+attaccante per aggirare il limite: la 7.0.0 ha chiuso quel buco, e da lì la configurazione serve.</p>
+<p>Render non pubblica gli indirizzi dei suoi proxy, quindi non si possono elencare in <code>KnownProxies</code>,
+e su Render <code>X-Forwarded-For</code> conserva ciò che il client scrive: fidarsi di quello rimetterebbe in
+mano all'attaccante il limite. Davanti a Render c'è Cloudflare, che scrive <code>CF-Connecting-IP</code>
+<strong>sovrascrivendo</strong> quella mandata dal client. La configurazione è quindi:</p>
+<pre><code class="language-bash">ForwardedHeaders__Enabled=<span class="hljs-literal">true</span>
+ForwardedHeaders__TrustAllProxies=<span class="hljs-literal">true</span>
+ForwardedHeaders__ForwardedForHeader=CF-Connecting-IP
+</code></pre>
+<p><code>TrustAllProxies</code> va bene solo perché <code>CF-Connecting-IP</code> lo riscrive sempre il proxy: con
+<code>X-Forwarded-For</code> sarebbe un errore.</p>
+<blockquote>
+<p><strong>Da verificare dopo il deploy.</strong> È la soluzione proposta, non ancora provata su un deploy vero.
+Due prove: undici login sbagliati di fila, ognuno con un <code>CF-Connecting-IP</code> inventato diverso,
+devono dare <strong>429 all'undicesimo</strong> (vuol dire che il valore inventato viene ignorato); due persone
+da due reti diverse non devono bloccarsi a vicenda.</p>
+<pre><code class="language-bash"><span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> $(<span class="hljs-built_in">seq</span> 1 11); <span class="hljs-keyword">do</span>
+  curl -s -o /dev/null -w <span class="hljs-string">&quot;%{http_code}\n&quot;</span> -X POST https://&lt;progetto&gt;-backend.onrender.com/api/auth/login \
+    -H <span class="hljs-string">&quot;Content-Type: application/json&quot;</span> -H <span class="hljs-string">&quot;CF-Connecting-IP: 203.0.113.<span class="hljs-variable">$i</span>&quot;</span> \
+    -d <span class="hljs-string">&#x27;{&quot;username&quot;:&quot;prova&quot;,&quot;password&quot;:&quot;sbagliata&quot;}&#x27;</span>
+<span class="hljs-keyword">done</span>
+</code></pre>
 </blockquote>
 <h2 id="2-frontend-static-site">2. Frontend — Static Site</h2>
 <p><strong>New → Static Site</strong>, stesso repository:</p>
@@ -402,7 +454,7 @@ MediatR, query SQL — invece che come una riga di log con un tempo complessivo.
 <h2 id="7-diagnostica">7. Diagnostica</h2>
 <p><strong>Il backend non parte.</strong>
 Guarda i log (<em>Logs</em>). Le cause tipiche falliscono tutte all'avvio con un messaggio esplicito:
-<code>Auth__Jwt__Secret</code> mancante, connection string mancante, <code>Database__Provider</code> con un valore non
+<code>Auth__Jwt__Secret</code> mancante, di esempio o più corto di 32 caratteri, connection string mancante, <code>Database__Provider</code> con un valore non
 ammesso (i soli ammessi sono <code>SqlServer</code> e <code>PostgreSQL</code>). Se il database è esterno a Render,
 controlla che il firewall consenta le connessioni in ingresso da Render.</p>
 <p><strong>Il backend parte ma ogni chiamata dà 500.</strong>
@@ -422,6 +474,10 @@ essere <code>SameSite=None; Secure</code>, e quindi la connessione <strong>deve<
 L'utente <code>admin</code> viene creato dal seed con la password di <code>Seed__AdminPassword</code>. Se la variabile non
 era impostata al primo avvio, la password è casuale e non recuperabile: il modo più rapido è
 svuotare il database e ripartire con la variabile valorizzata — il seed gira solo su database vuoto.</p>
+<p><strong>Il login con password risponde 429 a tutti, anche a chi non ha sbagliato.</strong>
+Mancano le variabili <code>ForwardedHeaders__*</code>: tutti gli utenti hanno l'indirizzo del proxy e
+condividono il limite di dieci tentativi ogni 15 minuti. Vedi
+<a href="#indirizzo-del-client-e-limite-dei-login">Indirizzo del client e limite dei login</a>.</p>
 <p><strong>La prima richiesta dopo un po' di inattività va in timeout.</strong>
 È il piano gratuito: i servizi vanno in sleep dopo 15 minuti e il risveglio richiede 30–60 secondi.
 Il frontend lo gestisce già — mostra un avviso mentre il backend si sveglia, invece di sembrare
@@ -434,7 +490,7 @@ sveglio il servizio.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

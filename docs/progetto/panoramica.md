@@ -167,21 +167,27 @@ I gruppi di endpoint dell'impianto, tutti sotto `/api`:
 Sono le rotte dell'impianto: quelle del dominio si aggiungono accanto, registrandole in
 `<Progetto>.Api/Extensions/EndpointExtensions.cs`.
 
-In esecuzione l'API espone la propria specifica OpenAPI (`/openapi/v1.json`), navigabile con
-Swagger UI su `/swagger`. È lo stesso schema da cui il frontend genera i propri tipi con
-`pnpm gen:api`: perché un tipo compaia, l'endpoint deve dichiarare `.Produces<T>()`.
+In `Development` l'API espone la propria specifica OpenAPI (`/openapi/v1.json`), navigabile con
+Swagger UI su `/swagger`; fuori da `Development` solo con `OpenApi:Enabled`. Il frontend genera i
+propri tipi dallo stesso schema con `pnpm gen:api`, che lo ottiene dalla build del backend, senza
+avviarlo: perché un tipo compaia, l'endpoint deve dichiarare `.Produces<T>()`.
 
 ### Cosa c'è in `Program.cs`
 
 Oltre alla registrazione dei servizi, alcune scelte che vale la pena conoscere perché si notano
 solo quando mancano:
 
-- **`UseForwardedHeaders` come primissimo middleware.** Dietro un reverse proxy l'IP del client
-  arriva in `X-Forwarded-For`: senza questo, ogni richiesta sembrerebbe provenire dal load balancer
-  e il rate limiting per IP diventerebbe di fatto globale.
+- **`UseForwardedHeaders` come primissimo middleware, solo per i proxy configurati.** Dietro un
+  reverse proxy l'IP del client arriva in un'intestazione (`X-Forwarded-For`, o `CF-Connecting-IP`
+  su Render): senza, ogni richiesta sembrerebbe provenire dal proxy e il rate limiting per IP
+  diventerebbe di fatto globale. L'intestazione vale solo dai proxy della sezione
+  `ForwardedHeaders`, di base spenta: da un client qualsiasi sarebbe inventata. Vedi
+  [Configurazione](configurazione.md#forwardedheaders).
 - **Rate limiting partizionato per IP**, non globale: 10 richieste ogni 15 minuti sul login con
   username e password in produzione (100 in `Development`), 300 ogni 15 minuti su refresh, login
-  Microsoft e login Windows, 20 al minuto sull'endpoint pubblico di raccolta errori.
+  Microsoft e login Windows, 5 al minuto sull'endpoint pubblico di raccolta errori, che accetta corpi fino a 64 KB.
+- **Intestazioni di sicurezza** su ogni risposta (`X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`), una CSP e `Cache-Control: no-store` su `/api`, HSTS fuori da `Development`.
 - **Timeout di 1 secondo per ogni regex del backend** (`RegexTimeout`, in un inizializzatore del
   modulo): una regex lenta su un input costruito apposta (ReDoS) si ferma con
   `RegexMatchTimeoutException`, cioè un 500 con ErrorLog, invece di tenere occupato il server.

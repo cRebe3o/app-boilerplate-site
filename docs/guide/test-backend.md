@@ -13,7 +13,7 @@ dotnet test apps/backend/<Progetto>.sln      # tutti, è anche `pnpm test:backen
 | `<Progetto>.Domain.Tests` | Invarianti di aggregati e value object | `new` e basta: nessun mock, nessun database | Una regola di business è sbagliata o aggirabile |
 | `<Progetto>.Application.Tests` | Gli handler: orchestrazione, eccezioni, cosa viene salvato | NSubstitute sulle astrazioni (`IUserRepository`, `IUnitOfWork`, …) | Un handler salva due volte, non lancia il 404, non normalizza l'input |
 | `<Progetto>.Infrastructure.Tests` | Ciò che si vede solo davanti a EF: value object ricostruiti dal database, specification tradotte in SQL, seed | SQLite in memoria, con EF Core vero | Un valore non si rilegge, un predicato non si traduce, il seed non aggiunge un permesso nuovo |
-| `<Progetto>.Api.Tests` | Il middleware degli errori: che cosa diventa un 500 e finisce in `ErrorLog`; i servizi di `Program.cs` costruiti con la validazione completa (`ServiceRegistrationTests`) | NSubstitute; il `Program` vero, fermato appena l'host è costruito | Un errore del client viene scritto come errore del server; un servizio scoped dentro un singleton, una dipendenza non registrata |
+| `<Progetto>.Api.Tests` | Il middleware degli errori: che cosa diventa un 500 e finisce in `ErrorLog`; i servizi di `Program.cs` costruiti con la validazione completa (`ServiceRegistrationTests`); in `Security/`, gli attacchi della revisione di sicurezza riprodotti con richieste HTTP | NSubstitute; il `Program` vero, fermato appena l'host è costruito; il `Program` vero in memoria con SQLite (`ApiFactory`) | Un errore del client viene scritto come errore del server; un servizio scoped dentro un singleton, una dipendenza non registrata; un token che vale dopo la disattivazione, un Admin che si fa SuperAdmin, un limite aggirabile |
 | `<Progetto>.Architecture.Tests` | La direzione delle dipendenze e le convenzioni del modello | Reflection sugli assembly compilati | Un `using` sbagliato, un setter pubblico, una `List<T>` esposta |
 
 Tutti usano **xUnit**; i nomi dei test sono frasi in italiano con gli underscore
@@ -24,8 +24,10 @@ Tutti usano **xUnit**; i nomi dei test sono frasi in italiano con gli underscore
 > da lì non si vede: `SystemConfigPersistenceTests`, per esempio, salva e rilegge
 > `LogRetentionConfig`, che non ha costruttore vuoto né setter, quindi EF deve ricostruirlo dal
 > costruttore con i parametri. Non sostituisce un database vero: SQL Server e PostgreSQL non girano
-> nei test, e le migration si applicano all'avvio. `Program` è comunque `public partial`, quindi
-> `WebApplicationFactory<Program>` è pronta se un progetto ne avrà bisogno.
+> nei test, e le migration si applicano all'avvio. `Program` è `public partial`, e i test di
+> `Api.Tests/Security/` lo avviano con `WebApplicationFactory<Program>` (`ApiFactory`) su SQLite.
+> Partono da una cartella con la sola configurazione di base (`TestContentRoot`): l'`appsettings.local.json`
+> di chi lancia i test non li tocca, e `LocalSettingsTests` lo controlla.
 
 ## Domain.Tests: il dominio si testa con `new`
 

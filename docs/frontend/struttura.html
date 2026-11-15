@@ -612,7 +612,7 @@ riserva di <code>run</code>/<code>runOrThrow</code>/<code>attempt</code>. I comm
 <tbody>
 <tr>
 <td><code>api.generated.ts</code></td>
-<td><strong>generato</strong> da <code>pnpm gen:api</code> dallo schema OpenAPI del backend (<code>/openapi/v1.json</code>)</td>
+<td><strong>generato</strong> da <code>pnpm gen:api</code> dallo schema OpenAPI del backend, prodotto dalla sua build</td>
 <td>mai a mano</td>
 </tr>
 <tr>
@@ -698,7 +698,7 @@ codice; ciò che deve essere servito tale e quale (favicon, <code>_redirects</co
 </tr>
 <tr>
 <td><code>scripts/generate-api-types.mjs</code></td>
-<td><code>pnpm gen:api</code>: legge lo schema dal backend avviato e scrive <code>api.generated.ts</code></td>
+<td><code>pnpm gen:api</code>: genera lo schema con la build del backend, senza avviarlo (<code>scripts/openapi-schema.mjs</code> nella radice, lo stesso di <code>pnpm verify</code>), e scrive <code>api.generated.ts</code></td>
 <td>mai</td>
 </tr>
 </tbody>
@@ -816,7 +816,7 @@ codice; ciò che deve essere servito tale e quale (favicon, <code>_redirects</co
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 3.2.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

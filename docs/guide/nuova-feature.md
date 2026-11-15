@@ -545,11 +545,11 @@ La catena è sempre la stessa, e non si salta un anello: **tipi → service → 
 
 ## 10. Tipi, service, store
 
-I tipi **non si scrivono**: si generano dallo schema OpenAPI del backend, avviato.
+I tipi **non si scrivono**: si generano dallo schema OpenAPI del backend. Il backend non serve avviato: lo schema esce dalla sua build.
 
 ```bash
 cd apps/frontend
-pnpm gen:api          # rigenera src/types/api.generated.ts da /openapi/v1.json
+pnpm gen:api          # build del backend, schema OpenAPI, src/types/api.generated.ts
 ```
 
 Poi gli alias con i nomi brevi, in `types/api.types.ts`:
