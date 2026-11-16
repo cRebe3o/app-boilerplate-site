@@ -246,7 +246,8 @@ I permessi sono raccolti in **ruoli**; i ruoli si assegnano a un utente **dirett
 
 Il seed iniziale crea i permessi dell'area di sistema e identità: `read` / `write` / `delete` su
 utenti, gruppi e ruoli, più `permissions.*`, `audit.*`, `errors.*`, `config.*` e
-`monitoring.read` — l'elenco esatto è in `DataSeeder.cs`. I permessi del dominio si aggiungono man
+`monitoring.read`, e con le opzioni `jobs.dashboard` e `telemetry.dashboard` — l'elenco esatto è
+in `DataSeeder.cs`. I permessi del dominio si aggiungono man
 mano che si aggiungono le feature.
 
 Insieme ai permessi il seed crea quattro ruoli — `SuperAdmin`, `Admin`, `Viewer` e un `Custom`

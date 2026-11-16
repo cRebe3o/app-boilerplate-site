@@ -213,8 +213,18 @@ Si disattiva da *Settings → Build & Deploy → Auto-Deploy*.
 ## 6. Observability
 
 Il backend è instrumentato con OpenTelemetry, ma in produzione la telemetria è **spenta** finché
-non si sceglie una destinazione. Per attivarla si aggiunge una variabile d'ambiente al servizio,
-in *Environment*, senza ricompilare:
+non si sceglie una destinazione.
+
+**Con `include_grafana`** la destinazione è già nel progetto: cinque *Private Service* di tipo
+Docker (Collector, Prometheus, Loki, Tempo e Grafana), ognuno con la sua cartella di
+`observability/` come *Root Directory* e un disco per i dati (piani a pagamento). Al backend si
+aggiungono `Telemetry__Endpoint=http://<collector>:4317`, `Grafana__Url=http://<grafana>:3000` e
+`Grafana__Jwt__PrivateKeyFile=/etc/secrets/grafana-jwt-private.pem`, con la chiave privata come
+*Secret File*; la pubblica va a Grafana. La tabella completa delle variabili è in
+`observability/README.md` del progetto, e il quadro in [Observability](observability.md#in-produzione).
+
+**Senza `include_grafana`** si sceglie un collector esterno e si aggiunge una variabile d'ambiente
+al servizio, in *Environment*, senza ricompilare:
 
 | Variabile | Valore |
 |---|---|

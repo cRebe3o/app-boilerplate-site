@@ -39,6 +39,7 @@ il progetto che ne esce:
 | `access_mode` | `public` o `private` | `public` | `VITE_APP_ACCESS_MODE`, comportamento del router e della pagina di login |
 | `include_docker` | Generare o no il `docker-compose.yml` del database | `true` | Presenza del file in radice |
 | `include_jobs` | I lavori programmati con Hangfire, e il loro pannello | `false` | Cartelle `Jobs` in Api, Application, Infrastructure e test; voce "Lavori programmati" in Sistema; permesso `jobs.dashboard` |
+| `include_grafana` | Grafana per metriche, log e tracce, in sviluppo e in produzione | `false` | Container `lgtm` al posto dell'Aspire Dashboard nel `docker-compose.yml`; cartella `observability/`; voce "Metriche" in Sistema; permesso `telemetry.dashboard`; chiavi di sviluppo create da `scripts/grafana-keys.mjs` |
 
 Due avvertenze che costano tempo:
 
@@ -48,6 +49,11 @@ Due avvertenze che costano tempo:
 > **`include_jobs` si può cambiare dopo.** Chi risponde no non riceve niente di Hangfire: né
 > pacchetti, né codice, né tabelle. Per averli più avanti, `copier update --trust --data
 > include_jobs=true`. Vedi [Lavori programmati](../infrastructure/lavori-programmati.md).
+
+> **Anche `include_grafana` si può cambiare dopo**, con `copier update --trust --data
+> include_grafana=true`: arrivano container, dashboard, proxy e configurazione di produzione, il
+> seed aggiunge il permesso al primo avvio e Copier crea le chiavi di sviluppo. Vedi
+> [Observability](../deploy/observability.md#con-grafana-include-grafana).
 
 > **`db_provider` non è una scelta definitiva.** Decide il valore iniziale di `Database:Provider` e
 > quale database avvia Docker, ma il codice generato supporta **entrambi** i provider in ogni caso:

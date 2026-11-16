@@ -12,7 +12,7 @@ in quest'ordine:
 | # | Sorgente | Committata? | A che cosa serve |
 |---|---|---|---|
 | 1 | `appsettings.json` | sì | I default e la **forma** della configurazione: ogni chiave esiste qui, anche vuota |
-| 2 | `appsettings.{Environment}.json` | sì | Le differenze per ambiente. `Development`: livelli di log, login Windows acceso, telemetria verso l'Aspire Dashboard; `Production`: livelli di log, origin CORS |
+| 2 | `appsettings.{Environment}.json` | sì | Le differenze per ambiente. `Development`: livelli di log, login Windows acceso, telemetria verso il collector locale (Aspire Dashboard, o Grafana con `include_grafana`); `Production`: livelli di log, origin CORS |
 | 3 | `appsettings.local.json` | **no** (gitignored) | I segreti e i valori della tua macchina: connection string, secret JWT, admin del seed |
 | 4 | Variabili d'ambiente | — | Il deploy. Vincono sui file |
 | 5 | Argomenti della riga di comando | — | Vincono su tutto. Fra questi arrivano anche le impostazioni dei test (`UseSetting` di `WebApplicationFactory`), che così non vengono coperte dall'`appsettings.local.json` di chi lancia i test |
@@ -80,7 +80,7 @@ Il seed crea anche permessi, ruoli (`SuperAdmin`, `Admin`, `Viewer`, `Custom`) e
 aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.
 
 `Viewer` legge tutto ciò che legge `Admin`, e niente di più: i permessi riservati al SuperAdmin
-(`permissions.*` e, con i lavori programmati, `jobs.dashboard`) restano solo suoi, perché nessuno
+(`permissions.*` e, con i lavori programmati e Grafana, `jobs.dashboard` e `telemetry.dashboard`) restano solo suoi, perché nessuno
 può dare un permesso che non ha (vedi [Chi può dare ruoli e permessi](../autenticazione/autenticazione.md#chi-puo-dare-ruoli-e-permessi)).
 Un ruolo di sistema non si modifica dalla UI, quindi a ogni avvio il seed toglie ai ruoli di
 sistema diversi da SuperAdmin quei permessi, se li trova, e lo scrive nel log ("Seed: tolti ai
@@ -163,10 +163,21 @@ Due configurazioni tipiche:
 | `Telemetry:ServiceName` | Nome con cui l'applicazione appare nel backend di observability |
 | `Telemetry:SampleRatio` | Frazione di tracce da campionare, fra 0 e 1. `null` = tutte |
 
-In sviluppo, con `include_docker`, l'endpoint punta già all'Aspire Dashboard avviato da
-`docker compose`. In produzione va impostato solo dopo aver scelto una destinazione. Se il valore
-non è un URI assoluto valido l'applicazione non parte, invece di disattivare la telemetria in
-silenzio. Vedi [Observability](../deploy/observability.md).
+In sviluppo, con `include_docker`, l'endpoint punta già al container avviato da `docker compose`:
+l'Aspire Dashboard, o con `include_grafana` il container `lgtm` di Grafana, sulla stessa porta 4317.
+In produzione va impostato solo dopo aver scelto una destinazione. Se il valore non è un URI
+assoluto valido l'applicazione non parte, invece di disattivare la telemetria in silenzio. Vedi
+[Observability](../deploy/observability.md).
+
+### `Grafana` (solo con `include_grafana`)
+
+| Chiave | Valore |
+|---|---|
+| `Grafana:Url` | Dove il backend raggiunge Grafana, per inoltrare `/grafana`. In sviluppo `http://localhost:3000`. **Vuoto = niente `/grafana`** |
+| `Grafana:Jwt:PrivateKeyFile` | La chiave privata (PEM) con cui il backend firma i token per Grafana, relativa alla cartella del progetto Api o assoluta. In deploy un *Secret File*: chi ha la chiave entra in Grafana |
+
+La coppia di sviluppo la crea `node scripts/grafana-keys.mjs`; quella di produzione, diversa, con
+`--out <cartella>`. Vedi [Observability](../deploy/observability.md#come-si-entra).
 
 ### Come arrivano agli handler
 

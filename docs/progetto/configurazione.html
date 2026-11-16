@@ -111,6 +111,7 @@
           <li class="lvl-3"><a href="#forwardedheaders"><code>ForwardedHeaders</code></a></li>
           <li class="lvl-3"><a href="#openapi"><code>OpenApi</code></a></li>
           <li class="lvl-3"><a href="#telemetry"><code>Telemetry</code></a></li>
+          <li class="lvl-3"><a href="#grafana-solo-con-include-grafana"><code>Grafana</code> (solo con <code>include_grafana</code>)</a></li>
           <li class="lvl-3"><a href="#come-arrivano-agli-handler">Come arrivano agli handler</a></li>
           <li class="lvl-2"><a href="#frontend-le-variabili-vite">Frontend: le variabili <code>VITE_*</code></a></li>
           <li class="lvl-2"><a href="#le-variabili-copier">Le variabili Copier</a></li>
@@ -146,7 +147,7 @@ in quest'ordine:</p>
 <td>2</td>
 <td><code>appsettings.{Environment}.json</code></td>
 <td>sì</td>
-<td>Le differenze per ambiente. <code>Development</code>: livelli di log, login Windows acceso, telemetria verso l'Aspire Dashboard; <code>Production</code>: livelli di log, origin CORS</td>
+<td>Le differenze per ambiente. <code>Development</code>: livelli di log, login Windows acceso, telemetria verso il collector locale (Aspire Dashboard, o Grafana con <code>include_grafana</code>); <code>Production</code>: livelli di log, origin CORS</td>
 </tr>
 <tr>
 <td>3</td>
@@ -322,7 +323,7 @@ effetto. L'eccezione è <code>Development</code>: lì username e password dell'a
 (<code>Administrators</code>, <code>Viewers</code>): l'elenco è in <code>DataSeeder.cs</code>. I permessi di una feature nuova si
 aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.</p>
 <p><code>Viewer</code> legge tutto ciò che legge <code>Admin</code>, e niente di più: i permessi riservati al SuperAdmin
-(<code>permissions.*</code> e, con i lavori programmati, <code>jobs.dashboard</code>) restano solo suoi, perché nessuno
+(<code>permissions.*</code> e, con i lavori programmati e Grafana, <code>jobs.dashboard</code> e <code>telemetry.dashboard</code>) restano solo suoi, perché nessuno
 può dare un permesso che non ha (vedi <a href="../autenticazione/autenticazione.html#chi-puo-dare-ruoli-e-permessi">Chi può dare ruoli e permessi</a>).
 Un ruolo di sistema non si modifica dalla UI, quindi a ogni avvio il seed toglie ai ruoli di
 sistema diversi da SuperAdmin quei permessi, se li trova, e lo scrive nel log (&quot;Seed: tolti ai
@@ -473,10 +474,34 @@ tutta l'app, e l'audit scrive per tutti l'indirizzo del proxy.</p>
 </tbody>
 </table>
 </div>
-<p>In sviluppo, con <code>include_docker</code>, l'endpoint punta già all'Aspire Dashboard avviato da
-<code>docker compose</code>. In produzione va impostato solo dopo aver scelto una destinazione. Se il valore
-non è un URI assoluto valido l'applicazione non parte, invece di disattivare la telemetria in
-silenzio. Vedi <a href="../deploy/observability.html">Observability</a>.</p>
+<p>In sviluppo, con <code>include_docker</code>, l'endpoint punta già al container avviato da <code>docker compose</code>:
+l'Aspire Dashboard, o con <code>include_grafana</code> il container <code>lgtm</code> di Grafana, sulla stessa porta 4317.
+In produzione va impostato solo dopo aver scelto una destinazione. Se il valore non è un URI
+assoluto valido l'applicazione non parte, invece di disattivare la telemetria in silenzio. Vedi
+<a href="../deploy/observability.html">Observability</a>.</p>
+<h3 id="grafana-solo-con-include-grafana"><code>Grafana</code> (solo con <code>include_grafana</code>)</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Grafana:Url</code></td>
+<td>Dove il backend raggiunge Grafana, per inoltrare <code>/grafana</code>. In sviluppo <code>http://localhost:3000</code>. <strong>Vuoto = niente <code>/grafana</code></strong></td>
+</tr>
+<tr>
+<td><code>Grafana:Jwt:PrivateKeyFile</code></td>
+<td>La chiave privata (PEM) con cui il backend firma i token per Grafana, relativa alla cartella del progetto Api o assoluta. In deploy un <em>Secret File</em>: chi ha la chiave entra in Grafana</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>La coppia di sviluppo la crea <code>node scripts/grafana-keys.mjs</code>; quella di produzione, diversa, con
+<code>--out &lt;cartella&gt;</code>. Vedi <a href="../deploy/observability.html#come-si-entra">Observability</a>.</p>
 <h3 id="come-arrivano-agli-handler">Come arrivano agli handler</h3>
 <p>Gli handler <strong>non leggono <code>IConfiguration</code></strong>: i test di architettura vietano <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> in
 <code>Application</code>, e una chiave letta a mano in un handler è una dipendenza nascosta. Le impostazioni
@@ -665,7 +690,7 @@ prima della build.</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

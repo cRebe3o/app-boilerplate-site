@@ -236,6 +236,12 @@ il progetto che ne esce:</p>
 <td><code>false</code></td>
 <td>Cartelle <code>Jobs</code> in Api, Application, Infrastructure e test; voce &quot;Lavori programmati&quot; in Sistema; permesso <code>jobs.dashboard</code></td>
 </tr>
+<tr>
+<td><code>include_grafana</code></td>
+<td>Grafana per metriche, log e tracce, in sviluppo e in produzione</td>
+<td><code>false</code></td>
+<td>Container <code>lgtm</code> al posto dell'Aspire Dashboard nel <code>docker-compose.yml</code>; cartella <code>observability/</code>; voce &quot;Metriche&quot; in Sistema; permesso <code>telemetry.dashboard</code>; chiavi di sviluppo create da <code>scripts/grafana-keys.mjs</code></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -247,6 +253,11 @@ PascalCase (<code>GestioneOrdini</code>, non <code>Gestione Ordini</code>). <cod
 <blockquote>
 <p><strong><code>include_jobs</code> si può cambiare dopo.</strong> Chi risponde no non riceve niente di Hangfire: né
 pacchetti, né codice, né tabelle. Per averli più avanti, <code>copier update --trust --data include_jobs=true</code>. Vedi <a href="../infrastructure/lavori-programmati.html">Lavori programmati</a>.</p>
+</blockquote>
+<blockquote>
+<p><strong>Anche <code>include_grafana</code> si può cambiare dopo</strong>, con <code>copier update --trust --data include_grafana=true</code>: arrivano container, dashboard, proxy e configurazione di produzione, il
+seed aggiunge il permesso al primo avvio e Copier crea le chiavi di sviluppo. Vedi
+<a href="../deploy/observability.html#con-grafana-include-grafana">Observability</a>.</p>
 </blockquote>
 <blockquote>
 <p><strong><code>db_provider</code> non è una scelta definitiva.</strong> Decide il valore iniziale di <code>Database:Provider</code> e
@@ -471,7 +482,7 @@ conflitto si tiene una delle due versioni e si lancia <code>pnpm gen:api</code>.
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

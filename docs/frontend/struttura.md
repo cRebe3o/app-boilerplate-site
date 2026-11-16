@@ -320,7 +320,7 @@ stesso comportamento fra le tre strategie di autenticazione.
 |---|---|
 | `axios.ts` | L'istanza `api`: `baseURL`, `withCredentials` (per il cookie del refresh token), header `Authorization` e `Accept-Language` su ogni richiesta; su **401** un tentativo di refresh e la ripetizione della richiesta, poi logout; su **5xx** l'invio di un `ErrorLog` al backend; il timer del banner di riattivazione |
 | `i18n.ts` | vue-i18n con `it` ed `en`, lingua ripristinata da `localStorage`; contiene anche i testi dei componenti Vuetify, sotto `$vuetify` |
-| `vuetify.ts` | Tema chiaro e scuro (colori delle barre inclusi), `defaults` dei componenti: `outlined` + `compact` per gli input, `rounded: 0` ovunque; la soglia di telefono e tablet a 960 px (`display.mobileBreakpoint: 'md'`); l'adapter che fa seguire ai componenti la lingua di vue-i18n |
+| `vuetify.ts` | Tema chiaro e scuro (colori delle barre inclusi: `navigation`, grigio scuro `#4A4A4A` con testi bianchi, per la barra in alto nel chiaro e per menu laterale e percorso nello scuro), `defaults` dei componenti: `outlined` + `compact` per gli input, `rounded: 0` ovunque; la soglia di telefono e tablet a 960 px (`display.mobileBreakpoint: 'md'`); l'adapter che fa seguire ai componenti la lingua di vue-i18n |
 | `msal.ts` | L'istanza MSAL, creata solo con la strategia `msal` |
 
 **Quando si toccano.** Quasi mai. Un colore del tema nuovo va in `vuetify.ts`; un header da

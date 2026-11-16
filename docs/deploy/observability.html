@@ -105,12 +105,18 @@
           <li class="lvl-2"><a href="#che-cosa-si-vede">Che cosa si vede</a></li>
           <li class="lvl-2"><a href="#i-tre-segnali">I tre segnali</a></li>
           <li class="lvl-2"><a href="#i-pezzi-in-gioco">I pezzi in gioco</a></li>
-          <li class="lvl-2"><a href="#in-locale-l-aspire-dashboard">In locale: l'Aspire Dashboard</a></li>
+          <li class="lvl-2"><a href="#in-locale-senza-grafana-l-aspire-dashboard">In locale senza Grafana: l'Aspire Dashboard</a></li>
           <li class="lvl-3"><a href="#perche-questo-dashboard">Perché questo dashboard</a></li>
           <li class="lvl-3"><a href="#le-pagine-del-dashboard">Le pagine del dashboard</a></li>
           <li class="lvl-3"><a href="#pausa-esportazione-limiti">Pausa, esportazione, limiti</a></li>
           <li class="lvl-3"><a href="#senza-docker">Senza Docker</a></li>
-          <li class="lvl-2"><a href="#in-produzione-una-destinazione-persistente">In produzione: una destinazione persistente</a></li>
+          <li class="lvl-2"><a href="#con-grafana-include-grafana">Con Grafana (<code>include_grafana</code>)</a></li>
+          <li class="lvl-3"><a href="#in-sviluppo">In sviluppo</a></li>
+          <li class="lvl-3"><a href="#le-dashboard">Le dashboard</a></li>
+          <li class="lvl-3"><a href="#come-si-entra">Come si entra</a></li>
+          <li class="lvl-3"><a href="#in-produzione">In produzione</a></li>
+          <li class="lvl-3"><a href="#errori-e-avvisi-nei-log">Errori e avvisi nei log</a></li>
+          <li class="lvl-2"><a href="#in-produzione-senza-grafana-una-destinazione-persistente">In produzione senza Grafana: una destinazione persistente</a></li>
           <li class="lvl-3"><a href="#grafana-cloud">Grafana Cloud</a></li>
           <li class="lvl-3"><a href="#stack-grafana-self-hosted">Stack Grafana self-hosted</a></li>
           <li class="lvl-3"><a href="#altre-destinazioni">Altre destinazioni</a></li>
@@ -138,6 +144,31 @@ impiegato 1,2 secondi e sapere <strong>quale query</strong> se li è presi.</p>
 <p>Il backend è instrumentato con <strong>OpenTelemetry</strong>, lo standard di settore per questa telemetria.
 È <strong>spento per default</strong>: senza un endpoint configurato non viene registrato nulla e
 l'applicazione si comporta esattamente come se il codice non ci fosse.</p>
+<p>Dove vanno i dati lo decide una domanda di Copier, <code>include_grafana</code>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th><code>include_grafana</code></th>
+<th>In sviluppo</th>
+<th>In produzione</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no (il default)</td>
+<td><a href="#in-locale-senza-grafana-l-aspire-dashboard">Aspire Dashboard</a>, un container in memoria</td>
+<td>una <a href="#in-produzione-senza-grafana-una-destinazione-persistente">destinazione da scegliere</a> (Grafana Cloud, uno stack proprio, …)</td>
+</tr>
+<tr>
+<td>sì</td>
+<td><a href="#con-grafana-include-grafana">Grafana</a> in un container solo, con dati persistenti</td>
+<td>Collector, Prometheus, Loki, Tempo e Grafana, già configurati per Render e per un server</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>L'instrumentation è la stessa nei due casi: cambia solo chi riceve.</p>
 <h2 id="che-cosa-si-vede">Che cosa si vede</h2>
 <blockquote>
 <p><strong>Da dove viene l'esempio.</strong> La richiesta usata qui sotto viene dalla sezione <strong>Noleggi</strong> di
@@ -242,12 +273,16 @@ sempre una destinazione.</p>
 </tbody>
 </table>
 </div>
-<p>Uno stack Grafana completo sono quindi <strong>quattro servizi</strong>. L'Aspire Dashboard li sostituisce
-tutti per l'uso locale, ed è il motivo per cui il template lo usa in sviluppo e non in produzione.</p>
+<p>Uno stack Grafana completo sono quindi <strong>quattro servizi</strong>, cinque con l'<strong>OpenTelemetry Collector</strong>
+che riceve tutto dal backend e lo smista ai tre archivi. L'Aspire Dashboard li sostituisce tutti
+per l'uso locale; con <code>include_grafana</code> il template porta invece lo stack vero, in un container
+solo in sviluppo e in cinque servizi in produzione.</p>
 <p><strong>OTLP</strong> (<em>OpenTelemetry Protocol</em>) è il protocollo con cui l'applicazione parla al collector.
 Essendo standard, cambiare destinazione non richiede di toccare il codice: è tutta la strategia
 di questa pagina.</p>
-<h2 id="in-locale-l-aspire-dashboard">In locale: l'Aspire Dashboard</h2>
+<h2 id="in-locale-senza-grafana-l-aspire-dashboard">In locale senza Grafana: l'Aspire Dashboard</h2>
+<p>Vale con <code>include_grafana</code> a no, il default. Con Grafana il container è un altro: vedi
+<a href="#con-grafana-include-grafana">Con Grafana</a>.</p>
 <pre><code class="language-bash">docker compose up -d
 dotnet run --project apps/backend/NomeProgetto.Api
 </code></pre>
@@ -371,6 +406,9 @@ log.</p>
 <code>ElapsedMs</code> interrogabili singolarmente. Si può quindi filtrare su <code>RequestName</code> =
 <code>CreateUserCommand</code> invece di cercare sottostringhe. Poiché <code>IncludeScopes</code> è attivo, gli scope
 aperti attorno alla richiesta arrivano come attributi.</p>
+<p>Il livello dice se c'è da preoccuparsi: un rifiuto previsto (validazione, 404, 409…) è un
+<strong>Warning</strong> senza stack, solo un guasto è un <strong>Error</strong>. Vedi
+<a href="#errori-e-avvisi-nei-log">Errori e avvisi nei log</a>.</p>
 <h4 id="metrics">Metrics</h4>
 <p>Si sceglie prima il <strong>meter</strong>, poi lo <strong>strumento</strong>. Sotto al grafico compaiono i filtri per
 dimensione: sono i <em>tag</em> della metrica, e permettono di isolare per esempio il solo
@@ -434,7 +472,210 @@ dashboard si avvia comunque da solo:</p>
 <p>Poi in <code>appsettings.Development.json</code>:</p>
 <pre><code class="language-json"><span class="hljs-attr">&quot;Telemetry&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;Endpoint&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;http://localhost:4317&quot;</span> <span class="hljs-punctuation">}</span>
 </code></pre>
-<h2 id="in-produzione-una-destinazione-persistente">In produzione: una destinazione persistente</h2>
+<h2 id="con-grafana-include-grafana">Con Grafana (<code>include_grafana</code>)</h2>
+<p>Con <code>include_grafana</code> a sì il progetto ha Grafana sia in sviluppo sia in produzione, con le
+stesse dashboard. Si apre dall'app, con la voce <strong>Metriche</strong> del menu Sistema.</p>
+<h3 id="in-sviluppo">In sviluppo</h3>
+<pre><code class="language-bash">docker compose up -d          <span class="hljs-comment"># database + Grafana (container lgtm)</span>
+dotnet run --project apps/backend/NomeProgetto.Api
+</code></pre>
+<p>Il container <code>lgtm</code> (immagine <code>grafana/otel-lgtm</code>) prende il posto dell'Aspire Dashboard sulla
+stessa porta OTLP <strong>4317</strong>, quindi <code>Telemetry:Endpoint</code> non cambia. Dentro ci sono un
+OpenTelemetry Collector, Prometheus (metriche), Loki (log), Tempo (tracce) e Grafana. I dati
+stanno nel volume <code>lgtm-data</code>: restano fra un riavvio e l'altro, e spariscono con
+<code>docker compose down -v</code>.</p>
+<p>La porta 3000 di Grafana serve al backend: aperta direttamente nel browser non fa entrare
+nessuno, perché Grafana non ha né form di login né utente admin.</p>
+<h3 id="le-dashboard">Le dashboard</h3>
+<p>Grafana carica all'avvio le dashboard di <code>observability/grafana/dashboards</code>, in sola lettura:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Dashboard</th>
+<th>Che cosa mostra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>App</strong> (la prima pagina)</td>
+<td>richieste al minuto, percentuale di errori, tempi di risposta (tipico, 95%, 99%), pagine più lente, errori per endpoint, login falliti, richieste bloccate dal limite di frequenza</td>
+</tr>
+<tr>
+<td><strong>Comandi</strong></td>
+<td>i comandi e le query più usati e più lenti, quelli che falliscono e quelli rifiutati più spesso</td>
+</tr>
+<tr>
+<td><strong>Sistema</strong></td>
+<td>memoria, CPU, pause del garbage collector, coda del thread pool, eccezioni per tipo</td>
+</tr>
+<tr>
+<td><strong>Log ed errori</strong></td>
+<td>log per livello, ultimi errori e ultimi avvisi; ogni riga porta alla traccia della sua richiesta</td>
+</tr>
+<tr>
+<td><strong>Lavori</strong> (solo con <code>include_jobs</code>)</td>
+<td>lavori programmati eseguiti e falliti, per lavoro, e la loro durata</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Si passa dall'una all'altra con i link in alto. <strong>Explore</strong> è aperto: si possono scrivere query
+proprie su metriche, log e tracce.</p>
+<p>Una dashboard si cambia nel file JSON, non in Grafana: si costruisce il pannello in sviluppo, si
+copia il JSON della dashboard (Esporta → JSON) nel file e si toglie l'<code>id</code> numerico. Grafana
+rilegge i file ogni 30 secondi.</p>
+<h3 id="come-si-entra">Come si entra</h3>
+<p>Grafana sta dietro il backend, come il <a href="../infrastructure/lavori-programmati.html">pannello dei lavori</a>:
+la voce <strong>Metriche</strong> apre <code>/grafana/</code> del backend in una scheda nuova, e il backend inoltra le
+richieste a Grafana (YARP). Non c'è un secondo login:</p>
+<pre><code>  frontend                               backend                          Grafana
+  POST /api/telemetry/dashboard-ticket ─▶ JWT + permesso telemetry.dashboard
+                                       ◀─ biglietto: un minuto, un solo uso
+  form POST /grafana/login             ─▶ consuma il biglietto, imposta il cookie
+  GET /grafana/...                     ─▶ rilegge il permesso dal database,
+                                          aggiunge un token ES256 firmato ─▶ lo verifica con la
+                                                                             chiave pubblica:
+                                                                             utente Viewer
+</code></pre>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Scelta</th>
+<th>Perché</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>permesso <code>telemetry.dashboard</code>, sul database nuovo solo a SuperAdmin</td>
+<td>log e tracce mostrano percorsi, nomi utente e testi SQL: non sono per tutti</td>
+</tr>
+<tr>
+<td>il permesso si rilegge a ogni richiesta</td>
+<td>toglierlo, o disattivare l'utente, chiude Grafana subito</td>
+</tr>
+<tr>
+<td>il backend firma un token per Grafana (auth JWT di Grafana)</td>
+<td>Grafana sa chi è l'utente senza un suo login e senza utenti da gestire</td>
+</tr>
+<tr>
+<td>tutti <strong>Viewer</strong></td>
+<td>le dashboard non si salvano dalla UI; Explore si apre lo stesso</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il seed aggiunge <code>telemetry.dashboard</code> anche a un database esistente, al primo avvio dopo l'update.</p>
+<p>La coppia di chiavi la crea <code>node scripts/grafana-keys.mjs</code> in <code>observability/grafana/jwt/</code>
+(gitignored): Copier la lancia alla generazione e all'update. Dopo un clone va lanciata a mano,
+prima di <code>docker compose up</code>; senza, il backend risponde 500 su <code>/grafana</code> e il log dice perché.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chiave</th>
+<th>Significato</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Grafana:Url</code></td>
+<td>Dove il backend raggiunge Grafana (in sviluppo <code>http://localhost:3000</code>). Vuoto = niente <code>/grafana</code></td>
+</tr>
+<tr>
+<td><code>Grafana:Jwt:PrivateKeyFile</code></td>
+<td>La chiave privata dei token (PEM), relativa alla cartella del progetto Api o assoluta. <strong>È un segreto</strong>: chi la ha entra in Grafana</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id="in-produzione">In produzione</h3>
+<p>In produzione gli stessi ruoli li fanno cinque servizi separati, con le configurazioni del progetto
+in <code>observability/</code> (un <code>Dockerfile</code> per ciascuno: le immagini sono le stesse su Render e su un
+server). Le istruzioni complete sono in <code>observability/README.md</code> del progetto.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Servizio</th>
+<th>Che cosa fa</th>
+<th>Dati e scadenza</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>collector</code></td>
+<td>riceve tutto dal backend (OTLP, porta 4317) e lo smista</td>
+<td>nessuno</td>
+</tr>
+<tr>
+<td><code>prometheus</code></td>
+<td>metriche</td>
+<td>30 giorni (<code>PROMETHEUS_RETENTION</code>)</td>
+</tr>
+<tr>
+<td><code>loki</code></td>
+<td>log</td>
+<td>14 giorni (<code>LOKI_RETENTION</code>)</td>
+</tr>
+<tr>
+<td><code>tempo</code></td>
+<td>tracce</td>
+<td>7 giorni (<code>TEMPO_RETENTION</code>)</td>
+</tr>
+<tr>
+<td><code>grafana</code></td>
+<td>dashboard ed Explore, dietro il backend su <code>/grafana</code></td>
+<td>utenti e preferenze</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Nessuno dei cinque è raggiungibile da internet: il backend manda la telemetria al Collector e fa
+da tramite verso Grafana.</p>
+<ul>
+<li><strong>Su un server</strong>: <code>observability/docker-compose.yml</code>, con volumi persistenti. Collector e
+Grafana sono pubblicati solo su <code>127.0.0.1</code> e sulla rete Docker del progetto; Prometheus, Loki e
+Tempo da nessuna parte. Le chiavi di produzione si creano con
+<code>node scripts/grafana-keys.mjs --out secrets</code>, diverse da quelle di sviluppo.</li>
+<li><strong>Su Render</strong>: cinque <em>Private Service</em> di tipo Docker, ognuno con la sua cartella come <em>Root
+Directory</em> e un disco per gli archivi e Grafana (piani a pagamento). La chiave pubblica va a
+Grafana e la privata al backend come <em>Secret File</em>. Vedi <a href="render.html">Deploy su Render</a>.</li>
+</ul>
+<h3 id="errori-e-avvisi-nei-log">Errori e avvisi nei log</h3>
+<p>&quot;Ultimi errori&quot; deve mostrare solo i guasti, e per questo i livelli sono scelti così:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Che cosa succede</th>
+<th>Livello</th>
+<th>Stack</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>un rifiuto previsto: validazione, non trovato, conflitto, permesso negato (400, 401, 403, 404, 409)</td>
+<td><strong>Warning</strong></td>
+<td>no</td>
+</tr>
+<tr>
+<td>un guasto (500)</td>
+<td><strong>Error</strong></td>
+<td>sì</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Ogni eccezione si scrive una volta sola. La scrive <code>LoggingBehavior</code>, con il nome del comando, e la
+segna come già scritta; <code>ExceptionHandlingMiddleware</code> scrive solo quelle nate fuori da un comando
+(endpoint, autenticazione, binding). I 500 finiscono anche nella tabella <code>ErrorLogs</code>, come prima.</p>
+<p>Le regole valgono anche senza Grafana: sono le stesse righe che l'Aspire Dashboard mostra in
+Structured logs.</p>
+<h2 id="in-produzione-senza-grafana-una-destinazione-persistente">In produzione senza Grafana: una destinazione persistente</h2>
+<p>Con <code>include_grafana</code> lo stack è già pronto: vedi <a href="#in-produzione">In produzione</a> sopra. Senza,
+si sceglie una destinazione.</p>
 <p>In produzione servono due cose che il dashboard non dà: i dati devono <strong>sopravvivere</strong> al
 riavvio, e devono essere raggiungibili da fuori la macchina di sviluppo.</p>
 <p>La telemetria in produzione è <strong>spenta finché non si sceglie una destinazione</strong>: in
@@ -497,24 +738,24 @@ Nessuna richiede modifiche al codice.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Destinazione</strong></td>
+<td><strong>Destinazione, senza <code>include_grafana</code></strong></td>
 <td>Aspire Dashboard</td>
 <td>Grafana Cloud, o stack self-hosted</td>
 </tr>
 <tr>
-<td><strong>Persistenza</strong></td>
-<td>in memoria, si perde</td>
-<td>duratura</td>
+<td><strong>Destinazione, con <code>include_grafana</code></strong></td>
+<td>Grafana (container <code>lgtm</code>)</td>
+<td>i cinque servizi di <code>observability/</code></td>
 </tr>
 <tr>
-<td><strong>Da gestire</strong></td>
-<td>un container</td>
-<td>niente, oppure quattro servizi</td>
+<td><strong>Persistenza</strong></td>
+<td>in memoria (Aspire) o volume (<code>lgtm</code>)</td>
+<td>duratura</td>
 </tr>
 <tr>
 <td><strong>Configurazione</strong></td>
 <td>già pronta</td>
-<td><code>Telemetry__Endpoint</code> sul servizio</td>
+<td><code>Telemetry__Endpoint</code> sul servizio; con Grafana anche <code>Grafana__Url</code> e la chiave</td>
 </tr>
 </tbody>
 </table>
@@ -660,8 +901,45 @@ davanti.</li>
 <p>Il valore dei parametri SQL non c'è, e non è una dimenticanza: vedi
 <a href="#sicurezza-che-cosa-non-esce">Sicurezza</a>.</p>
 <h3 id="le-metriche-disponibili">Le metriche disponibili</h3>
-<p>Il template non definisce metriche proprie: quelle che si vedono arrivano tutte dalle tre
-instrumentation registrate. Le più utili, con l'unità in cui sono espresse:</p>
+<p>Oltre a quelle delle instrumentation registrate, il template ne definisce tre sue, per tutti i
+progetti e verso qualunque destinazione:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Strumento</th>
+<th>Tipo</th>
+<th>Etichette</th>
+<th>Legge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app.request.duration</code></td>
+<td>Histogram, secondi</td>
+<td><code>request</code> (il nome del comando o della query), <code>outcome</code></td>
+<td>Quanto durano comandi e query, e come finiscono</td>
+</tr>
+<tr>
+<td><code>app.logins</code></td>
+<td>Counter</td>
+<td><code>method</code>, <code>outcome</code></td>
+<td>Login riusciti e falliti, per metodo</td>
+</tr>
+<tr>
+<td><code>app.job.duration</code> (solo con <code>include_jobs</code>)</td>
+<td>Histogram, secondi</td>
+<td><code>job.name</code>, <code>outcome</code></td>
+<td>Quanto durano i lavori programmati</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>outcome</code> vale <code>success</code>, <code>rejected</code> (un rifiuto per una regola: validazione, permessi, non
+trovato, conflitto), <code>error</code> (un guasto) o <code>cancelled</code>; per i login <code>success</code> o <code>failure</code>. Le
+registra <code>LoggingBehavior</code>, e per i lavori un filtro di Hangfire. In Prometheus i nomi diventano
+<code>app_request_duration_seconds</code>, <code>app_logins_total</code> e <code>app_job_duration_seconds</code>.</p>
+<p>Le metriche delle instrumentation più utili, con l'unità in cui sono espresse:</p>
 <p><strong><code>Microsoft.AspNetCore.Hosting</code></strong> — le richieste in ingresso</p>
 <div class="table-wrap">
 <table>
@@ -844,6 +1122,14 @@ identici. <code>db.statement</code> li rivela: la stessa <code>SELECT</code> rip
 <td>Nulla su <code>/health</code></td>
 <td>È escluso di proposito</td>
 </tr>
+<tr>
+<td>La voce <strong>Metriche</strong> non c'è</td>
+<td><code>include_grafana</code> a no, oppure l'utente non ha <code>telemetry.dashboard</code></td>
+</tr>
+<tr>
+<td><code>/grafana</code> risponde 500</td>
+<td>Mancano le chiavi: <code>node scripts/grafana-keys.mjs</code>, poi si riavvia il container</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -864,12 +1150,14 @@ lasciata disattivata</strong>.</p>
 <h2 id="dove-sta-il-codice">Dove sta il codice</h2>
 <pre><code>Api/Extensions/TelemetryExtensions.cs          tutta la configurazione
 Api/Program.cs                                 builder.AddAppTelemetry();
-Application/ApplicationDiagnostics.cs          l'ActivitySource del layer
-Application/Behaviors/LoggingBehavior.cs       apre lo span di ogni comando
+Application/ApplicationDiagnostics.cs          l'ActivitySource e il Meter del layer
+Application/Behaviors/LoggingBehavior.cs       span, metrica e log di ogni comando
+Api/Telemetry/                                 con Grafana: /grafana, biglietto e token
+observability/                                 con Grafana: dashboard e servizi di produzione
 </code></pre>
 <p>L'instrumentation vive <strong>soltanto nel progetto <code>Api</code></strong>, il guscio HTTP. <code>Application</code> non ha alcun
-pacchetto OpenTelemetry: emette i suoi span attraverso <code>ActivitySource</code>, che appartiene a
-<code>System.Diagnostics</code> nel framework base.</p>
+pacchetto OpenTelemetry: emette i suoi span con <code>ActivitySource</code> e le sue metriche con <code>Meter</code>,
+che appartengono a <code>System.Diagnostics</code> nel framework base.</p>
 <p>Non è un dettaglio stilistico. I test di architettura vietano ad <code>Application</code> di dipendere da
 <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> e dal provider di database, per la stessa ragione per cui deve restare indipendente dal
 sistema di observability: è una scelta infrastrutturale, e domani potrebbe cambiare. Il prezzo di
@@ -887,11 +1175,12 @@ una stabile appena verrà pubblicata.</p>
 <code>AddEntityFrameworkCoreInstrumentation()</code>: si perde il livello SQL nell'albero delle tracce — che
 è però il più interessante.</p>
 <h2 id="convive-con-l-errorlog">Convive con l'<code>ErrorLog</code></h2>
-<p>Il template ha già una tabella <code>ErrorLogs</code>, alimentata da un endpoint pubblico su cui il frontend
-riporta i propri errori. Non è stata rimossa e continua a funzionare: sopravvive a un riavvio, è
+<p>Il template ha già una tabella <code>ErrorLogs</code>, alimentata dai 500 del backend e da un endpoint
+pubblico su cui il frontend riporta i propri errori. Non è stata rimossa e continua a funzionare: sopravvive a un riavvio, è
 interrogabile in SQL e non richiede alcuna infrastruttura esterna.</p>
 <p>Le due cose coprono però bisogni vicini, e conviene sapere qual è la differenza: <code>ErrorLogs</code>
-registra <strong>gli errori del frontend</strong>, la telemetria racconta <strong>il comportamento del backend</strong>. Se
+registra <strong>gli errori</strong>, del frontend e i 500 del backend, e si consulta dall'app; la telemetria
+racconta <strong>il comportamento del backend</strong>. Se
 un giorno la telemetria coprirà anche il browser — OpenTelemetry ha un SDK per il frontend, che
 porterebbe il clic dell'utente e la query SQL nella stessa traccia — sarà il momento di decidere
 se <code>ErrorLogs</code> ha ancora senso.</p>
@@ -910,7 +1199,7 @@ dipendenze infrastrutturali</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

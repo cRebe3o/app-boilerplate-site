@@ -9,6 +9,15 @@ Il backend è instrumentato con **OpenTelemetry**, lo standard di settore per qu
 È **spento per default**: senza un endpoint configurato non viene registrato nulla e
 l'applicazione si comporta esattamente come se il codice non ci fosse.
 
+Dove vanno i dati lo decide una domanda di Copier, `include_grafana`:
+
+| `include_grafana` | In sviluppo | In produzione |
+|---|---|---|
+| no (il default) | [Aspire Dashboard](#in-locale-senza-grafana-l-aspire-dashboard), un container in memoria | una [destinazione da scegliere](#in-produzione-senza-grafana-una-destinazione-persistente) (Grafana Cloud, uno stack proprio, …) |
+| sì | [Grafana](#con-grafana-include-grafana) in un container solo, con dati persistenti | Collector, Prometheus, Loki, Tempo e Grafana, già configurati per Render e per un server |
+
+L'instrumentation è la stessa nei due casi: cambia solo chi riceve.
+
 ## Che cosa si vede
 
 > **Da dove viene l'esempio.** La richiesta usata qui sotto viene dalla sezione **Noleggi** di
@@ -83,14 +92,19 @@ sempre una destinazione.
 | **Prometheus** / **Mimir** | Archivia le **metriche** |
 | **Grafana** | L'interfaccia: non archivia niente, legge dagli altri e disegna |
 
-Uno stack Grafana completo sono quindi **quattro servizi**. L'Aspire Dashboard li sostituisce
-tutti per l'uso locale, ed è il motivo per cui il template lo usa in sviluppo e non in produzione.
+Uno stack Grafana completo sono quindi **quattro servizi**, cinque con l'**OpenTelemetry Collector**
+che riceve tutto dal backend e lo smista ai tre archivi. L'Aspire Dashboard li sostituisce tutti
+per l'uso locale; con `include_grafana` il template porta invece lo stack vero, in un container
+solo in sviluppo e in cinque servizi in produzione.
 
 **OTLP** (*OpenTelemetry Protocol*) è il protocollo con cui l'applicazione parla al collector.
 Essendo standard, cambiare destinazione non richiede di toccare il codice: è tutta la strategia
 di questa pagina.
 
-## In locale: l'Aspire Dashboard
+## In locale senza Grafana: l'Aspire Dashboard
+
+Vale con `include_grafana` a no, il default. Con Grafana il container è un altro: vedi
+[Con Grafana](#con-grafana-include-grafana).
 
 ```bash
 docker compose up -d
@@ -199,6 +213,10 @@ Il punto è che i log sono **strutturati**: `logger.LogInformation("Handled {Req
 `CreateUserCommand` invece di cercare sottostringhe. Poiché `IncludeScopes` è attivo, gli scope
 aperti attorno alla richiesta arrivano come attributi.
 
+Il livello dice se c'è da preoccuparsi: un rifiuto previsto (validazione, 404, 409…) è un
+**Warning** senza stack, solo un guasto è un **Error**. Vedi
+[Errori e avvisi nei log](#errori-e-avvisi-nei-log).
+
 #### Metrics
 
 Si sceglie prima il **meter**, poi lo **strumento**. Sotto al grafico compaiono i filtri per
@@ -255,7 +273,126 @@ Poi in `appsettings.Development.json`:
 "Telemetry": { "Endpoint": "http://localhost:4317" }
 ```
 
-## In produzione: una destinazione persistente
+## Con Grafana (`include_grafana`)
+
+Con `include_grafana` a sì il progetto ha Grafana sia in sviluppo sia in produzione, con le
+stesse dashboard. Si apre dall'app, con la voce **Metriche** del menu Sistema.
+
+### In sviluppo
+
+```bash
+docker compose up -d          # database + Grafana (container lgtm)
+dotnet run --project apps/backend/NomeProgetto.Api
+```
+
+Il container `lgtm` (immagine `grafana/otel-lgtm`) prende il posto dell'Aspire Dashboard sulla
+stessa porta OTLP **4317**, quindi `Telemetry:Endpoint` non cambia. Dentro ci sono un
+OpenTelemetry Collector, Prometheus (metriche), Loki (log), Tempo (tracce) e Grafana. I dati
+stanno nel volume `lgtm-data`: restano fra un riavvio e l'altro, e spariscono con
+`docker compose down -v`.
+
+La porta 3000 di Grafana serve al backend: aperta direttamente nel browser non fa entrare
+nessuno, perché Grafana non ha né form di login né utente admin.
+
+### Le dashboard
+
+Grafana carica all'avvio le dashboard di `observability/grafana/dashboards`, in sola lettura:
+
+| Dashboard | Che cosa mostra |
+|---|---|
+| **App** (la prima pagina) | richieste al minuto, percentuale di errori, tempi di risposta (tipico, 95%, 99%), pagine più lente, errori per endpoint, login falliti, richieste bloccate dal limite di frequenza |
+| **Comandi** | i comandi e le query più usati e più lenti, quelli che falliscono e quelli rifiutati più spesso |
+| **Sistema** | memoria, CPU, pause del garbage collector, coda del thread pool, eccezioni per tipo |
+| **Log ed errori** | log per livello, ultimi errori e ultimi avvisi; ogni riga porta alla traccia della sua richiesta |
+| **Lavori** (solo con `include_jobs`) | lavori programmati eseguiti e falliti, per lavoro, e la loro durata |
+
+Si passa dall'una all'altra con i link in alto. **Explore** è aperto: si possono scrivere query
+proprie su metriche, log e tracce.
+
+Una dashboard si cambia nel file JSON, non in Grafana: si costruisce il pannello in sviluppo, si
+copia il JSON della dashboard (Esporta → JSON) nel file e si toglie l'`id` numerico. Grafana
+rilegge i file ogni 30 secondi.
+
+### Come si entra
+
+Grafana sta dietro il backend, come il [pannello dei lavori](../infrastructure/lavori-programmati.md):
+la voce **Metriche** apre `/grafana/` del backend in una scheda nuova, e il backend inoltra le
+richieste a Grafana (YARP). Non c'è un secondo login:
+
+```
+  frontend                               backend                          Grafana
+  POST /api/telemetry/dashboard-ticket ─▶ JWT + permesso telemetry.dashboard
+                                       ◀─ biglietto: un minuto, un solo uso
+  form POST /grafana/login             ─▶ consuma il biglietto, imposta il cookie
+  GET /grafana/...                     ─▶ rilegge il permesso dal database,
+                                          aggiunge un token ES256 firmato ─▶ lo verifica con la
+                                                                             chiave pubblica:
+                                                                             utente Viewer
+```
+
+| Scelta | Perché |
+|---|---|
+| permesso `telemetry.dashboard`, sul database nuovo solo a SuperAdmin | log e tracce mostrano percorsi, nomi utente e testi SQL: non sono per tutti |
+| il permesso si rilegge a ogni richiesta | toglierlo, o disattivare l'utente, chiude Grafana subito |
+| il backend firma un token per Grafana (auth JWT di Grafana) | Grafana sa chi è l'utente senza un suo login e senza utenti da gestire |
+| tutti **Viewer** | le dashboard non si salvano dalla UI; Explore si apre lo stesso |
+
+Il seed aggiunge `telemetry.dashboard` anche a un database esistente, al primo avvio dopo l'update.
+
+La coppia di chiavi la crea `node scripts/grafana-keys.mjs` in `observability/grafana/jwt/`
+(gitignored): Copier la lancia alla generazione e all'update. Dopo un clone va lanciata a mano,
+prima di `docker compose up`; senza, il backend risponde 500 su `/grafana` e il log dice perché.
+
+| Chiave | Significato |
+|---|---|
+| `Grafana:Url` | Dove il backend raggiunge Grafana (in sviluppo `http://localhost:3000`). Vuoto = niente `/grafana` |
+| `Grafana:Jwt:PrivateKeyFile` | La chiave privata dei token (PEM), relativa alla cartella del progetto Api o assoluta. **È un segreto**: chi la ha entra in Grafana |
+
+### In produzione
+
+In produzione gli stessi ruoli li fanno cinque servizi separati, con le configurazioni del progetto
+in `observability/` (un `Dockerfile` per ciascuno: le immagini sono le stesse su Render e su un
+server). Le istruzioni complete sono in `observability/README.md` del progetto.
+
+| Servizio | Che cosa fa | Dati e scadenza |
+|---|---|---|
+| `collector` | riceve tutto dal backend (OTLP, porta 4317) e lo smista | nessuno |
+| `prometheus` | metriche | 30 giorni (`PROMETHEUS_RETENTION`) |
+| `loki` | log | 14 giorni (`LOKI_RETENTION`) |
+| `tempo` | tracce | 7 giorni (`TEMPO_RETENTION`) |
+| `grafana` | dashboard ed Explore, dietro il backend su `/grafana` | utenti e preferenze |
+
+Nessuno dei cinque è raggiungibile da internet: il backend manda la telemetria al Collector e fa
+da tramite verso Grafana.
+
+- **Su un server**: `observability/docker-compose.yml`, con volumi persistenti. Collector e
+  Grafana sono pubblicati solo su `127.0.0.1` e sulla rete Docker del progetto; Prometheus, Loki e
+  Tempo da nessuna parte. Le chiavi di produzione si creano con
+  `node scripts/grafana-keys.mjs --out secrets`, diverse da quelle di sviluppo.
+- **Su Render**: cinque *Private Service* di tipo Docker, ognuno con la sua cartella come *Root
+  Directory* e un disco per gli archivi e Grafana (piani a pagamento). La chiave pubblica va a
+  Grafana e la privata al backend come *Secret File*. Vedi [Deploy su Render](render.md).
+
+### Errori e avvisi nei log
+
+"Ultimi errori" deve mostrare solo i guasti, e per questo i livelli sono scelti così:
+
+| Che cosa succede | Livello | Stack |
+|---|---|---|
+| un rifiuto previsto: validazione, non trovato, conflitto, permesso negato (400, 401, 403, 404, 409) | **Warning** | no |
+| un guasto (500) | **Error** | sì |
+
+Ogni eccezione si scrive una volta sola. La scrive `LoggingBehavior`, con il nome del comando, e la
+segna come già scritta; `ExceptionHandlingMiddleware` scrive solo quelle nate fuori da un comando
+(endpoint, autenticazione, binding). I 500 finiscono anche nella tabella `ErrorLogs`, come prima.
+
+Le regole valgono anche senza Grafana: sono le stesse righe che l'Aspire Dashboard mostra in
+Structured logs.
+
+## In produzione senza Grafana: una destinazione persistente
+
+Con `include_grafana` lo stack è già pronto: vedi [In produzione](#in-produzione) sopra. Senza,
+si sceglie una destinazione.
 
 In produzione servono due cose che il dashboard non dà: i dati devono **sopravvivere** al
 riavvio, e devono essere raggiungibili da fuori la macchina di sviluppo.
@@ -309,10 +446,10 @@ Nessuna richiede modifiche al codice.
 
 | | Sviluppo | Produzione |
 |---|---|---|
-| **Destinazione** | Aspire Dashboard | Grafana Cloud, o stack self-hosted |
-| **Persistenza** | in memoria, si perde | duratura |
-| **Da gestire** | un container | niente, oppure quattro servizi |
-| **Configurazione** | già pronta | `Telemetry__Endpoint` sul servizio |
+| **Destinazione, senza `include_grafana`** | Aspire Dashboard | Grafana Cloud, o stack self-hosted |
+| **Destinazione, con `include_grafana`** | Grafana (container `lgtm`) | i cinque servizi di `observability/` |
+| **Persistenza** | in memoria (Aspire) o volume (`lgtm`) | duratura |
+| **Configurazione** | già pronta | `Telemetry__Endpoint` sul servizio; con Grafana anche `Grafana__Url` e la chiave |
 
 Non sono alternative in concorrenza: sono **due momenti** della stessa strategia, con la stessa
 identica instrumentation. Cambia solo dove i dati vengono consegnati.
@@ -390,8 +527,21 @@ Il valore dei parametri SQL non c'è, e non è una dimenticanza: vedi
 
 ### Le metriche disponibili
 
-Il template non definisce metriche proprie: quelle che si vedono arrivano tutte dalle tre
-instrumentation registrate. Le più utili, con l'unità in cui sono espresse:
+Oltre a quelle delle instrumentation registrate, il template ne definisce tre sue, per tutti i
+progetti e verso qualunque destinazione:
+
+| Strumento | Tipo | Etichette | Legge |
+|---|---|---|---|
+| `app.request.duration` | Histogram, secondi | `request` (il nome del comando o della query), `outcome` | Quanto durano comandi e query, e come finiscono |
+| `app.logins` | Counter | `method`, `outcome` | Login riusciti e falliti, per metodo |
+| `app.job.duration` (solo con `include_jobs`) | Histogram, secondi | `job.name`, `outcome` | Quanto durano i lavori programmati |
+
+`outcome` vale `success`, `rejected` (un rifiuto per una regola: validazione, permessi, non
+trovato, conflitto), `error` (un guasto) o `cancelled`; per i login `success` o `failure`. Le
+registra `LoggingBehavior`, e per i lavori un filtro di Hangfire. In Prometheus i nomi diventano
+`app_request_duration_seconds`, `app_logins_total` e `app_job_duration_seconds`.
+
+Le metriche delle instrumentation più utili, con l'unità in cui sono espresse:
 
 **`Microsoft.AspNetCore.Hosting`** — le richieste in ingresso
 
@@ -472,6 +622,8 @@ Diagnosi completa senza aggiungere un solo log e senza riprodurre il problema a 
 | Una traccia vecchia è sparita | Il limite di 10.000 tracce ha eliminato le più vecchie |
 | Manca una parte delle tracce | `Telemetry:SampleRatio` sta campionando |
 | Nulla su `/health` | È escluso di proposito |
+| La voce **Metriche** non c'è | `include_grafana` a no, oppure l'utente non ha `telemetry.dashboard` |
+| `/grafana` risponde 500 | Mancano le chiavi: `node scripts/grafana-keys.mjs`, poi si riavvia il container |
 
 ## Sicurezza: che cosa non esce
 
@@ -499,13 +651,15 @@ lasciata disattivata**.
 ```
 Api/Extensions/TelemetryExtensions.cs          tutta la configurazione
 Api/Program.cs                                 builder.AddAppTelemetry();
-Application/ApplicationDiagnostics.cs          l'ActivitySource del layer
-Application/Behaviors/LoggingBehavior.cs       apre lo span di ogni comando
+Application/ApplicationDiagnostics.cs          l'ActivitySource e il Meter del layer
+Application/Behaviors/LoggingBehavior.cs       span, metrica e log di ogni comando
+Api/Telemetry/                                 con Grafana: /grafana, biglietto e token
+observability/                                 con Grafana: dashboard e servizi di produzione
 ```
 
 L'instrumentation vive **soltanto nel progetto `Api`**, il guscio HTTP. `Application` non ha alcun
-pacchetto OpenTelemetry: emette i suoi span attraverso `ActivitySource`, che appartiene a
-`System.Diagnostics` nel framework base.
+pacchetto OpenTelemetry: emette i suoi span con `ActivitySource` e le sue metriche con `Meter`,
+che appartengono a `System.Diagnostics` nel framework base.
 
 Non è un dettaglio stilistico. I test di architettura vietano ad `Application` di dipendere da
 ASP.NET e dal provider di database, per la stessa ragione per cui deve restare indipendente dal
@@ -530,12 +684,13 @@ Chi preferisse evitare del tutto le prerelease può rimuovere quel pacchetto e l
 
 ## Convive con l'`ErrorLog`
 
-Il template ha già una tabella `ErrorLogs`, alimentata da un endpoint pubblico su cui il frontend
-riporta i propri errori. Non è stata rimossa e continua a funzionare: sopravvive a un riavvio, è
+Il template ha già una tabella `ErrorLogs`, alimentata dai 500 del backend e da un endpoint
+pubblico su cui il frontend riporta i propri errori. Non è stata rimossa e continua a funzionare: sopravvive a un riavvio, è
 interrogabile in SQL e non richiede alcuna infrastruttura esterna.
 
 Le due cose coprono però bisogni vicini, e conviene sapere qual è la differenza: `ErrorLogs`
-registra **gli errori del frontend**, la telemetria racconta **il comportamento del backend**. Se
+registra **gli errori**, del frontend e i 500 del backend, e si consulta dall'app; la telemetria
+racconta **il comportamento del backend**. Se
 un giorno la telemetria coprirà anche il browser — OpenTelemetry ha un SDK per il frontend, che
 porterebbe il clic dell'utente e la query SQL nella stessa traccia — sarà il momento di decidere
 se `ErrorLogs` ha ancora senso.

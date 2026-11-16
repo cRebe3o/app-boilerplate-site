@@ -419,8 +419,16 @@ nel bundle del frontend. Non serve nasconderli — serve solo non confonderli fr
 Si disattiva da <em>Settings → Build &amp; Deploy → Auto-Deploy</em>.</p>
 <h2 id="6-observability">6. Observability</h2>
 <p>Il backend è instrumentato con OpenTelemetry, ma in produzione la telemetria è <strong>spenta</strong> finché
-non si sceglie una destinazione. Per attivarla si aggiunge una variabile d'ambiente al servizio,
-in <em>Environment</em>, senza ricompilare:</p>
+non si sceglie una destinazione.</p>
+<p><strong>Con <code>include_grafana</code></strong> la destinazione è già nel progetto: cinque <em>Private Service</em> di tipo
+Docker (Collector, Prometheus, Loki, Tempo e Grafana), ognuno con la sua cartella di
+<code>observability/</code> come <em>Root Directory</em> e un disco per i dati (piani a pagamento). Al backend si
+aggiungono <code>Telemetry__Endpoint=http://&lt;collector&gt;:4317</code>, <code>Grafana__Url=http://&lt;grafana&gt;:3000</code> e
+<code>Grafana__Jwt__PrivateKeyFile=/etc/secrets/grafana-jwt-private.pem</code>, con la chiave privata come
+<em>Secret File</em>; la pubblica va a Grafana. La tabella completa delle variabili è in
+<code>observability/README.md</code> del progetto, e il quadro in <a href="observability.html#in-produzione">Observability</a>.</p>
+<p><strong>Senza <code>include_grafana</code></strong> si sceglie un collector esterno e si aggiunge una variabile d'ambiente
+al servizio, in <em>Environment</em>, senza ricompilare:</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -490,7 +498,7 @@ sveglio il servizio.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.0.2.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>
