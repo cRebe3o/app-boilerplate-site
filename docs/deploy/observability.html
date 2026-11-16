@@ -525,6 +525,12 @@ proprie su metriche, log e tracce.</p>
 <p>Una dashboard si cambia nel file JSON, non in Grafana: si costruisce il pannello in sviluppo, si
 copia il JSON della dashboard (Esporta → JSON) nel file e si toglie l'<code>id</code> numerico. Grafana
 rilegge i file ogni 30 secondi.</p>
+<p>Un conteggio su un periodo si scrive <code>increase(...[$__range] anchored)</code>. Prometheus scrive uno
+zero all'inizio di ogni serie (<code>created-timestamp-zero-ingestion</code>, attiva in sviluppo e in
+produzione), e <code>anchored</code> parte da quello zero senza estrapolare: così la prima esecuzione di un
+comando o di un lavoro si conta, e il numero è esatto anche dopo un riavvio del backend. Senza,
+&quot;I più usati&quot; poteva dire 0 o 1,4 invece di 1. <code>pnpm verify</code> lo controlla, con il passo
+<code>observability · dashboard</code>.</p>
 <h3 id="come-si-entra">Come si entra</h3>
 <p>Grafana sta dietro il backend, come il <a href="../infrastructure/lavori-programmati.html">pannello dei lavori</a>:
 la voce <strong>Metriche</strong> apre <code>/grafana/</code> del backend in una scheda nuova, e il backend inoltra le
@@ -1199,7 +1205,7 @@ dipendenze infrastrutturali</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

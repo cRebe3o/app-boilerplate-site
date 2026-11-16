@@ -272,7 +272,7 @@ genera migration).</p>
 </tr>
 <tr>
 <td><code>/aggiorna-dal-template [versione]</code></td>
-<td>Porta nel progetto una versione nuova del template: <code>copier update</code> su un branch nuovo, conflitti risolti conservando il codice del progetto, dipendenze ripristinate, <code>pnpm verify</code>. Merge e push solo dopo una conferma. Copre anche un <code>.copier-answers.yml</code> mancante e la scelta del suo <code>_commit</code></td>
+<td>Porta nel progetto una versione nuova del template: prima elenca le domande nuove di Copier e chiede la risposta (che passa con <code>--data</code>), poi <code>copier update</code> su un branch nuovo, conflitti risolti conservando il codice del progetto, i task saltati da <code>--skip-tasks</code> (dipendenze, strumenti, chiavi di Grafana), <code>pnpm verify</code>. Merge e push solo dopo una conferma. Copre anche un <code>.copier-answers.yml</code> mancante e la scelta del suo <code>_commit</code></td>
 </tr>
 </tbody>
 </table>
@@ -314,7 +314,7 @@ migliorare il template: portate in <code>app-boilerplate</code>, arrivano a tutt
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

@@ -313,6 +313,13 @@ Una dashboard si cambia nel file JSON, non in Grafana: si costruisce il pannello
 copia il JSON della dashboard (Esporta → JSON) nel file e si toglie l'`id` numerico. Grafana
 rilegge i file ogni 30 secondi.
 
+Un conteggio su un periodo si scrive `increase(...[$__range] anchored)`. Prometheus scrive uno
+zero all'inizio di ogni serie (`created-timestamp-zero-ingestion`, attiva in sviluppo e in
+produzione), e `anchored` parte da quello zero senza estrapolare: così la prima esecuzione di un
+comando o di un lavoro si conta, e il numero è esatto anche dopo un riavvio del backend. Senza,
+"I più usati" poteva dire 0 o 1,4 invece di 1. `pnpm verify` lo controlla, con il passo
+`observability · dashboard`.
+
 ### Come si entra
 
 Grafana sta dietro il backend, come il [pannello dei lavori](../infrastructure/lavori-programmati.md):

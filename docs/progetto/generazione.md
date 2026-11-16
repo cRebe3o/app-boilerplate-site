@@ -166,13 +166,23 @@ committato, e va committato di nuovo dopo ogni update.
 | # | Passo | Perché |
 |---|---|---|
 | 1 | Working tree **pulito**, meglio su un branch dedicato | `copier update` sovrascrive file: senza commit non vedi cosa ha cambiato né puoi annullarlo |
-| 2 | `copier update --trust` | Ri-pone le domande precompilate: Invio per tenere le risposte, oppure cambiane qualcuna |
+| 2 | `copier update --trust` | Ri-pone le domande precompilate: Invio per tenere le risposte, oppure cambiane qualcuna. Le domande **nuove** del template compaiono con il loro default |
 | 3 | Risolvi i **conflitti** | Dove il template e il tuo codice toccano le stesse righe restano i marcatori `<<<<<<<` / `=======` / `>>>>>>>`, in stile Git. Copier può anche lasciare file `.rej`: hunk non applicati, da riportare a mano |
 | 4 | Verifica che compili | Stesso giro dei controlli sulla generazione |
 | 5 | Committa, `.copier-answers.yml` incluso | È così che il prossimo update saprà da dove ripartire |
 
 Opzioni utili: `--pretend` mostra che cosa succederebbe senza scrivere nulla, `--vcs-ref v1.2.0`
 aggiorna a una versione precisa invece che all'ultima.
+
+> **Con `--defaults` le domande nuove non si vedono.** Senza terminale (uno script, Claude Code)
+> si lancia `copier update --trust --skip-tasks --defaults`, che tiene le risposte salvate e dà
+> **in silenzio** il default a ogni domanda nuova: con la v7.1.0 `include_grafana` è finita a no
+> così. Prima si confrontano le domande di `copier.yml` della versione di arrivo con
+> `.copier-answers.yml`, e la risposta a ognuna di quelle nuove si passa con
+> `--data <domanda>=<risposta>`. `--skip-tasks` salta anche i `_tasks` del template: dopo l'update
+> si lanciano a mano quelli che valgono per il progetto (`pnpm install`, `dotnet tool restore`,
+> `node scripts/grafana-keys.mjs` con Grafana). `/aggiorna-dal-template` fa entrambe le cose da
+> sé.
 
 **Alcuni file sono del progetto dopo la generazione**: il template li crea e l'update non li
 sovrascrive più (`_skip_if_exists` in `copier.yml`). Oggi è uno solo,

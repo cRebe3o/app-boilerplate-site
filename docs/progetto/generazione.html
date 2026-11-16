@@ -381,7 +381,7 @@ committato, e va committato di nuovo dopo ogni update.</p>
 <tr>
 <td>2</td>
 <td><code>copier update --trust</code></td>
-<td>Ri-pone le domande precompilate: Invio per tenere le risposte, oppure cambiane qualcuna</td>
+<td>Ri-pone le domande precompilate: Invio per tenere le risposte, oppure cambiane qualcuna. Le domande <strong>nuove</strong> del template compaiono con il loro default</td>
 </tr>
 <tr>
 <td>3</td>
@@ -403,6 +403,17 @@ committato, e va committato di nuovo dopo ogni update.</p>
 </div>
 <p>Opzioni utili: <code>--pretend</code> mostra che cosa succederebbe senza scrivere nulla, <code>--vcs-ref v1.2.0</code>
 aggiorna a una versione precisa invece che all'ultima.</p>
+<blockquote>
+<p><strong>Con <code>--defaults</code> le domande nuove non si vedono.</strong> Senza terminale (uno script, Claude Code)
+si lancia <code>copier update --trust --skip-tasks --defaults</code>, che tiene le risposte salvate e dà
+<strong>in silenzio</strong> il default a ogni domanda nuova: con la v7.1.0 <code>include_grafana</code> è finita a no
+così. Prima si confrontano le domande di <code>copier.yml</code> della versione di arrivo con
+<code>.copier-answers.yml</code>, e la risposta a ognuna di quelle nuove si passa con
+<code>--data &lt;domanda&gt;=&lt;risposta&gt;</code>. <code>--skip-tasks</code> salta anche i <code>_tasks</code> del template: dopo l'update
+si lanciano a mano quelli che valgono per il progetto (<code>pnpm install</code>, <code>dotnet tool restore</code>,
+<code>node scripts/grafana-keys.mjs</code> con Grafana). <code>/aggiorna-dal-template</code> fa entrambe le cose da
+sé.</p>
+</blockquote>
 <p><strong>Alcuni file sono del progetto dopo la generazione</strong>: il template li crea e l'update non li
 sovrascrive più (<code>_skip_if_exists</code> in <code>copier.yml</code>). Oggi è uno solo,
 <code>Domain/Exceptions/ErrorCode.Project.cs</code>, con i codici di errore del progetto; quelli del template
@@ -482,7 +493,7 @@ conflitto si tiene una delle due versioni e si lancia <code>pnpm gen:api</code>.
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.0.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

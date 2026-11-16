@@ -22,7 +22,7 @@ const SITE = {
   subtitle: 'Documentazione tecnica del template',
   // Versione del template descritta da queste pagine: coincide con l'ultimo tag di
   // app-boilerplate (vedi il suo CHANGELOG.md). Compare nel piè di pagina.
-  templateVersion: '7.1.0',
+  templateVersion: '7.1.1',
   sections: [
     {
       title: 'Progetto',
