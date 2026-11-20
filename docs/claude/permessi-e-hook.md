@@ -25,11 +25,12 @@ Il `settings.json` del template consente senza conferma i comandi che servono al
 
 | Gruppo | Comandi | Perché |
 |---|---|---|
-| Build e test .NET | `dotnet build`, `test`, `restore`, `clean`, `list`, `add` | La verifica non deve chiedere conferma a ogni giro |
-| Migration | `dotnet ef` | Generare le due migration fa parte di ogni modifica al modello |
-| Frontend | `pnpm install`, `run`, `exec`, `eslint`, `vitest`, `vue-tsc`, `gen:api`, `outdated`, `--filter`; gli stessi via `npx` | Lint, typecheck, test e rigenerazione dei tipi |
+| Build e test .NET | `dotnet build`, `test`, `restore`, `clean`, `list` | La verifica non deve chiedere conferma a ogni giro |
+| Migration | `dotnet dotnet-ef migrations add`, `migrations list`, `migrations has-pending-model-changes` | Generare le due migration fa parte di ogni modifica al modello |
+| Frontend | `pnpm install`, `eslint`, `vitest`, `vue-tsc`, `gen:api`, `outdated`, `format`, `build` e gli script di test, lint e typecheck; `eslint`, `vitest`, `vue-tsc` via `npx` | Lint, typecheck, test e rigenerazione dei tipi |
 | Git in lettura | `git status`, `git diff`, `git log` | Claude deve poter vedere che cosa è cambiato |
 | Verifica | `pnpm verify`, `node scripts/verify.mjs` | È il comando che chiude ogni modifica |
+| Documentazione delle librerie | i tool dei server MCP `vuetify`, `microsoft-learn`, `context7` | Leggono solo documentazione pubblica: vedi [I server MCP della documentazione](#i-server-mcp-della-documentazione) |
 
 Ogni regola c'è due volte, `Bash(...)` e `PowerShell(...)`: su Windows Claude usa spesso lo
 strumento PowerShell, e una regola scritta solo per Bash non lo copre, quindi la richiesta di
@@ -40,14 +41,10 @@ conferma arriverebbe lo stesso.
 ["Git lo usi tu"](come-lavora.md#le-regole-che-valgono-sempre) resa concreta: anche se Claude
 provasse a committare di sua iniziativa, si fermerebbe davanti alla richiesta di conferma.
 
-Due voci sono più larghe di quanto sembri, e vale la pena saperlo:
-
-- **`dotnet ef`** comprende anche `database update` e `migrations remove`, che modificano il database
-  locale o i file delle migration. Sul database di sviluppo è accettabile; per questo la stringa di
-  connessione in uso sulla tua macchina deve puntare a un database di sviluppo, mai a uno condiviso.
-- **`pnpm run` e `pnpm exec`** eseguono qualsiasi script o binario del progetto. Sono consentiti
-  perché gli script del monorepo sono build, test e lint; chi aggiunge uno script con effetti
-  esterni (un deploy, una pubblicazione) deve tenerlo presente.
+Restano su "ask" anche i comandi più larghi di quanto sembrino: `dotnet dotnet-ef database update`
+e `migrations remove`, che modificano il database o i file delle migration, e `pnpm run` e
+`pnpm exec`, che eseguono qualsiasi script o binario del progetto. Sono ammessi solo gli script
+precisi della tabella.
 
 ### Le regole deny: i segreti
 
@@ -69,6 +66,54 @@ chiave di configurazione, e non può farlo neanche con `cat` o `head` da shell: 
 applica le regole `Read` anche ai comandi di lettura che riconosce. Le chiavi e la loro forma
 restano documentate in `appsettings.local.json.example`, `.env.local.example` e
 [Configurazione](../progetto/configurazione.md), che è ciò che serve per lavorarci.
+
+### I server MCP della documentazione
+
+Claude non deve scrivere un'API di una libreria a memoria: un nome di prop, un'opzione o un metodo
+inventato a volte compila, ma non funziona, e una versione nuova può aver cambiato quello che
+ricorda. Il progetto collega quindi tre server MCP remoti, in `.mcp.json` alla radice, senza chiavi:
+
+| Server | Indirizzo | Per |
+|---|---|---|
+| `vuetify` | `https://mcp.vuetifyjs.com/mcp` | Componenti, direttive e guide di Vuetify, per versione |
+| `microsoft-learn` | `https://learn.microsoft.com/api/mcp` | .NET, ASP.NET Core, EF Core |
+| `context7` | `https://mcp.context7.com/mcp` | Vue, Pinia, Vite, TypeScript e il resto |
+
+La regola è nel `CLAUDE.md` della radice, con i dettagli in quelli di backend e frontend: prima di
+usare un'API si legge la versione installata (`package.json` e `pnpm-lock.yaml`, o il `.csproj`) e
+si consulta la documentazione di quella versione; se i server non rispondono, il web o i tipi del
+pacchetto installato. `/review` ha un controllo per le API deprecate o inventate.
+
+**Approvazione.** Claude Code chiede di approvare i server di un `.mcp.json` di progetto prima di
+usarli. Nei progetti generati sono già approvati da `.claude/settings.json`:
+
+```json
+{
+  "enabledMcpjsonServers": ["vuetify", "microsoft-learn", "context7"],
+  "permissions": {
+    "allow": ["mcp__vuetify", "mcp__microsoft-learn", "mcp__context7"]
+  }
+}
+```
+
+`enabledMcpjsonServers` li approva, le regole `mcp__…` ne ammettono i tool senza conferma. Claude
+Code ignora queste approvazioni in una cartella di cui non ti fidi ancora: lì i server restano in
+attesa finché non accetti la fiducia nella cartella. Nel repository del template, che non ha queste
+righe, Claude Code chiede l'approvazione al primo avvio. Per rifare la scelta fatta a quella
+domanda, `claude mcp reset-project-choices`.
+
+**La chiave di Context7.** Context7 funziona senza chiave; con una chiave gratuita, creata dalla sua
+dashboard, ha limiti di frequenza più alti. Si passa nell'intestazione `Authorization: Bearer
+<chiave>`. Per non metterla nel `.mcp.json` committato, la si aggiunge solo per sé, con lo stesso
+nome del server:
+
+```bash
+claude mcp add --transport http context7 https://mcp.context7.com/mcp \
+  --header "Authorization: Bearer <chiave>"
+```
+
+Il comando la salva nella configurazione personale (`~/.claude.json`), per quel progetto, e quella
+definizione vince su quella di `.mcp.json`.
 
 ### Le impostazioni personali
 

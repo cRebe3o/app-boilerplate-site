@@ -23,7 +23,7 @@ documentazione.
 | Scelta | In pratica |
 |---|---|
 | **Doppio provider di database** | La stessa applicazione gira su SQL Server o su PostgreSQL, via Entity Framework Core. Si sceglie da configurazione, senza toccare il codice. Vedi [Infrastruttura](../infrastructure/panoramica.md) |
-| **Tripla strategia di autenticazione** | Username e password, account Microsoft o identità Windows. In tutti i casi il backend emette un JWT interno. Vedi [Autenticazione](../autenticazione/autenticazione.md) |
+| **Tripla strategia di autenticazione** | Username e password, account Microsoft o identità Windows, ciascuno acceso o spento nel backend (la password con `Auth:Password:Enabled`). In tutti i casi il backend emette un JWT interno. Vedi [Autenticazione](../autenticazione/autenticazione.md) |
 
 Il progetto nasce da `copier copy`, rispondendo a poche domande: nome, porte, provider del
 database, modalità di accesso. Il percorso completo è in [Generare e aggiornare](generazione.md).

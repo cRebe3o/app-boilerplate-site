@@ -111,6 +111,7 @@
           <li class="lvl-3"><a href="#il-riepilogo-finale">Il riepilogo finale</a></li>
           <li class="lvl-2"><a href="#correggere-la-rotta">Correggere la rotta</a></li>
           <li class="lvl-2"><a href="#tenere-in-buono-stato-la-sessione">Tenere in buono stato la sessione</a></li>
+          <li class="lvl-2"><a href="#seguire-la-sessione-dal-telefono">Seguire la sessione dal telefono</a></li>
           <li class="lvl-2"><a href="#che-cosa-non-chiedere">Che cosa non chiedere</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
@@ -257,6 +258,28 @@ chiede o lo legge da sé.</li>
 <li><strong>Le cose da ricordare oltre la sessione</strong> non stanno nella conversazione: stanno nei
 <code>CLAUDE.md</code>, nelle skill, nel codice. Ciò che dici a Claude oggi, domani non lo sa più.</li>
 </ul>
+<h2 id="seguire-la-sessione-dal-telefono">Seguire la sessione dal telefono</h2>
+<p>Un lavoro lungo (una verifica, un rilascio, una feature in più passi) non chiede di restare alla
+scrivania. Con <strong>Remote Control</strong> la sessione che gira sul tuo computer si segue e si guida dall'app
+Claude per iOS e Android o da <a href="https://claude.ai/code" target="_blank" rel="noopener">claude.ai/code</a>; Claude continua a lavorare
+in locale, con i tuoi file, i server MCP e i permessi del progetto.</p>
+<ul>
+<li><strong>Da una sessione già aperta</strong>: <code>/remote-control</code>, o la forma breve <code>/rc</code>. Nel terminale compare
+l'indicatore <code>/rc active</code>; rilanciare il comando mostra l'indirizzo e un codice QR da inquadrare
+con il telefono, e permette di disconnettere. Nell'estensione di VS Code e nell'app Desktop si
+scrive lo stesso comando nella casella del prompt.</li>
+<li><strong>Dall'avvio</strong>: <code>claude --remote-control</code> (o <code>--rc</code>) apre una sessione normale già collegata.</li>
+<li><strong>Le notifiche sul telefono</strong>: con l'app installata e lo stesso account, in <code>/config</code> si attivano
+&quot;Push when Claude decides&quot; (quando un lavoro lungo finisce o serve una decisione) e &quot;Push when
+actions required&quot; (richieste di permesso e domande). Si può anche chiederla nel messaggio, per
+esempio &quot;avvisami quando finiscono i test&quot;. Mentre stai scrivendo nel terminale le notifiche non
+arrivano.</li>
+</ul>
+<p>Requisiti: un abbonamento Pro, Max, Ultra, Team o Enterprise (non una chiave API; in Team ed
+Enterprise lo attiva prima un Owner) e l'accesso con <code>/login</code> tramite <a href="http://claude.ai" target="_blank" rel="noopener">claude.ai</a>. Il computer deve
+restare acceso e <code>claude</code> aperto: il telefono è una finestra sulla sessione locale, non la esegue.
+Dettagli e casi particolari nella
+<a href="https://code.claude.com/docs/en/remote-control" target="_blank" rel="noopener">documentazione di Remote Control</a>.</p>
 <h2 id="che-cosa-non-chiedere">Che cosa non chiedere</h2>
 <ul>
 <li><strong>Di modificare i file generati o i segreti</strong>: <code>api.generated.ts</code>, le migration committate,
@@ -281,7 +304,7 @@ toglie l'ultimo livello.</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 8.0.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

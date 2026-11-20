@@ -530,12 +530,13 @@ Vanno aggiunti al seed (`Infrastructure/Persistence/Seed/DataSeeder.cs`) come `c
 ("categories.delete", "Categories", "delete", "Elimina categorie"),
 ```
 
-Il ruolo `Viewer` prende automaticamente tutti i permessi con azione `read`, quindi il nuovo
+Su un database nuovo il ruolo `Viewer` prende tutti i permessi con azione `read`, quindi il nuovo
 `categories.read` ci finisce da solo; per gli altri ruoli va deciso caso per caso.
 
-> Il seed popola **solo un database vuoto**: su un'installazione già avviata i nuovi permessi **non
-> compaiono da soli**. Vanno creati dal pannello Permessi e assegnati ai ruoli — oppure, in sviluppo,
-> si droppa il database a mano e si riparte (non esiste un comando di reset).
+> Su un'installazione già avviata il seed **crea** i permessi nuovi del catalogo all'avvio
+> successivo, ma li dà **solo al SuperAdmin** e lo scrive nel log. Ad Admin, Viewer e agli altri
+> ruoli si assegnano dalla pagina Ruoli: dei ruoli di sistema si cambiano i permessi, non nome e
+> descrizione.
 
 ---
 

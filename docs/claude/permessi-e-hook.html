@@ -105,6 +105,7 @@
           <li class="lvl-2"><a href="#i-permessi">I permessi</a></li>
           <li class="lvl-3"><a href="#che-cosa-e-consentito-oggi">Che cosa è consentito oggi</a></li>
           <li class="lvl-3"><a href="#le-regole-deny-i-segreti">Le regole deny: i segreti</a></li>
+          <li class="lvl-3"><a href="#i-server-mcp-della-documentazione">I server MCP della documentazione</a></li>
           <li class="lvl-3"><a href="#le-impostazioni-personali">Le impostazioni personali</a></li>
           <li class="lvl-2"><a href="#gli-hook">Gli hook</a></li>
           <li class="lvl-3"><a href="#prima-della-modifica-i-file-che-non-si-toccano">Prima della modifica: i file che non si toccano</a></li>
@@ -161,17 +162,17 @@ passa da un controllo dei permessi, con tre esiti:</p>
 <tbody>
 <tr>
 <td>Build e test .NET</td>
-<td><code>dotnet build</code>, <code>test</code>, <code>restore</code>, <code>clean</code>, <code>list</code>, <code>add</code></td>
+<td><code>dotnet build</code>, <code>test</code>, <code>restore</code>, <code>clean</code>, <code>list</code></td>
 <td>La verifica non deve chiedere conferma a ogni giro</td>
 </tr>
 <tr>
 <td>Migration</td>
-<td><code>dotnet ef</code></td>
+<td><code>dotnet dotnet-ef migrations add</code>, <code>migrations list</code>, <code>migrations has-pending-model-changes</code></td>
 <td>Generare le due migration fa parte di ogni modifica al modello</td>
 </tr>
 <tr>
 <td>Frontend</td>
-<td><code>pnpm install</code>, <code>run</code>, <code>exec</code>, <code>eslint</code>, <code>vitest</code>, <code>vue-tsc</code>, <code>gen:api</code>, <code>outdated</code>, <code>--filter</code>; gli stessi via <code>npx</code></td>
+<td><code>pnpm install</code>, <code>eslint</code>, <code>vitest</code>, <code>vue-tsc</code>, <code>gen:api</code>, <code>outdated</code>, <code>format</code>, <code>build</code> e gli script di test, lint e typecheck; <code>eslint</code>, <code>vitest</code>, <code>vue-tsc</code> via <code>npx</code></td>
 <td>Lint, typecheck, test e rigenerazione dei tipi</td>
 </tr>
 <tr>
@@ -184,6 +185,11 @@ passa da un controllo dei permessi, con tre esiti:</p>
 <td><code>pnpm verify</code>, <code>node scripts/verify.mjs</code></td>
 <td>È il comando che chiude ogni modifica</td>
 </tr>
+<tr>
+<td>Documentazione delle librerie</td>
+<td>i tool dei server MCP <code>vuetify</code>, <code>microsoft-learn</code>, <code>context7</code></td>
+<td>Leggono solo documentazione pubblica: vedi <a href="#i-server-mcp-della-documentazione">I server MCP della documentazione</a></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -194,15 +200,10 @@ conferma arriverebbe lo stesso.</p>
 (<code>add</code>, <code>commit</code>, <code>push</code>, <code>checkout</code>, <code>reset</code>, …). È la regola
 <a href="come-lavora.html#le-regole-che-valgono-sempre">&quot;Git lo usi tu&quot;</a> resa concreta: anche se Claude
 provasse a committare di sua iniziativa, si fermerebbe davanti alla richiesta di conferma.</p>
-<p>Due voci sono più larghe di quanto sembri, e vale la pena saperlo:</p>
-<ul>
-<li><strong><code>dotnet ef</code></strong> comprende anche <code>database update</code> e <code>migrations remove</code>, che modificano il database
-locale o i file delle migration. Sul database di sviluppo è accettabile; per questo la stringa di
-connessione in uso sulla tua macchina deve puntare a un database di sviluppo, mai a uno condiviso.</li>
-<li><strong><code>pnpm run</code> e <code>pnpm exec</code></strong> eseguono qualsiasi script o binario del progetto. Sono consentiti
-perché gli script del monorepo sono build, test e lint; chi aggiunge uno script con effetti
-esterni (un deploy, una pubblicazione) deve tenerlo presente.</li>
-</ul>
+<p>Restano su &quot;ask&quot; anche i comandi più larghi di quanto sembrino: <code>dotnet dotnet-ef database update</code>
+e <code>migrations remove</code>, che modificano il database o i file delle migration, e <code>pnpm run</code> e
+<code>pnpm exec</code>, che eseguono qualsiasi script o binario del progetto. Sono ammessi solo gli script
+precisi della tabella.</p>
 <h3 id="le-regole-deny-i-segreti">Le regole deny: i segreti</h3>
 <pre><code class="language-json"><span class="hljs-punctuation">{</span>
   <span class="hljs-attr">&quot;permissions&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
@@ -220,6 +221,64 @@ chiave di configurazione, e non può farlo neanche con <code>cat</code> o <code>
 applica le regole <code>Read</code> anche ai comandi di lettura che riconosce. Le chiavi e la loro forma
 restano documentate in <code>appsettings.local.json.example</code>, <code>.env.local.example</code> e
 <a href="../progetto/configurazione.html">Configurazione</a>, che è ciò che serve per lavorarci.</p>
+<h3 id="i-server-mcp-della-documentazione">I server MCP della documentazione</h3>
+<p>Claude non deve scrivere un'API di una libreria a memoria: un nome di prop, un'opzione o un metodo
+inventato a volte compila, ma non funziona, e una versione nuova può aver cambiato quello che
+ricorda. Il progetto collega quindi tre server MCP remoti, in <code>.mcp.json</code> alla radice, senza chiavi:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Server</th>
+<th>Indirizzo</th>
+<th>Per</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vuetify</code></td>
+<td><code>https://mcp.vuetifyjs.com/mcp</code></td>
+<td>Componenti, direttive e guide di Vuetify, per versione</td>
+</tr>
+<tr>
+<td><code>microsoft-learn</code></td>
+<td><code>https://learn.microsoft.com/api/mcp</code></td>
+<td>.NET, <a href="http://ASP.NET" target="_blank" rel="noopener">ASP.NET</a> Core, EF Core</td>
+</tr>
+<tr>
+<td><code>context7</code></td>
+<td><code>https://mcp.context7.com/mcp</code></td>
+<td>Vue, Pinia, Vite, TypeScript e il resto</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>La regola è nel <code>CLAUDE.md</code> della radice, con i dettagli in quelli di backend e frontend: prima di
+usare un'API si legge la versione installata (<code>package.json</code> e <code>pnpm-lock.yaml</code>, o il <code>.csproj</code>) e
+si consulta la documentazione di quella versione; se i server non rispondono, il web o i tipi del
+pacchetto installato. <code>/review</code> ha un controllo per le API deprecate o inventate.</p>
+<p><strong>Approvazione.</strong> Claude Code chiede di approvare i server di un <code>.mcp.json</code> di progetto prima di
+usarli. Nei progetti generati sono già approvati da <code>.claude/settings.json</code>:</p>
+<pre><code class="language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;enabledMcpjsonServers&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;vuetify&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;microsoft-learn&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;context7&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;permissions&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">&quot;allow&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;mcp__vuetify&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;mcp__microsoft-learn&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;mcp__context7&quot;</span><span class="hljs-punctuation">]</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<p><code>enabledMcpjsonServers</code> li approva, le regole <code>mcp__…</code> ne ammettono i tool senza conferma. Claude
+Code ignora queste approvazioni in una cartella di cui non ti fidi ancora: lì i server restano in
+attesa finché non accetti la fiducia nella cartella. Nel repository del template, che non ha queste
+righe, Claude Code chiede l'approvazione al primo avvio. Per rifare la scelta fatta a quella
+domanda, <code>claude mcp reset-project-choices</code>.</p>
+<p><strong>La chiave di Context7.</strong> Context7 funziona senza chiave; con una chiave gratuita, creata dalla sua
+dashboard, ha limiti di frequenza più alti. Si passa nell'intestazione <code>Authorization: Bearer &lt;chiave&gt;</code>. Per non metterla nel <code>.mcp.json</code> committato, la si aggiunge solo per sé, con lo stesso
+nome del server:</p>
+<pre><code class="language-bash">claude mcp add --transport http context7 https://mcp.context7.com/mcp \
+  --header <span class="hljs-string">&quot;Authorization: Bearer &lt;chiave&gt;&quot;</span>
+</code></pre>
+<p>Il comando la salva nella configurazione personale (<code>~/.claude.json</code>), per quel progetto, e quella
+definizione vince su quella di <code>.mcp.json</code>.</p>
 <h3 id="le-impostazioni-personali">Le impostazioni personali</h3>
 <p>Ognuno può aggiungere permessi suoi in <strong><code>.claude/settings.local.json</code></strong>: ad esempio consentire
 <code>docker compose</code> o uno strumento che usa solo lui. Il file è nel <code>.gitignore</code> del template,
@@ -363,7 +422,7 @@ un'istruzione</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 8.0.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

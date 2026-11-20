@@ -58,7 +58,11 @@ provider attivo. Cambiare database è cambiare `Database:Provider`, niente altro
 | `Auth:Msal:TenantId` · `ClientId` | solo con login Microsoft | Tenant Entra ID e client id dell'**app API**, contro cui viene validato il token Azure — vedi [App registration Azure](../autenticazione/azure-app-registration.md). Vuoti, `/api/auth/msal-login` risponde 404 |
 | `Auth:Msal:Instance` | no | `https://login.microsoftonline.com/` |
 | `Auth:Windows:Enabled` | solo con login Windows (`false`) | Accende `/api/auth/windows-login`, che altrimenti risponde 404. È `true` in `appsettings.Development.json`; fuori da `Development` si imposta `Auth__Windows__Enabled=true`. Usa Negotiate, e su Windows funziona anche fuori dominio |
-| `Auth:Strategy` | no | **Solo documentazione**: non è letta dal codice. La schermata la sceglie il frontend con `VITE_AUTH_STRATEGY` |
+| `Auth:Password:Enabled` | no (`true`) | Login con username e password. Spento: `/api/auth/login` e i cambi password rispondono 404, gli utenti nascono senza password, il frontend toglie form, campo password e pulsanti di cambio; si entra con Microsoft o Windows. Con `access_mode` `private` è `false` in `appsettings.Production.json`: si riaccende con `Auth__Password__Enabled=true`. Vedi [Autenticazione](../autenticazione/autenticazione.md#come-si-passa-dall-una-all-altra) |
+
+Quali metodi sono attivi lo dice `GET /api/auth/methods`, da cui il frontend li legge; la schermata
+fra quelli attivi la sceglie `VITE_AUTH_STRATEGY`. Fino alla 7.x `appsettings.local.json.example`
+aveva una chiave `Auth:Strategy` che il codice non leggeva: dalla 8.0.0 non c'è più.
 
 ### `Seed`
 
@@ -72,24 +76,29 @@ effetto. L'eccezione è `Development`: lì username e password dell'admin valgon
 | `Seed:AdminUsername` | `admin` | Username dell'amministratore iniziale. Con il login Microsoft dev'essere l'email aziendale con cui si entra (`preferred_username` del token) |
 | `Seed:AdminEmail` | vuoto | Email dell'admin. Vuoto = si riusa lo username, se ha la forma di un'email |
 | `Seed:AdminDisplayName` | `Administrator` | Nome visualizzato |
-| `Seed:AdminPassword` | vuoto | Password dell'admin. Vuota in `Development` = `Admin@1234`; vuota fuori da `Development` = ne viene generata una casuale, **non stampata**: in produzione di fatto va impostata |
+| `Seed:AdminPassword` | vuoto | Password dell'admin. Vuota in `Development` = `Admin@1234`; vuota fuori da `Development` = ne viene generata una casuale, **non stampata**: in produzione, con il login con password, di fatto va impostata. Con `Auth:Password:Enabled` spento non è letta: l'admin nasce senza password ed entra con Microsoft (`Seed:AdminUsername` è allora l'email aziendale) o con l'utente Windows, e il seed lo scrive nel log |
 | `Seed:WindowsUsername` | vuoto | Account per il login Windows, nella forma `DOMINIO\utente`, letto solo con `Auth:Windows:Enabled`. Vuoto = in `Development` l'account del processo corrente, che lì è quasi sempre quello giusto; fuori da `Development` nessun utente Windows |
 
 Il seed crea anche permessi, ruoli (`SuperAdmin`, `Admin`, `Viewer`, `Custom`) e gruppi
 (`Administrators`, `Viewers`): l'elenco è in `DataSeeder.cs`. I permessi di una feature nuova si
-aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.
+aggiungono lì: su un database già avviato il seed li crea all'avvio successivo, li dà solo al
+SuperAdmin e lo scrive nel log ("Seed: aggiunti i permessi …").
 
-`Viewer` legge tutto ciò che legge `Admin`, e niente di più: i permessi riservati al SuperAdmin
-(`permissions.*` e, con i lavori programmati e Grafana, `jobs.dashboard` e `telemetry.dashboard`) restano solo suoi, perché nessuno
-può dare un permesso che non ha (vedi [Chi può dare ruoli e permessi](../autenticazione/autenticazione.md#chi-puo-dare-ruoli-e-permessi)).
-Un ruolo di sistema non si modifica dalla UI, quindi a ogni avvio il seed toglie ai ruoli di
-sistema diversi da SuperAdmin quei permessi, se li trova, e lo scrive nel log ("Seed: tolti ai
-ruoli di sistema…").
+`Viewer` legge tutto ciò che legge `Admin`, e niente di più. I permessi riservati al SuperAdmin
+(`permissions.*` e, con i lavori programmati e Grafana, `jobs.dashboard` e `telemetry.dashboard`)
+non vanno a **nessun altro ruolo**, nemmeno personalizzato: darli risponde 403
+`SuperAdminOnlyPermission`, e a ogni avvio il seed li toglie ai ruoli che li hanno e lo scrive nel
+log ("Seed: tolti ai ruoli i permessi riservati al SuperAdmin"). Vedi
+[Chi può dare ruoli e permessi](../autenticazione/autenticazione.md#chi-puo-dare-ruoli-e-permessi).
+
+Dei ruoli di sistema si cambiano i **permessi** dalla pagina Ruoli, non nome e descrizione; il
+SuperAdmin non si modifica. Su un database già avviato il seed dà i permessi nuovi del catalogo solo
+al SuperAdmin: ad Admin e Viewer si assegnano da lì.
 
 #### Credenziali di sviluppo nel login
 
-In `Development`, con il login username e password (`VITE_AUTH_STRATEGY=jwt`), la pagina di login
-mostra username e password dell'admin. Non sono scritte nel frontend: le chiede al backend,
+In `Development`, con il login username e password (`VITE_AUTH_STRATEGY=jwt` e
+`Auth:Password:Enabled` acceso), la pagina di login mostra username e password dell'admin. Non sono scritte nel frontend: le chiede al backend,
 `GET /api/auth/dev-credentials`, che restituisce `Seed:AdminUsername` e `Seed:AdminPassword` (con i
 default della tabella sopra).
 

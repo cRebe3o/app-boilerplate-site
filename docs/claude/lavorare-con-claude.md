@@ -117,6 +117,30 @@ scambio lo riempie. Quando è pieno, la parte vecchia viene riassunta e i dettag
 - **Le cose da ricordare oltre la sessione** non stanno nella conversazione: stanno nei
   `CLAUDE.md`, nelle skill, nel codice. Ciò che dici a Claude oggi, domani non lo sa più.
 
+## Seguire la sessione dal telefono
+
+Un lavoro lungo (una verifica, un rilascio, una feature in più passi) non chiede di restare alla
+scrivania. Con **Remote Control** la sessione che gira sul tuo computer si segue e si guida dall'app
+Claude per iOS e Android o da [claude.ai/code](https://claude.ai/code); Claude continua a lavorare
+in locale, con i tuoi file, i server MCP e i permessi del progetto.
+
+- **Da una sessione già aperta**: `/remote-control`, o la forma breve `/rc`. Nel terminale compare
+  l'indicatore `/rc active`; rilanciare il comando mostra l'indirizzo e un codice QR da inquadrare
+  con il telefono, e permette di disconnettere. Nell'estensione di VS Code e nell'app Desktop si
+  scrive lo stesso comando nella casella del prompt.
+- **Dall'avvio**: `claude --remote-control` (o `--rc`) apre una sessione normale già collegata.
+- **Le notifiche sul telefono**: con l'app installata e lo stesso account, in `/config` si attivano
+  "Push when Claude decides" (quando un lavoro lungo finisce o serve una decisione) e "Push when
+  actions required" (richieste di permesso e domande). Si può anche chiederla nel messaggio, per
+  esempio "avvisami quando finiscono i test". Mentre stai scrivendo nel terminale le notifiche non
+  arrivano.
+
+Requisiti: un abbonamento Pro, Max, Ultra, Team o Enterprise (non una chiave API; in Team ed
+Enterprise lo attiva prima un Owner) e l'accesso con `/login` tramite claude.ai. Il computer deve
+restare acceso e `claude` aperto: il telefono è una finestra sulla sessione locale, non la esegue.
+Dettagli e casi particolari nella
+[documentazione di Remote Control](https://code.claude.com/docs/en/remote-control).
+
 ## Che cosa non chiedere
 
 - **Di modificare i file generati o i segreti**: `api.generated.ts`, le migration committate,

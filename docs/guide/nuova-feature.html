@@ -652,12 +652,13 @@ app.MapCategoryEndpoints();
 (<span class="hljs-string">&quot;categories.write&quot;</span>,  <span class="hljs-string">&quot;Categories&quot;</span>, <span class="hljs-string">&quot;write&quot;</span>,  <span class="hljs-string">&quot;Crea e modifica categorie&quot;</span>),
 (<span class="hljs-string">&quot;categories.delete&quot;</span>, <span class="hljs-string">&quot;Categories&quot;</span>, <span class="hljs-string">&quot;delete&quot;</span>, <span class="hljs-string">&quot;Elimina categorie&quot;</span>),
 </code></pre>
-<p>Il ruolo <code>Viewer</code> prende automaticamente tutti i permessi con azione <code>read</code>, quindi il nuovo
+<p>Su un database nuovo il ruolo <code>Viewer</code> prende tutti i permessi con azione <code>read</code>, quindi il nuovo
 <code>categories.read</code> ci finisce da solo; per gli altri ruoli va deciso caso per caso.</p>
 <blockquote>
-<p>Il seed popola <strong>solo un database vuoto</strong>: su un'installazione già avviata i nuovi permessi <strong>non
-compaiono da soli</strong>. Vanno creati dal pannello Permessi e assegnati ai ruoli — oppure, in sviluppo,
-si droppa il database a mano e si riparte (non esiste un comando di reset).</p>
+<p>Su un'installazione già avviata il seed <strong>crea</strong> i permessi nuovi del catalogo all'avvio
+successivo, ma li dà <strong>solo al SuperAdmin</strong> e lo scrive nel log. Ad Admin, Viewer e agli altri
+ruoli si assegnano dalla pagina Ruoli: dei ruoli di sistema si cambiano i permessi, non nome e
+descrizione.</p>
 </blockquote>
 <hr>
 <h1 id="frontend">Frontend</h1>
@@ -981,7 +982,7 @@ dichiarano <code>query: { from: '...' }</code></li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 8.0.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

@@ -103,6 +103,7 @@
         <p class="toc-title">In questa pagina</p>
         <ul>
           <li class="lvl-2"><a href="#app-demo-il-progetto-di-riferimento"><code>app-demo</code>: il progetto di riferimento</a></li>
+          <li class="lvl-2"><a href="#che-cosa-serve-a-chi-mantiene-il-template">Che cosa serve a chi mantiene il template</a></li>
           <li class="lvl-2"><a href="#da-dove-si-parte-il-backlog">Da dove si parte: il backlog</a></li>
           <li class="lvl-2"><a href="#dove-si-lavora">Dove si lavora</a></li>
           <li class="lvl-2"><a href="#portare-una-modifica-da-app-demo-al-template">Portare una modifica da app-demo al template</a></li>
@@ -112,8 +113,10 @@
           <li class="lvl-2"><a href="#verificare">Verificare</a></li>
           <li class="lvl-3"><a href="#la-action">La Action</a></li>
           <li class="lvl-2"><a href="#rilasciare-a-lotti">Rilasciare a lotti</a></li>
+          <li class="lvl-3"><a href="#la-prova-nel-browser">La prova nel browser</a></li>
           <li class="lvl-3"><a href="#l-ordine-template-app-demo-sito">L'ordine: template → app-demo → sito</a></li>
           <li class="lvl-2"><a href="#aggiornare-le-dipendenze">Aggiornare le dipendenze</a></li>
+          <li class="lvl-3"><a href="#quando-arriva-e-che-cosa-si-fa">Quando arriva e che cosa si fa</a></li>
           <li class="lvl-2"><a href="#aggiornare-questo-sito">Aggiornare questo sito</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
@@ -137,6 +140,18 @@ descrivono.</li>
 </ul>
 <p>La regola: <strong>il template porta l'impianto, app-demo porta anche un dominio</strong>. Tutto ciò che è
 impianto va in entrambi; tutto ciò che è Noleggi resta in app-demo.</p>
+<h2 id="che-cosa-serve-a-chi-mantiene-il-template">Che cosa serve a chi mantiene il template</h2>
+<p>Oltre ai prerequisiti di un progetto generato (vedi <a href="generazione.html">Generare e aggiornare</a>):</p>
+<ul>
+<li><strong>Copier alla versione della Action</strong>: è fissata in <code>.github/workflows/verify.yml</code>
+(<code>pipx install copier==…</code>), e Renovate la aggiorna lì;</li>
+<li><strong><code>gh</code> autenticato</strong> sul repository: <code>/rilascio-template</code> legge l'esito della Action con
+<code>gh run list</code> e <code>gh run view</code>, e senza ripete in locale la verifica di tutte le combinazioni;</li>
+<li><strong>l'estensione Claude in Chrome</strong>, con cui Claude fa la prova nel browser prima di rilasciare
+(vedi <a href="#la-prova-nel-browser">La prova nel browser</a>);</li>
+<li><strong>l'app Renovate</strong> installata sul repository del template (vedi
+<a href="#aggiornare-le-dipendenze">Aggiornare le dipendenze</a>).</li>
+</ul>
 <h2 id="da-dove-si-parte-il-backlog">Da dove si parte: il backlog</h2>
 <p>I lavori aperti stanno in <code>docs/backlog.md</code>, nel repository del template. Ogni voce dice che cosa,
 perché, dove (template, app-demo, sito), la priorità, le decisioni già prese ed eventualmente che
@@ -161,7 +176,7 @@ fatto, versione (&quot;prossima versione&quot; finché non esce, poi <code>vx.y.
 <tbody>
 <tr>
 <td>non si vede: una skill, uno script, un test, una regola di lint, una correzione del backend senza effetti sull'interfaccia</td>
-<td>direttamente nel template, verificando con un progetto generato</td>
+<td>direttamente nel template, verificando con la parte di verifica di <code>/rilascio-template</code> (vedi <a href="#verificare">Verificare</a>)</td>
 </tr>
 <tr>
 <td>si vede: una pagina, un componente, un comportamento dell'app</td>
@@ -170,6 +185,10 @@ fatto, versione (&quot;prossima versione&quot; finché non esce, poi <code>vx.y.
 </tbody>
 </table>
 </div>
+<p>Sono gli unici due modi di provare una modifica. Il &quot;progetto LAB&quot; generato a mano e rigenerato
+a ogni modifica, descritto nelle vecchie guide <code>docs/01-new-project.md</code> e
+<code>docs/02-update-project.md</code> del template, non si usa più: quelle guide ora rimandano a questo
+sito.</p>
 <pre><code>app-demo, branch di prova  ──►  template  ──►  rilascio (tag)  ──►  app-demo main
    (alla fine si butta)                                              con /aggiorna-dal-template
 </code></pre>
@@ -263,10 +282,12 @@ mostra solo ciò che esce da quell'elenco. La tabella qui sotto ne spiega il sen
 <h2 id="verificare">Verificare</h2>
 <p>Il template non compila: lo si verifica <strong>generando</strong> un progetto in una cartella temporanea e
 lanciando <code>pnpm verify</code>. La parte di verifica di <code>/rilascio-template</code>, alla radice di
-<code>app-boilerplate</code>, si può usare a ogni modifica: genera dal commit corrente un progetto per ogni
-combinazione di provider (SQL Server e PostgreSQL) e lavori programmati (con e senza), lancia
-<code>pnpm verify</code> su tutti e quattro, uno alla volta, e poi introduce apposta un errore, per provare che
-il controllo sappia diventare rosso.</p>
+<code>app-boilerplate</code>, si può usare a ogni modifica: genera dal commit corrente sei progetti, SQL Server
+e PostgreSQL con e senza lavori programmati, più PostgreSQL con lavori e Grafana e SQL Server con
+Grafana; lancia <code>pnpm verify</code> su tutti e sei, uno alla volta (insieme, un worker di Vitest può
+morire per memoria); poi introduce apposta un errore, per provare che il controllo sappia diventare
+rosso. Se la Action ha già un esito verde per lo stesso commit, si genera solo il progetto che serve
+all'errore introdotto e alla prova nel browser.</p>
 <blockquote>
 <p><strong>Percorsi brevi.</strong> Su Windows una cartella temporanea con un percorso lungo fa fallire pnpm in
 modo silenzioso: i link dentro <code>node_modules/.pnpm</code> superano i 260 caratteri e Vitest o Vite non
@@ -274,13 +295,55 @@ trovano più i pacchetti. <code>C:\tmp\prova</code> va bene; una cartella annida
 </blockquote>
 <h3 id="la-action">La Action</h3>
 <p><code>.github/workflows/verify.yml</code> fa la stessa cosa su GitHub a ogni push su <code>main</code> e a ogni pull
-request: genera i quattro progetti e lancia <code>pnpm verify</code> su ciascuno. Non parte quando cambiano solo
-<code>docs/**</code>, <code>CHANGELOG.md</code>, <code>renovate.json</code> e il <code>CLAUDE.md</code> della radice, che non entrano nei
-progetti generati.</p>
-<p><code>/rilascio-template</code> legge il suo esito: se riguarda esattamente ciò che si sta rilasciando, e i quattro
-job sono verdi, non ripete in locale la verifica dei quattro progetti. Un job rosso è un rosso anche se
-in locale passa. La Action gira su Linux: non prova Windows, ma vede le maiuscole nei percorsi, il
-fuso orario e i fine riga, che contano per chi fa il deploy su Linux.</p>
+request. Non parte quando cambiano solo <code>docs/**</code>, <code>CHANGELOG.md</code>, <code>renovate.json</code> e il <code>CLAUDE.md</code>
+della radice, che non entrano nei progetti generati. I job sono <strong>sette</strong>:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Che cosa fa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>migration rilasciate</code></td>
+<td>Confronta le migration dell'impianto con l'ultimo tag: una migration rilasciata e poi cambiata, cancellata o rinominata fa fallire. Nei progetti generati quel controllo non ha una base con cui confrontare</td>
+</tr>
+<tr>
+<td><code>pnpm verify (SqlServer)</code> · <code>(PostgreSQL)</code></td>
+<td>Genera il progetto con quel provider e lancia <code>pnpm verify</code></td>
+</tr>
+<tr>
+<td><code>pnpm verify (SqlServer, lavori)</code> · <code>(PostgreSQL, lavori)</code></td>
+<td>Lo stesso, con <code>include_jobs</code></td>
+</tr>
+<tr>
+<td><code>pnpm verify (PostgreSQL, lavori, Grafana)</code> · <code>(SqlServer, Grafana)</code></td>
+<td>Lo stesso, con <code>include_grafana</code>: due combinazioni e non il doppio, così ogni provider e ogni risposta sui lavori passa almeno una volta con Grafana</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>I job usano Node 26, .NET 10, pnpm alla versione di <code>packageManager</code> nel <code>package.json</code> del
+template (con <code>pnpm/action-setup</code>: Node 26 non contiene più Corepack) e Copier alla versione
+fissata. Il progetto si genera con <code>--vcs-ref HEAD</code>, cioè dal commit e non dall'ultimo tag. Una
+combinazione rossa non ferma le altre.</p>
+<p><code>/rilascio-template</code> legge il suo esito: se riguarda esattamente ciò che si sta rilasciando (stesso
+commit, o dopo cambiati solo file che la Action salta) e i sette job sono verdi, non ripete in
+locale <code>pnpm verify</code> sulle sei combinazioni. La Action gira su Linux: non prova Windows, ma vede le
+maiuscole nei percorsi, il fuso orario e i fine riga, che contano per chi fa il deploy su Linux.</p>
+<h4 id="se-e-rossa">Se è rossa</h4>
+<p>Un job rosso è un rosso anche se in locale passa, e non si rilascia finché non torna verde.</p>
+<ol>
+<li>Si apre il job su GitHub (o <code>gh run view &lt;id&gt; --log-failed</code>) e si legge il passo fallito:
+<code>pnpm verify</code> stampa solo le righe d'errore dei passi rossi.</li>
+<li>Si rigenera in locale <strong>la stessa combinazione</strong> dallo stesso commit (le risposte sono nel nome
+del job) e si lancia <code>pnpm verify</code> lì.</li>
+<li>Si corregge nel template, si rigenera, si riverifica, si fa un push nuovo.</li>
+</ol>
+<p>Vale anche per le pull request di Renovate: la correzione va nel branch della pull request, o in
+<code>main</code> prima di unirla.</p>
 <h2 id="rilasciare-a-lotti">Rilasciare a lotti</h2>
 <ul>
 <li>Una correzione resta sotto <em>Non rilasciato</em> nel <code>CHANGELOG.md</code>, scritta per chi aggiorna un
@@ -290,14 +353,39 @@ vulnerabilità o un bug grave.</li>
 <li>Il rilascio lo avvia chi mantiene il template, con <code>/rilascio-template [versione]</code>. Claude dice
 quando il lotto è pronto o quando c'è un caso urgente, ma non lo avvia da solo.</li>
 </ul>
-<p>La skill verifica, sceglie il numero, sposta la voce del CHANGELOG sotto la versione con la data, poi
-crea commit e tag. Prima di pubblicare chiede una conferma, che vale anche per il sito:</p>
+<p>La skill verifica, fa la prova nel browser, sceglie il numero, sposta la voce del CHANGELOG sotto la
+versione con la data, poi crea commit e tag. Prima di pubblicare chiede <strong>una sola conferma</strong>, che
+copre il push del template e quello del sito; <strong>non</strong> copre l'update e il push di app-demo, che fa
+chi mantiene il template (vedi <a href="#l-ordine-template-app-demo-sito">L'ordine</a>):</p>
 <pre><code class="language-bash">git push --atomic origin main v1.4.0
 </code></pre>
 <p><code>--atomic</code> pubblica il commit e il suo tag insieme, o nessuno dei due: <code>copier update</code> lavora sui
 tag, e senza tag i progetti generati non hanno una versione a cui aggiornarsi.</p>
 <p><code>major</code> quando un progetto generato deve intervenire a mano per aggiornarsi (rinomine, migration
-dell'impianto, skill rimosse), <code>minor</code> per funzionalità nuove compatibili, <code>patch</code> per correzioni.</p>
+dell'impianto, skill rimosse), <code>minor</code> per funzionalità nuove compatibili, <code>patch</code> per correzioni.
+Che cosa chiede a mano ogni versione maggiore è in
+<a href="generazione.html#le-versioni-che-chiedono-qualcosa-a-mano">Generare e aggiornare</a>.</p>
+<h3 id="la-prova-nel-browser">La prova nel browser</h3>
+<p><code>pnpm verify</code> non apre l'app. Le modifiche che si vedono si provano una volta sola, a fine lotto, e la
+prova la fa <strong>Claude con Chrome</strong> (l'estensione Claude in Chrome), dentro <code>/rilascio-template</code>, su
+uno dei progetti di prova, prima di cancellarli. Non si chiede mai a chi mantiene il template.</p>
+<ul>
+<li><strong>Che cosa si prova.</strong> In <code>docs/backlog.md</code> c'è la lista &quot;Da provare nel browser a fine lotto&quot;:
+chi fa una modifica da vedere aggiunge la sua riga, con che cosa cliccare e che cosa aspettarsi.
+La lista si svuota quando il lotto esce, nello stesso commit del CHANGELOG. Vuota, la prova
+non si fa.</li>
+<li><strong>Come si prepara.</strong> Claude scrive <code>appsettings.local.json</code> (segreto JWT casuale, database con un
+nome nuovo: LocalDB per SQL Server, un container su una porta diversa dalla 5432 per PostgreSQL)
+e <code>.env.local</code>, poi avvia backend e frontend. Se 5080 o 5173 sono occupate, di solito da
+app-demo, usa altre porte (per esempio 5081 e 5174) e non ferma processi che non ha avviato lui.</li>
+<li><strong>Come si clicca.</strong> Le pagine si raggiungono con menu, voci e link, come fa chi usa l'app, mai
+scrivendo l'indirizzo: un indirizzo scritto a mano arriva alla pagina anche quando il link che
+dovrebbe portarci non naviga. Dalla 3.1.0 alla 6.0.0 le voci del menu laterale non navigavano, e
+nessuna prova se n'è accorta.</li>
+<li><strong>L'esito</strong> è una tabella, una riga per prova. Un problema trovato si corregge prima di rilasciare,
+con il suo test; ciò che non blocca diventa una voce del backlog. Alla fine Claude chiude la
+scheda, ferma i processi che ha avviato e cancella il database di prova.</li>
+</ul>
 <h3 id="l-ordine-template-app-demo-sito">L'ordine: template → app-demo → sito</h3>
 <ol>
 <li><strong>Template</strong>: rilasciato, con il tag.</li>
@@ -308,7 +396,9 @@ correzione fatta solo nel template e non arrivata con l'update si riporta in app
 altrimenti al giro dopo ricompare come differenza; una differenza voluta si aggiunge
 all'elenco, con il motivo. Un diff già in elenco ma cambiato si rilegge e poi si registra con
 <code>--approva &lt;file&gt;</code>.</li>
-<li><strong>Sito</strong>: si aggiornano le pagine toccate, secondo la mappa qui sotto.</li>
+<li><strong>Sito</strong>: si aggiornano le pagine toccate, secondo la mappa qui sotto, e la versione nel piè di
+pagina (<code>SITE.templateVersion</code> in <code>build.mjs</code>), a ogni rilascio anche quando nessuna pagina
+cambia.</li>
 </ol>
 <p>In quest'ordine perché ogni passo documenta quello prima: app-demo prova il tag vero, e il sito
 descrive ciò che è stato rilasciato e provato.</p>
@@ -329,10 +419,58 @@ una pull request al mese con gli aggiornamenti del mese, una subito per la sicur
 maggiori nella Dependency Dashboard, ferme finché non si approvano. Ogni pull request fa partire la
 Action. Renovate e non Dependabot perché legge i file come testo, e i nomi con <code>[[ project_slug ]]</code>
 non gli danno problemi.</p>
+<h3 id="quando-arriva-e-che-cosa-si-fa">Quando arriva e che cosa si fa</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Arriva</th>
+<th>Che cosa si fa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>&quot;aggiornamenti del mese&quot;</strong>, dal 22 al 24 di ogni mese</td>
+<td>Patch e minori uscite da almeno 7 giorni, in una pull request sola. Il 22 perché il Patch Tuesday di Microsoft cade fra l'8 e il 14 e, con i 7 giorni di attesa, la patch di .NET è matura al più tardi il 21. Con la Action verde si rilegge l'elenco (produzione o sviluppo, note di rilascio delle minori che cambiano comportamento), si fanno i controlli dei pacchetti di <code>/rilascio-template</code> (Hangfire.PostgreSql e il pin di Newtonsoft.Json), si scrive la voce sotto <em>Non rilasciato</em> nel CHANGELOG e si unisce. Il rilascio segue le regole dei lotti</td>
+</tr>
+<tr>
+<td><strong>una pull request con l'etichetta <code>sicurezza</code></strong>, in qualsiasi momento</td>
+<td>Si controlla, si unisce e si rilascia subito</td>
+</tr>
+<tr>
+<td><strong>una versione maggiore</strong>, nella issue &quot;Dependency Dashboard&quot;</td>
+<td>Non apre una pull request da sola. Prima diventa una voce del backlog; quando si lavora a quella voce, si spunta la casella della maggiore nella Dashboard e Renovate apre la pull request</td>
+</tr>
+<tr>
+<td><strong>una pull request rossa</strong></td>
+<td>Come per la Action: si legge il passo fallito, si rigenera in locale la stessa combinazione, si corregge (vedi <a href="#se-e-rossa">Se è rossa</a>)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Perché si saltano .NET 11 e i Node dispari.</strong> Si resta sulle LTS: .NET 11 è una STS e finisce il
+supporto lo stesso giorno di .NET 10, il 14 novembre 2028, quindi passarci costerebbe una
+migrazione senza un giorno di supporto in più; il passaggio sarà a .NET 12. Di Node si usano solo
+le maggiori pari: la Action è su Node 26. Il calendario, con le date di fine supporto e quando
+diventa una voce del backlog il passaggio alla LTS successiva, è in <code>docs/aggiornamenti.md</code> del
+template.</p>
+<p><strong>Che cosa Renovate non copre:</strong></p>
+<ul>
+<li>l'SDK e il runtime di .NET e Node <strong>installati sulle macchine</strong> di sviluppo e sui server: una
+patch di .NET aggiorna i pacchetti, non le installazioni, e il CHANGELOG lo dice a chi aggiorna;</li>
+<li>le <strong>immagini con un tag mobile</strong>, come <code>2022-latest</code> di SQL Server: il tag si sposta da solo, si
+cambia solo la maggiore;</li>
+<li>le immagini <code>aspnet:10.0</code> e <code>sdk:10.0</code> prendono le patch alla build: sta a chi fa il deploy
+ricostruirle con <code>docker build --pull</code>.</li>
+</ul>
 <h2 id="aggiornare-questo-sito">Aggiornare questo sito</h2>
 <p>Il sito vive in <code>app-boilerplate-site</code>: i Markdown in <code>docs/</code> sono la fonte, <code>npm run build</code>
-genera gli HTML, e si committano entrambi (GitHub Pages serve i file statici, e una GitHub Action
-fallisce se Markdown e HTML divergono).</p>
+genera gli HTML (e l'indice della ricerca), e si committano entrambi.</p>
+<p><strong>Chi pubblica.</strong> GitHub Pages serve i file di <code>docs/</code> dal branch <code>main</code> così come sono, senza
+eseguire la build. La Action <code>build.yml</code> del sito <strong>non pubblica</strong>: a ogni push e pull request su
+<code>main</code> rigenera gli HTML con <code>npm run build</code> (su Node 22) e fallisce se differiscono da quelli
+committati, cioè se un <code>.md</code> è cambiato senza build o un <code>.html</code> è stato toccato a mano. Se è rossa,
+si lancia <code>npm run build</code> e si committano gli HTML rigenerati.</p>
 <p>Quando il template cambia in modo visibile — una convenzione, una chiave di configurazione, una
 skill, un pacchetto pinnato — la pagina corrispondente va aggiornata <strong>nello stesso giro</strong>, dopo il
 rilascio. La mappa:</p>
@@ -400,7 +538,7 @@ costa un minuto e trova le pagine rimaste indietro.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 8.0.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

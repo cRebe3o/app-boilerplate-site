@@ -114,25 +114,45 @@ Windows** a seconda dell'infrastruttura del cliente.
 
 ### Come si passa dall'una all'altra
 
-Qui c'è un punto che sorprende, ed è bene saperlo perché fa risparmiare tempo:
+Le decisioni sono due, in due posti diversi: il **backend** decide quali metodi sono attivi, il
+**frontend** quale schermata mostrare fra quelli.
 
-> **Il backend non ha una strategia.** Non sceglie quale schermata mostrare, ed emette e valida
-> sempre e solo i propri JWT. Ogni endpoint di login esiste quando ha ciò che gli serve:
->
-> | Endpoint | Attivo | Altrimenti |
-> |---|---|---|
-> | `/login` | sempre | — |
-> | `/msal-login` | con `Auth:Msal:TenantId` e `Auth:Msal:ClientId` valorizzati | 404 |
-> | `/windows-login` | con `Auth:Windows:Enabled` a `true`: già così in `appsettings.Development.json`, fuori da Development va acceso | 404 |
->
-> Il login Windows è spento di base perché, acceso, chiunque abbia un account Windows valido per il
-> server può provare a entrare.
->
-> In `appsettings.local.json.example` compare una chiave `Auth:Strategy`: **non è letta da nessuna
-> parte del codice**, è lì solo come promemoria di quale schermata si sta usando. Cambiarla non
-> cambia il comportamento del backend.
+**Il backend: quali metodi sono attivi.** Emette e valida sempre e solo i propri JWT, e ogni
+endpoint di login esiste quando ha ciò che gli serve:
 
-A scegliere è il **frontend**, con `VITE_AUTH_STRATEGY`:
+| Endpoint | Attivo | Altrimenti |
+|---|---|---|
+| `/login` | con `Auth:Password:Enabled` a `true`, il default | 404 |
+| `/msal-login` | con `Auth:Msal:TenantId` e `Auth:Msal:ClientId` valorizzati | 404 |
+| `/windows-login` | con `Auth:Windows:Enabled` a `true`: già così in `appsettings.Development.json`, fuori da Development va acceso | 404 |
+
+Il login Windows è spento di base perché, acceso, chiunque abbia un account Windows valido per il
+server può provare a entrare. Il login con password si spegne quando si entra con Microsoft o
+Windows: altrimenti una password locale, scelta da chi crea l'utente, scavalcherebbe l'identity
+provider e la sua seconda verifica. Con `access_mode` `private` è **spento in produzione**
+(`appsettings.Production.json`); per riaccenderlo, `Auth__Password__Enabled=true`.
+
+`GET /api/auth/methods`, anonimo, dice quali sono attivi (`{ password, microsoft, windows }`): il
+frontend lo legge per sapere che cosa mostrare. I valori si leggono dalla configurazione a ogni
+richiesta, quindi una modifica in `appsettings.local.json` vale senza riavviare il backend; il
+frontend li legge una volta per caricamento della pagina. Se all'avvio nessun metodo è attivo
+(password spenta, Microsoft non configurato, Windows spento), l'API parte con un avviso nel log.
+
+**Con la password spenta:**
+
+- `/api/auth/login` risponde 404 e la pagina di login non mostra il form, ma una riga che dice
+  perché (`Auth:Password:Enabled`) e di impostare `VITE_AUTH_STRATEGY` su Microsoft o Windows;
+- gli utenti si creano **senza password**: una password nella richiesta dà 400
+  `PasswordLoginDisabled`, e "Nuovo utente" non ha il campo;
+- il cambio password, quello dell'amministratore e il proprio, risponde 404, e i pulsanti
+  spariscono;
+- l'admin del seed nasce senza password ed entra con Microsoft (`Seed:AdminUsername` è allora la
+  sua email aziendale) o con l'utente Windows; il seed lo scrive nel log, e la pagina di login non
+  mostra le credenziali di sviluppo.
+
+Le password già salvate restano nel database ma non servono più.
+
+**Il frontend: quale schermata.** Si sceglie con `VITE_AUTH_STRATEGY`, fra i metodi attivi:
 
 ```env
 # apps/frontend/.env.local
@@ -414,7 +434,28 @@ Il cambio di ruoli o gruppi revoca anche i refresh token, come eliminazione, dis
 password: l'utente rientra con un login. Un permesso aggiunto o tolto **a un ruolo** non cambia
 l'impronta degli utenti che lo hanno: arriva con il refresh successivo, al più tardi dopo un'ora.
 
-### 5. Uscita
+### 5. Cambio della propria password
+
+Ognuno cambia la propria password da "Cambia la mia password", nel menu dell'utente, con
+`POST /api/auth/password { currentPassword, newPassword }`. Basta aver fatto accesso, senza
+permessi; è diverso dal cambio fatto da un amministratore, che chiede `users.write` e non chiede la
+password attuale.
+
+- **Serve la password attuale.** Chi trova una sessione aperta, o ruba un token di accesso, non si
+  prende l'account cambiandola. Se è sbagliata la risposta è 400 `CurrentPasswordWrong`, un errore
+  sul campo e non un 401: la sessione resta valida.
+- **La nuova segue `PasswordRules`**, le stesse regole della creazione.
+- **Le altre sessioni si chiudono.** I refresh token dell'utente si cancellano e i token di accesso
+  già emessi non valgono più, perché l'impronta `sst` contiene la password. Questa sessione continua
+  con un token e un cookie nuovi, nella risposta. I refresh token si cancellano invece di revocarli:
+  un token revocato, presentato da un'altra scheda, sembrerebbe rubato e chiuderebbe anche questa
+  sessione.
+- **Stesso limite di frequenza del login con password**, perché con un token rubato si potrebbe
+  provare una password attuale dopo l'altra.
+- Con `Auth:Password:Enabled` spento risponde 404 e la voce del menu non c'è. Chi entra con
+  Microsoft o Windows non ha una password locale: riceve 409 `NoLocalPassword`.
+
+### 6. Uscita
 
 `POST /api/auth/logout` revoca il refresh token e cancella il cookie. È **idempotente**: se il token
 non c'è più, non è un errore. L'access token già emesso resta tecnicamente valido fino alla scadenza —
@@ -469,9 +510,17 @@ group.MapDelete("/{id:int}", …)
     .RequireAuthorization(p => p.RequireClaim("permissions", "groups.delete"));
 ```
 
-Ogni endpoint chiede un permesso del catalogo del seed, oppure sta nell'elenco degli endpoint
-anonimi di `EndpointAuthorizationTests` (in `Architecture.Tests`): un endpoint nuovo senza permesso
-fa fallire la build dei test finché non si decide quale dei due.
+Un endpoint che non dichiara niente **chiede comunque l'accesso**: è la regola di riserva
+(`SetFallbackPolicy` in `AuthExtensions`), che prima non c'era, e un endpoint dimenticato era
+pubblico. Gli endpoint anonimi lo dicono con `.AllowAnonymous()`: login, refresh, `methods`,
+`/openapi`, il tramite di Grafana. I pannelli montati come middleware (lavori programmati, ingresso
+di Grafana) decidono da sé, e un indirizzo che non esiste resta 404.
+
+`EndpointAuthorizationTests` (in `Architecture.Tests`) controlla che ogni endpoint stia in uno di
+tre casi: chiede un permesso del catalogo del seed, sta nell'elenco `Anonymous`, oppure sta
+nell'elenco `SignedInOnly`, per quelli a cui basta l'accesso (come il cambio della propria
+password). Un endpoint nuovo che non rientra in nessuno dei tre fa fallire i test finché non si
+decide quale.
 
 ### Chi può dare ruoli e permessi
 
@@ -485,6 +534,23 @@ Con `users.write` si modifica un utente, ma non si assegna qualunque cosa. Le re
   a un ruolo (`PermissionsNotHeld`).
 
 I tre codici rispondono 403. Senza queste regole un Admin poteva farsi SuperAdmin da solo.
+
+Due regole riguardano i ruoli stessi:
+
+- **I permessi riservati al SuperAdmin non vanno a nessun altro ruolo**, nemmeno personalizzato:
+  `permissions.*`, e `jobs.dashboard` e `telemetry.dashboard` quando il progetto ha lavori
+  programmati e Grafana (`Permission.SuperAdminOnlyResources`). Darli risponde 403
+  `SuperAdminOnlyPermission`, e la pagina Ruoli li mostra bloccati (`superAdminOnly` nella risposta
+  di `/api/permissions`). Se un ruolo li ha già, il seed glieli toglie all'avvio e lo scrive nel log
+  ("Seed: tolti ai ruoli i permessi riservati al SuperAdmin").
+- **Dei ruoli di sistema si cambiano i permessi, non nome e descrizione** (`SystemRoleNotEditable`).
+  Il SuperAdmin non si tocca: ha sempre tutti i permessi, e la sua pagina è in sola lettura. Così un
+  permesso nuovo, che su un database esistente il seed dà solo al SuperAdmin, si assegna ad Admin e
+  Viewer dalla pagina Ruoli.
+
+Il catalogo dei permessi (`GET /api/permissions`) si legge con `permissions.read` **o** con
+`roles.read`: chi modifica i ruoli deve vedere i permessi da dare, e un Admin non ha
+`permissions.read`.
 
 ## Configurazione
 
@@ -504,6 +570,9 @@ I tre codici rispondono 403. Senza queste regole un Admin poteva farsi SuperAdmi
       "TenantId": "…",
       "ClientId": "…"     // l'app registration dell'API — non quella della SPA
     },
+    "Password": {
+      "Enabled": true     // false: si entra solo con Microsoft o Windows
+    },
     "Windows": {
       "Enabled": false    // true in appsettings.Development.json
     }
@@ -517,6 +586,7 @@ I tre codici rispondono 403. Senza queste regole un Admin poteva farsi SuperAdmi
 | `Jwt:ExpiresInMinutes` | Default 60. Valori sensati: 15–60 |
 | `Jwt:RefreshExpiresInDays` | Default 7. Decide per quanto l'utente resta connesso senza riautenticarsi |
 | `Msal:TenantId` · `Msal:ClientId` | Il ClientId dell'**API** su Azure: è quello che il backend si aspetta come `aud` del token. Vuoti, `/msal-login` risponde 404 |
+| `Password:Enabled` | Default `true`. Spento: `/login` e i cambi password rispondono 404, gli utenti nascono senza password. Con `access_mode` `private` è `false` in `appsettings.Production.json`; si riaccende con `Auth__Password__Enabled=true`. Vedi [Come si passa dall'una all'altra](#come-si-passa-dall-una-all-altra) |
 | `Windows:Enabled` | Accende `/windows-login`. `true` in `Development`, `false` altrove: fuori da Development si imposta `Auth__Windows__Enabled=true`. Serve anche il pacchetto NuGet `Microsoft.AspNetCore.Authentication.Negotiate`, già nel progetto |
 
 Generare un secret:
@@ -591,7 +661,10 @@ credenziali, perché il browser considera comunque `localhost` intranet.
 | Brute force | Rate limiting **per indirizzo del client** (`RateLimits` in `Api/Extensions`). Login con username e password: 10 tentativi ogni 15 minuti in produzione (100 in `Development`, per non intralciare il prova-riprova). Refresh, msal-login e windows-login: 300 ogni 15 minuti, perché non hanno una password da indovinare e un ufficio dietro un solo IP deve poter accedere tutto insieme. Dietro un proxy l'indirizzo vero arriva solo con `ForwardedHeaders` configurato: vedi [Configurazione](../progetto/configurazione.md#forwardedheaders) |
 | Enumerazione utenti | Codice di errore identico per username sconosciuto e password errata; l'account disabilitato si rivela solo con la password giusta |
 | Account disattivati | `IsActive` verificato al login, a ogni refresh **e a ogni richiesta** |
-| Ruoli e permessi | Nessuno cambia i propri, solo un SuperAdmin tocca il ruolo SuperAdmin, nessuno dà permessi che non ha (`IAdministrationRules`) |
+| Ruoli e permessi | Nessuno cambia i propri, solo un SuperAdmin tocca il ruolo SuperAdmin, nessuno dà permessi che non ha (`IAdministrationRules`); i permessi riservati al SuperAdmin non vanno a nessun altro ruolo (`SuperAdminOnlyPermission`) |
+| Endpoint senza dichiarazione | Chiedono l'accesso (regola di riserva); gli anonimi lo dichiarano con `.AllowAnonymous()`, e un test li elenca |
+| Login con password | Spegnibile (`Auth:Password:Enabled`), spento in produzione con `access_mode` `private`: una password locale non scavalca l'identity provider |
+| Cambio della propria password | Chiede la password attuale, chiude le altre sessioni, stesso limite di frequenza del login |
 | Token Azure | Firma (JWKS), issuer, audience e scadenza validati **dal backend**. Nel browser i token di Microsoft stanno in `sessionStorage` |
 | Identità Windows | Login attivo solo con `Auth:Windows:Enabled`; handshake Negotiate gestito dal middleware ASP.NET; header di bypass solo in Development e solo da questo computer |
 | Intestazioni HTTP | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` su ogni risposta; su `/api` anche una CSP e `Cache-Control: no-store`; HSTS fuori da Development |
@@ -721,7 +794,13 @@ username locale, email per MSAL, `DOMINIO\utente` per Windows); **Email** è fac
 | **SSO Windows: 401 e nessun popup** | Il browser non invia le credenziali. Chrome/Edge: l'host non è in zona intranet. Firefox: manca `network.negotiate-auth.trusted-uris`. In alternativa usa l'header `X-Dev-Windows-User` in Development, da questo computer |
 | **SSO Windows: `NU1903` a `dotnet build`** | Pacchetto Negotiate su una versione < 10.0.10: aggiorna |
 | **Il pulsante Microsoft non appare** | `VITE_AUTH_STRATEGY` non vale esattamente `msal` |
-| **Il form username/password non appare** | `VITE_AUTH_STRATEGY` vale `msal` o `windows`: rimettilo a `jwt` |
+| **Il form username/password non appare** | `VITE_AUTH_STRATEGY` vale `msal` o `windows`: rimettilo a `jwt`. Se la pagina dice che l'accesso con username e password non è attivo, è spento nel backend (`Auth:Password:Enabled`, spento in produzione con `access_mode` `private`) |
+| **404 su `/api/auth/login` o sul cambio password** | `Auth:Password:Enabled` è `false`: si entra con Microsoft o Windows |
+| **400 `PasswordLoginDisabled` creando un utente** | Password spenta nel backend: l'utente si crea senza password |
+| **409 `NoLocalPassword` su "Cambia la mia password"** | L'utente entra con Microsoft o Windows e non ha una password locale |
+| **403 `SuperAdminOnlyPermission`** | Si è provato a dare a un ruolo un permesso riservato al SuperAdmin: vedi [Chi può dare ruoli e permessi](#chi-puo-dare-ruoli-e-permessi) |
+| **Un endpoint nuovo risponde 401 a chi non ha fatto accesso** | Regola di riserva: se deve essere pubblico, `.AllowAnonymous()` e la riga in `Anonymous` di `EndpointAuthorizationTests` |
+| **"Nessun metodo di accesso attivo" nel log all'avvio** | Password spenta, `Auth:Msal` non configurato e Windows spento: nessuno può entrare. Tipico con `access_mode` `private` in produzione prima di configurare Microsoft |
 | **401 "Account disabilitato"** | `IsActive = false` sull'utente |
 
 Per guardare dentro un token: [jwt.ms](https://jwt.ms) (Azure) o [jwt.io](https://jwt.io) — mai con

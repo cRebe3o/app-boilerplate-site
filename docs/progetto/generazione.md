@@ -109,7 +109,9 @@ Il template lo dice da sé, in coda ai task, ma vale la pena averlo qui:
    `appsettings.local.json` (gitignored) e valorizzarlo: provider, connection string, secret JWT,
    utente amministratore iniziale (`Seed:AdminUsername`, `Seed:AdminEmail`,
    `Seed:AdminDisplayName`, `Seed:AdminPassword`; i default sono `admin` / `Administrator`, e in
-   sviluppo una password vuota vale `Admin@1234`, che la pagina di login mostra).
+   sviluppo una password vuota vale `Admin@1234`, che la pagina di login mostra). Con
+   `access_mode` `private` in produzione il login con password è spento: l'admin entra con
+   Microsoft o Windows (vedi [Configurazione](configurazione.md#auth)).
 2. Copiare `apps/frontend/.env.local.example` in `apps/frontend/.env.local` e valorizzarlo.
 3. **Avviare il backend.** La migration `InitialCreate` è già inclusa per entrambi i provider: si
    applica da sola all'avvio (`MigrateAsync`), crea il database se non esiste e, su un database
@@ -221,6 +223,38 @@ per sessioni, ruoli e intestazioni, [Configurazione](configurazione.md) per le c
 passa dalla 6.1.0 direttamente alla 7.0.1 o successiva non vede cambiamenti di colore. **7.0.2**
 non chiede niente: cambia solo l'intestazione di `api.generated.ts`, e se l'update la segna in
 conflitto si tiene una delle due versioni e si lancia `pnpm gen:api`.
+
+**8.0.0 — login con password spegnibile, permessi e regola di riserva.** Dopo l'update:
+
+| Chi | Che cosa fa |
+|---|---|
+| Chi ha `access_mode` `private` | **In produzione il login con password si spegne** (`appsettings.Production.json`). Prima di pubblicare configura `Auth:Msal` (o accende `Auth:Windows:Enabled`) e controlla che chi amministra abbia un utente con il suo account Microsoft o Windows; le password già salvate restano nel database ma non servono più. Per tenere la password: `Auth__Password__Enabled=true`. Se l'update segna in conflitto `appsettings.Production.json`, si tiene il blocco `Password` |
+| Chi ha endpoint anonimi propri | Un endpoint senza `RequireAuthorization` che deve restare pubblico ora risponde 401 (regola di riserva): gli aggiunge `.AllowAnonymous()` e la riga in `Anonymous` di `EndpointAuthorizationTests` |
+| Chi ha ruoli personalizzati con permessi riservati al SuperAdmin | Al primo avvio il seed li toglie (riga "Seed: tolti ai ruoli i permessi riservati al SuperAdmin" nel log). Chi apriva il pannello dei lavori o Grafana con un ruolo personalizzato ora deve avere il ruolo SuperAdmin |
+| Chi ha scritto codice nel progetto | `CreateUserCommand.Password` può essere `null`; `CreateUserValidator` riceve `IAuthMethods`; `Role.AssignPermissions` sul SuperAdmin lancia (per dargli permessi nuovi si usa `AddPermissions`); un test che costruisce a mano `PermissionResponse` riceve `SuperAdminOnly`. Un progetto che usa davvero `Microsoft.Identity.Web`, tolto dal template, lo rimette nel suo csproj |
+| Tutti | I tipi del frontend cambiano: se `api.generated.ts` va in conflitto, si tiene una delle due versioni e si lancia `pnpm gen:api` |
+
+Che cosa cambia, nel dettaglio: [Autenticazione](../autenticazione/autenticazione.md#come-si-passa-dall-una-all-altra)
+per i metodi di accesso e il cambio della propria password,
+[Chi può dare ruoli e permessi](../autenticazione/autenticazione.md#chi-puo-dare-ruoli-e-permessi)
+per i ruoli di sistema e i permessi riservati, [Configurazione](configurazione.md#auth) per
+`Auth:Password:Enabled`.
+
+## Problemi tipici in locale
+
+I problemi di autenticazione hanno la loro tabella in
+[Autenticazione](../autenticazione/autenticazione.md#diagnostica); questi sono quelli della
+macchina di sviluppo.
+
+| Sintomo | Causa e rimedio |
+|---|---|
+| **Il backend non parte: indirizzo già in uso** | Un altro progetto (spesso app-demo) usa già la porta dell'API, `api_port` alla generazione (5080 di base). Si ferma l'altro, oppure si avvia questo su un'altra porta (`ASPNETCORE_URLS=http://localhost:5081`) e la si scrive in `VITE_API_BASE_URL` di `.env.local` |
+| **Il frontend si apre su una porta diversa da quella attesa** | Vite, se `frontend_port` (5173 di base) è occupata, prende in silenzio la successiva libera. In Development il CORS accetta ogni porta di `localhost`, quindi funziona lo stesso; per fallire invece di cambiare porta, `npx vite --port <porta> --strictPort` |
+| **Il container PostgreSQL non parte: porta 5432 già usata** | Sulla macchina c'è un PostgreSQL installato, che ascolta già sulla 5432. Nel `docker-compose.yml` si cambia la porta esterna (`"127.0.0.1:5433:5432"`) e si mette `Port=5433` nella connection string; oppure si usa il PostgreSQL installato e non il container |
+| **L'API non parte o si ferma al primo accesso al database** | Docker Desktop è spento, o il container del database non è avviato: `docker compose up -d` dalla radice del progetto. Con SQL Server su LocalDB Docker non serve |
+| **pnpm segnala errori strani su `node_modules` dopo un cambio di versione di pnpm** | La versione di pnpm è in `packageManager` del `package.json` e cambia con gli update del template. Si cancella `node_modules` (anche quello di `apps/frontend`) e si rilancia `pnpm install` |
+| **Vitest o Vite non trovano pacchetti installati, in una cartella con un percorso lungo** | Su Windows i link dentro `node_modules/.pnpm` superano i 260 caratteri. Si genera il progetto in un percorso corto (`C:\repos\…`, `C:\tmp\…`), non sotto `AppData` |
+| **`node` o `claude` lenti, o segnalati dall'antivirus** | L'antivirus analizza ogni file che pnpm, Vite, `dotnet` e Claude Code toccano. Si esclude la **cartella dei repository** (per esempio `C:\repos`), non gli eseguibili: escludere `node.exe` o `claude` toglierebbe la protezione a tutto ciò che lanciano |
 
 ## Da qui
 

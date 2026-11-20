@@ -111,6 +111,7 @@
           <li class="lvl-2"><a href="#aggiornare-un-progetto-quando-il-template-cambia">Aggiornare un progetto quando il template cambia</a></li>
           <li class="lvl-3"><a href="#la-procedura-in-breve">La procedura, in breve</a></li>
           <li class="lvl-3"><a href="#le-versioni-che-chiedono-qualcosa-a-mano">Le versioni che chiedono qualcosa a mano</a></li>
+          <li class="lvl-2"><a href="#problemi-tipici-in-locale">Problemi tipici in locale</a></li>
           <li class="lvl-2"><a href="#da-qui">Da qui</a></li>
         </ul>
       </nav>
@@ -297,7 +298,9 @@ qualcosa non torna, si cancella la cartella e si rigenera.</p>
 <code>appsettings.local.json</code> (gitignored) e valorizzarlo: provider, connection string, secret JWT,
 utente amministratore iniziale (<code>Seed:AdminUsername</code>, <code>Seed:AdminEmail</code>,
 <code>Seed:AdminDisplayName</code>, <code>Seed:AdminPassword</code>; i default sono <code>admin</code> / <code>Administrator</code>, e in
-sviluppo una password vuota vale <code>Admin@1234</code>, che la pagina di login mostra).</li>
+sviluppo una password vuota vale <code>Admin@1234</code>, che la pagina di login mostra). Con
+<code>access_mode</code> <code>private</code> in produzione il login con password è spento: l'admin entra con
+Microsoft o Windows (vedi <a href="configurazione.html#auth">Configurazione</a>).</li>
 <li>Copiare <code>apps/frontend/.env.local.example</code> in <code>apps/frontend/.env.local</code> e valorizzarlo.</li>
 <li><strong>Avviare il backend.</strong> La migration <code>InitialCreate</code> è già inclusa per entrambi i provider: si
 applica da sola all'avvio (<code>MigrateAsync</code>), crea il database se non esiste e, su un database
@@ -479,6 +482,88 @@ per sessioni, ruoli e intestazioni, <a href="configurazione.html">Configurazione
 passa dalla 6.1.0 direttamente alla 7.0.1 o successiva non vede cambiamenti di colore. <strong>7.0.2</strong>
 non chiede niente: cambia solo l'intestazione di <code>api.generated.ts</code>, e se l'update la segna in
 conflitto si tiene una delle due versioni e si lancia <code>pnpm gen:api</code>.</p>
+<p><strong>8.0.0 — login con password spegnibile, permessi e regola di riserva.</strong> Dopo l'update:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Chi</th>
+<th>Che cosa fa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chi ha <code>access_mode</code> <code>private</code></td>
+<td><strong>In produzione il login con password si spegne</strong> (<code>appsettings.Production.json</code>). Prima di pubblicare configura <code>Auth:Msal</code> (o accende <code>Auth:Windows:Enabled</code>) e controlla che chi amministra abbia un utente con il suo account Microsoft o Windows; le password già salvate restano nel database ma non servono più. Per tenere la password: <code>Auth__Password__Enabled=true</code>. Se l'update segna in conflitto <code>appsettings.Production.json</code>, si tiene il blocco <code>Password</code></td>
+</tr>
+<tr>
+<td>Chi ha endpoint anonimi propri</td>
+<td>Un endpoint senza <code>RequireAuthorization</code> che deve restare pubblico ora risponde 401 (regola di riserva): gli aggiunge <code>.AllowAnonymous()</code> e la riga in <code>Anonymous</code> di <code>EndpointAuthorizationTests</code></td>
+</tr>
+<tr>
+<td>Chi ha ruoli personalizzati con permessi riservati al SuperAdmin</td>
+<td>Al primo avvio il seed li toglie (riga &quot;Seed: tolti ai ruoli i permessi riservati al SuperAdmin&quot; nel log). Chi apriva il pannello dei lavori o Grafana con un ruolo personalizzato ora deve avere il ruolo SuperAdmin</td>
+</tr>
+<tr>
+<td>Chi ha scritto codice nel progetto</td>
+<td><code>CreateUserCommand.Password</code> può essere <code>null</code>; <code>CreateUserValidator</code> riceve <code>IAuthMethods</code>; <code>Role.AssignPermissions</code> sul SuperAdmin lancia (per dargli permessi nuovi si usa <code>AddPermissions</code>); un test che costruisce a mano <code>PermissionResponse</code> riceve <code>SuperAdminOnly</code>. Un progetto che usa davvero <code>Microsoft.Identity.Web</code>, tolto dal template, lo rimette nel suo csproj</td>
+</tr>
+<tr>
+<td>Tutti</td>
+<td>I tipi del frontend cambiano: se <code>api.generated.ts</code> va in conflitto, si tiene una delle due versioni e si lancia <code>pnpm gen:api</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Che cosa cambia, nel dettaglio: <a href="../autenticazione/autenticazione.html#come-si-passa-dall-una-all-altra">Autenticazione</a>
+per i metodi di accesso e il cambio della propria password,
+<a href="../autenticazione/autenticazione.html#chi-puo-dare-ruoli-e-permessi">Chi può dare ruoli e permessi</a>
+per i ruoli di sistema e i permessi riservati, <a href="configurazione.html#auth">Configurazione</a> per
+<code>Auth:Password:Enabled</code>.</p>
+<h2 id="problemi-tipici-in-locale">Problemi tipici in locale</h2>
+<p>I problemi di autenticazione hanno la loro tabella in
+<a href="../autenticazione/autenticazione.html#diagnostica">Autenticazione</a>; questi sono quelli della
+macchina di sviluppo.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Sintomo</th>
+<th>Causa e rimedio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Il backend non parte: indirizzo già in uso</strong></td>
+<td>Un altro progetto (spesso app-demo) usa già la porta dell'API, <code>api_port</code> alla generazione (5080 di base). Si ferma l'altro, oppure si avvia questo su un'altra porta (<code>ASPNETCORE_URLS=http://localhost:5081</code>) e la si scrive in <code>VITE_API_BASE_URL</code> di <code>.env.local</code></td>
+</tr>
+<tr>
+<td><strong>Il frontend si apre su una porta diversa da quella attesa</strong></td>
+<td>Vite, se <code>frontend_port</code> (5173 di base) è occupata, prende in silenzio la successiva libera. In Development il CORS accetta ogni porta di <code>localhost</code>, quindi funziona lo stesso; per fallire invece di cambiare porta, <code>npx vite --port &lt;porta&gt; --strictPort</code></td>
+</tr>
+<tr>
+<td><strong>Il container PostgreSQL non parte: porta 5432 già usata</strong></td>
+<td>Sulla macchina c'è un PostgreSQL installato, che ascolta già sulla 5432. Nel <code>docker-compose.yml</code> si cambia la porta esterna (<code>&quot;127.0.0.1:5433:5432&quot;</code>) e si mette <code>Port=5433</code> nella connection string; oppure si usa il PostgreSQL installato e non il container</td>
+</tr>
+<tr>
+<td><strong>L'API non parte o si ferma al primo accesso al database</strong></td>
+<td>Docker Desktop è spento, o il container del database non è avviato: <code>docker compose up -d</code> dalla radice del progetto. Con SQL Server su LocalDB Docker non serve</td>
+</tr>
+<tr>
+<td><strong>pnpm segnala errori strani su <code>node_modules</code> dopo un cambio di versione di pnpm</strong></td>
+<td>La versione di pnpm è in <code>packageManager</code> del <code>package.json</code> e cambia con gli update del template. Si cancella <code>node_modules</code> (anche quello di <code>apps/frontend</code>) e si rilancia <code>pnpm install</code></td>
+</tr>
+<tr>
+<td><strong>Vitest o Vite non trovano pacchetti installati, in una cartella con un percorso lungo</strong></td>
+<td>Su Windows i link dentro <code>node_modules/.pnpm</code> superano i 260 caratteri. Si genera il progetto in un percorso corto (<code>C:\repos\…</code>, <code>C:\tmp\…</code>), non sotto <code>AppData</code></td>
+</tr>
+<tr>
+<td><strong><code>node</code> o <code>claude</code> lenti, o segnalati dall'antivirus</strong></td>
+<td>L'antivirus analizza ogni file che pnpm, Vite, <code>dotnet</code> e Claude Code toccano. Si esclude la <strong>cartella dei repository</strong> (per esempio <code>C:\repos</code>), non gli eseguibili: escludere <code>node.exe</code> o <code>claude</code> toglierebbe la protezione a tutto ciò che lanciano</td>
+</tr>
+</tbody>
+</table>
+</div>
 <h2 id="da-qui">Da qui</h2>
 <ul>
 <li><a href="panoramica.html">Panoramica</a> — che cosa contiene il progetto che hai appena generato</li>
@@ -493,7 +578,7 @@ conflitto si tiene una delle due versioni e si lancia <code>pnpm gen:api</code>.
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 8.0.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

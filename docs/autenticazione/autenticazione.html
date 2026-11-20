@@ -111,7 +111,8 @@
           <li class="lvl-3"><a href="#2-accesso-con-account-microsoft">2. Accesso con account Microsoft</a></li>
           <li class="lvl-3"><a href="#3-accesso-con-identita-windows">3. Accesso con identità Windows</a></li>
           <li class="lvl-3"><a href="#4-uso-del-token-e-rinnovo">4. Uso del token, e rinnovo</a></li>
-          <li class="lvl-3"><a href="#5-uscita">5. Uscita</a></li>
+          <li class="lvl-3"><a href="#5-cambio-della-propria-password">5. Cambio della propria password</a></li>
+          <li class="lvl-3"><a href="#6-uscita">6. Uscita</a></li>
           <li class="lvl-2"><a href="#come-si-risolvono-i-permessi">Come si risolvono i permessi</a></li>
           <li class="lvl-3"><a href="#chi-puo-dare-ruoli-e-permessi">Chi può dare ruoli e permessi</a></li>
           <li class="lvl-2"><a href="#configurazione">Configurazione</a></li>
@@ -281,10 +282,10 @@ quell'utente entrerà.</p>
 <p>In esercizio: <strong>sviluppo con username e password, produzione con account Microsoft o identità
 Windows</strong> a seconda dell'infrastruttura del cliente.</p>
 <h3 id="come-si-passa-dall-una-all-altra">Come si passa dall'una all'altra</h3>
-<p>Qui c'è un punto che sorprende, ed è bene saperlo perché fa risparmiare tempo:</p>
-<blockquote>
-<p><strong>Il backend non ha una strategia.</strong> Non sceglie quale schermata mostrare, ed emette e valida
-sempre e solo i propri JWT. Ogni endpoint di login esiste quando ha ciò che gli serve:</p>
+<p>Le decisioni sono due, in due posti diversi: il <strong>backend</strong> decide quali metodi sono attivi, il
+<strong>frontend</strong> quale schermata mostrare fra quelli.</p>
+<p><strong>Il backend: quali metodi sono attivi.</strong> Emette e valida sempre e solo i propri JWT, e ogni
+endpoint di login esiste quando ha ciò che gli serve:</p>
 <div class="table-wrap">
 <table>
 <thead>
@@ -297,8 +298,8 @@ sempre e solo i propri JWT. Ogni endpoint di login esiste quando ha ciò che gli
 <tbody>
 <tr>
 <td><code>/login</code></td>
-<td>sempre</td>
-<td>—</td>
+<td>con <code>Auth:Password:Enabled</code> a <code>true</code>, il default</td>
+<td>404</td>
 </tr>
 <tr>
 <td><code>/msal-login</code></td>
@@ -314,12 +315,29 @@ sempre e solo i propri JWT. Ogni endpoint di login esiste quando ha ciò che gli
 </table>
 </div>
 <p>Il login Windows è spento di base perché, acceso, chiunque abbia un account Windows valido per il
-server può provare a entrare.</p>
-<p>In <code>appsettings.local.json.example</code> compare una chiave <code>Auth:Strategy</code>: <strong>non è letta da nessuna
-parte del codice</strong>, è lì solo come promemoria di quale schermata si sta usando. Cambiarla non
-cambia il comportamento del backend.</p>
-</blockquote>
-<p>A scegliere è il <strong>frontend</strong>, con <code>VITE_AUTH_STRATEGY</code>:</p>
+server può provare a entrare. Il login con password si spegne quando si entra con Microsoft o
+Windows: altrimenti una password locale, scelta da chi crea l'utente, scavalcherebbe l'identity
+provider e la sua seconda verifica. Con <code>access_mode</code> <code>private</code> è <strong>spento in produzione</strong>
+(<code>appsettings.Production.json</code>); per riaccenderlo, <code>Auth__Password__Enabled=true</code>.</p>
+<p><code>GET /api/auth/methods</code>, anonimo, dice quali sono attivi (<code>{ password, microsoft, windows }</code>): il
+frontend lo legge per sapere che cosa mostrare. I valori si leggono dalla configurazione a ogni
+richiesta, quindi una modifica in <code>appsettings.local.json</code> vale senza riavviare il backend; il
+frontend li legge una volta per caricamento della pagina. Se all'avvio nessun metodo è attivo
+(password spenta, Microsoft non configurato, Windows spento), l'API parte con un avviso nel log.</p>
+<p><strong>Con la password spenta:</strong></p>
+<ul>
+<li><code>/api/auth/login</code> risponde 404 e la pagina di login non mostra il form, ma una riga che dice
+perché (<code>Auth:Password:Enabled</code>) e di impostare <code>VITE_AUTH_STRATEGY</code> su Microsoft o Windows;</li>
+<li>gli utenti si creano <strong>senza password</strong>: una password nella richiesta dà 400
+<code>PasswordLoginDisabled</code>, e &quot;Nuovo utente&quot; non ha il campo;</li>
+<li>il cambio password, quello dell'amministratore e il proprio, risponde 404, e i pulsanti
+spariscono;</li>
+<li>l'admin del seed nasce senza password ed entra con Microsoft (<code>Seed:AdminUsername</code> è allora la
+sua email aziendale) o con l'utente Windows; il seed lo scrive nel log, e la pagina di login non
+mostra le credenziali di sviluppo.</li>
+</ul>
+<p>Le password già salvate restano nel database ma non servono più.</p>
+<p><strong>Il frontend: quale schermata.</strong> Si sceglie con <code>VITE_AUTH_STRATEGY</code>, fra i metodi attivi:</p>
 <pre><code class="language-env"><span class="hljs-comment"># apps/frontend/.env.local</span>
 <span class="hljs-attr">VITE_AUTH_STRATEGY</span>=jwt       <span class="hljs-comment"># form username/password</span>
 <span class="hljs-attr">VITE_AUTH_STRATEGY</span>=msal      <span class="hljs-comment"># pulsante &quot;Accedi con Microsoft&quot;</span>
@@ -560,7 +578,27 @@ più istanze dell'API l'effetto arriva entro il minuto della cache.</p>
 <p>Il cambio di ruoli o gruppi revoca anche i refresh token, come eliminazione, disattivazione e cambio
 password: l'utente rientra con un login. Un permesso aggiunto o tolto <strong>a un ruolo</strong> non cambia
 l'impronta degli utenti che lo hanno: arriva con il refresh successivo, al più tardi dopo un'ora.</p>
-<h3 id="5-uscita">5. Uscita</h3>
+<h3 id="5-cambio-della-propria-password">5. Cambio della propria password</h3>
+<p>Ognuno cambia la propria password da &quot;Cambia la mia password&quot;, nel menu dell'utente, con
+<code>POST /api/auth/password { currentPassword, newPassword }</code>. Basta aver fatto accesso, senza
+permessi; è diverso dal cambio fatto da un amministratore, che chiede <code>users.write</code> e non chiede la
+password attuale.</p>
+<ul>
+<li><strong>Serve la password attuale.</strong> Chi trova una sessione aperta, o ruba un token di accesso, non si
+prende l'account cambiandola. Se è sbagliata la risposta è 400 <code>CurrentPasswordWrong</code>, un errore
+sul campo e non un 401: la sessione resta valida.</li>
+<li><strong>La nuova segue <code>PasswordRules</code></strong>, le stesse regole della creazione.</li>
+<li><strong>Le altre sessioni si chiudono.</strong> I refresh token dell'utente si cancellano e i token di accesso
+già emessi non valgono più, perché l'impronta <code>sst</code> contiene la password. Questa sessione continua
+con un token e un cookie nuovi, nella risposta. I refresh token si cancellano invece di revocarli:
+un token revocato, presentato da un'altra scheda, sembrerebbe rubato e chiuderebbe anche questa
+sessione.</li>
+<li><strong>Stesso limite di frequenza del login con password</strong>, perché con un token rubato si potrebbe
+provare una password attuale dopo l'altra.</li>
+<li>Con <code>Auth:Password:Enabled</code> spento risponde 404 e la voce del menu non c'è. Chi entra con
+Microsoft o Windows non ha una password locale: riceve 409 <code>NoLocalPassword</code>.</li>
+</ul>
+<h3 id="6-uscita">6. Uscita</h3>
 <p><code>POST /api/auth/logout</code> revoca il refresh token e cancella il cookie. È <strong>idempotente</strong>: se il token
 non c'è più, non è un errore. L'access token già emesso resta tecnicamente valido fino alla scadenza —
 è la natura dei JWT — ma il frontend lo elimina e senza refresh token non se ne ottengono altri.</p>
@@ -601,9 +639,16 @@ quello appena rinnovato da un'altra scheda (vedi <a href="#sul-frontend">Sul fro
 <pre><code class="language-csharp"><span class="hljs-keyword">group</span>.MapDelete(<span class="hljs-string">&quot;/{id:int}&quot;</span>, …)
     .RequireAuthorization(p =&gt; p.RequireClaim(<span class="hljs-string">&quot;permissions&quot;</span>, <span class="hljs-string">&quot;groups.delete&quot;</span>));
 </code></pre>
-<p>Ogni endpoint chiede un permesso del catalogo del seed, oppure sta nell'elenco degli endpoint
-anonimi di <code>EndpointAuthorizationTests</code> (in <code>Architecture.Tests</code>): un endpoint nuovo senza permesso
-fa fallire la build dei test finché non si decide quale dei due.</p>
+<p>Un endpoint che non dichiara niente <strong>chiede comunque l'accesso</strong>: è la regola di riserva
+(<code>SetFallbackPolicy</code> in <code>AuthExtensions</code>), che prima non c'era, e un endpoint dimenticato era
+pubblico. Gli endpoint anonimi lo dicono con <code>.AllowAnonymous()</code>: login, refresh, <code>methods</code>,
+<code>/openapi</code>, il tramite di Grafana. I pannelli montati come middleware (lavori programmati, ingresso
+di Grafana) decidono da sé, e un indirizzo che non esiste resta 404.</p>
+<p><code>EndpointAuthorizationTests</code> (in <code>Architecture.Tests</code>) controlla che ogni endpoint stia in uno di
+tre casi: chiede un permesso del catalogo del seed, sta nell'elenco <code>Anonymous</code>, oppure sta
+nell'elenco <code>SignedInOnly</code>, per quelli a cui basta l'accesso (come il cambio della propria
+password). Un endpoint nuovo che non rientra in nessuno dei tre fa fallire i test finché non si
+decide quale.</p>
 <h3 id="chi-puo-dare-ruoli-e-permessi">Chi può dare ruoli e permessi</h3>
 <p>Con <code>users.write</code> si modifica un utente, ma non si assegna qualunque cosa. Le regole stanno in
 <code>IAdministrationRules</code>, che ogni handler che assegna ruoli, gruppi o permessi usa:</p>
@@ -615,6 +660,22 @@ elimina o cambia la password di un SuperAdmin (<code>SuperAdminRequired</code>);
 a un ruolo (<code>PermissionsNotHeld</code>).</li>
 </ul>
 <p>I tre codici rispondono 403. Senza queste regole un Admin poteva farsi SuperAdmin da solo.</p>
+<p>Due regole riguardano i ruoli stessi:</p>
+<ul>
+<li><strong>I permessi riservati al SuperAdmin non vanno a nessun altro ruolo</strong>, nemmeno personalizzato:
+<code>permissions.*</code>, e <code>jobs.dashboard</code> e <code>telemetry.dashboard</code> quando il progetto ha lavori
+programmati e Grafana (<code>Permission.SuperAdminOnlyResources</code>). Darli risponde 403
+<code>SuperAdminOnlyPermission</code>, e la pagina Ruoli li mostra bloccati (<code>superAdminOnly</code> nella risposta
+di <code>/api/permissions</code>). Se un ruolo li ha già, il seed glieli toglie all'avvio e lo scrive nel log
+(&quot;Seed: tolti ai ruoli i permessi riservati al SuperAdmin&quot;).</li>
+<li><strong>Dei ruoli di sistema si cambiano i permessi, non nome e descrizione</strong> (<code>SystemRoleNotEditable</code>).
+Il SuperAdmin non si tocca: ha sempre tutti i permessi, e la sua pagina è in sola lettura. Così un
+permesso nuovo, che su un database esistente il seed dà solo al SuperAdmin, si assegna ad Admin e
+Viewer dalla pagina Ruoli.</li>
+</ul>
+<p>Il catalogo dei permessi (<code>GET /api/permissions</code>) si legge con <code>permissions.read</code> <strong>o</strong> con
+<code>roles.read</code>: chi modifica i ruoli deve vedere i permessi da dare, e un Admin non ha
+<code>permissions.read</code>.</p>
 <h2 id="configurazione">Configurazione</h2>
 <pre><code class="language-json"><span class="hljs-comment">// appsettings.local.json (gitignored) — in produzione: variabili d&#x27;ambiente</span>
 <span class="hljs-punctuation">{</span>
@@ -630,6 +691,9 @@ a un ruolo (<code>PermissionsNotHeld</code>).</li>
       <span class="hljs-attr">&quot;Instance&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;https://login.microsoftonline.com/&quot;</span><span class="hljs-punctuation">,</span>
       <span class="hljs-attr">&quot;TenantId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;…&quot;</span><span class="hljs-punctuation">,</span>
       <span class="hljs-attr">&quot;ClientId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;…&quot;</span>     <span class="hljs-comment">// l&#x27;app registration dell&#x27;API — non quella della SPA</span>
+    <span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">&quot;Password&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+      <span class="hljs-attr">&quot;Enabled&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-literal"><span class="hljs-keyword">true</span></span>     <span class="hljs-comment">// false: si entra solo con Microsoft o Windows</span>
     <span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
     <span class="hljs-attr">&quot;Windows&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
       <span class="hljs-attr">&quot;Enabled&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-literal"><span class="hljs-keyword">false</span></span>    <span class="hljs-comment">// true in appsettings.Development.json</span>
@@ -661,6 +725,10 @@ a un ruolo (<code>PermissionsNotHeld</code>).</li>
 <tr>
 <td><code>Msal:TenantId</code> · <code>Msal:ClientId</code></td>
 <td>Il ClientId dell'<strong>API</strong> su Azure: è quello che il backend si aspetta come <code>aud</code> del token. Vuoti, <code>/msal-login</code> risponde 404</td>
+</tr>
+<tr>
+<td><code>Password:Enabled</code></td>
+<td>Default <code>true</code>. Spento: <code>/login</code> e i cambi password rispondono 404, gli utenti nascono senza password. Con <code>access_mode</code> <code>private</code> è <code>false</code> in <code>appsettings.Production.json</code>; si riaccende con <code>Auth__Password__Enabled=true</code>. Vedi <a href="#come-si-passa-dall-una-all-altra">Come si passa dall'una all'altra</a></td>
 </tr>
 <tr>
 <td><code>Windows:Enabled</code></td>
@@ -757,7 +825,19 @@ credenziali, perché il browser considera comunque <code>localhost</code> intran
 </tr>
 <tr>
 <td>Ruoli e permessi</td>
-<td>Nessuno cambia i propri, solo un SuperAdmin tocca il ruolo SuperAdmin, nessuno dà permessi che non ha (<code>IAdministrationRules</code>)</td>
+<td>Nessuno cambia i propri, solo un SuperAdmin tocca il ruolo SuperAdmin, nessuno dà permessi che non ha (<code>IAdministrationRules</code>); i permessi riservati al SuperAdmin non vanno a nessun altro ruolo (<code>SuperAdminOnlyPermission</code>)</td>
+</tr>
+<tr>
+<td>Endpoint senza dichiarazione</td>
+<td>Chiedono l'accesso (regola di riserva); gli anonimi lo dichiarano con <code>.AllowAnonymous()</code>, e un test li elenca</td>
+</tr>
+<tr>
+<td>Login con password</td>
+<td>Spegnibile (<code>Auth:Password:Enabled</code>), spento in produzione con <code>access_mode</code> <code>private</code>: una password locale non scavalca l'identity provider</td>
+</tr>
+<tr>
+<td>Cambio della propria password</td>
+<td>Chiede la password attuale, chiude le altre sessioni, stesso limite di frequenza del login</td>
 </tr>
 <tr>
 <td>Token Azure</td>
@@ -964,7 +1044,31 @@ username locale, email per MSAL, <code>DOMINIO\utente</code> per Windows); <stro
 </tr>
 <tr>
 <td><strong>Il form username/password non appare</strong></td>
-<td><code>VITE_AUTH_STRATEGY</code> vale <code>msal</code> o <code>windows</code>: rimettilo a <code>jwt</code></td>
+<td><code>VITE_AUTH_STRATEGY</code> vale <code>msal</code> o <code>windows</code>: rimettilo a <code>jwt</code>. Se la pagina dice che l'accesso con username e password non è attivo, è spento nel backend (<code>Auth:Password:Enabled</code>, spento in produzione con <code>access_mode</code> <code>private</code>)</td>
+</tr>
+<tr>
+<td><strong>404 su <code>/api/auth/login</code> o sul cambio password</strong></td>
+<td><code>Auth:Password:Enabled</code> è <code>false</code>: si entra con Microsoft o Windows</td>
+</tr>
+<tr>
+<td><strong>400 <code>PasswordLoginDisabled</code> creando un utente</strong></td>
+<td>Password spenta nel backend: l'utente si crea senza password</td>
+</tr>
+<tr>
+<td><strong>409 <code>NoLocalPassword</code> su &quot;Cambia la mia password&quot;</strong></td>
+<td>L'utente entra con Microsoft o Windows e non ha una password locale</td>
+</tr>
+<tr>
+<td><strong>403 <code>SuperAdminOnlyPermission</code></strong></td>
+<td>Si è provato a dare a un ruolo un permesso riservato al SuperAdmin: vedi <a href="#chi-puo-dare-ruoli-e-permessi">Chi può dare ruoli e permessi</a></td>
+</tr>
+<tr>
+<td><strong>Un endpoint nuovo risponde 401 a chi non ha fatto accesso</strong></td>
+<td>Regola di riserva: se deve essere pubblico, <code>.AllowAnonymous()</code> e la riga in <code>Anonymous</code> di <code>EndpointAuthorizationTests</code></td>
+</tr>
+<tr>
+<td><strong>&quot;Nessun metodo di accesso attivo&quot; nel log all'avvio</strong></td>
+<td>Password spenta, <code>Auth:Msal</code> non configurato e Windows spento: nessuno può entrare. Tipico con <code>access_mode</code> <code>private</code> in produzione prima di configurare Microsoft</td>
 </tr>
 <tr>
 <td><strong>401 &quot;Account disabilitato&quot;</strong></td>
@@ -1071,7 +1175,7 @@ token di produzione.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 8.0.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

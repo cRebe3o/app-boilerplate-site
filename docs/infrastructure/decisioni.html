@@ -392,6 +392,15 @@ dei modi di perdere dati.</p>
 <p>Con il token, EF include il valore corrente nella <code>WHERE</code> dell'<code>UPDATE</code>: se qualcuno ha salvato nel
 frattempo la riga non viene trovata, <code>SaveChanges</code> lancia <code>DbUpdateConcurrencyException</code> e il
 middleware la traduce in un <strong>409</strong> con l'invito a ricaricare.</p>
+<blockquote>
+<p><strong>Oggi copre solo metà del caso.</strong> Il token non arriva al client e non torna indietro con il
+comando: ogni richiesta rilegge la riga, con il token già aggiornato, e salva. Così il 409 arriva
+solo a due richieste che si sovrappongono nello stesso istante; i due operatori con la stessa
+schermata aperta dell'esempio si sovrascrivono ancora senza errore. Per coprirlo, il token deve
+stare nella risposta, nel form e nel comando, e il repository deve usarlo come valore originale:
+è una voce aperta del backlog del template. Nel template nessuna entità usa ancora <code>IVersioned</code>;
+in app-demo <code>Equipment</code> e <code>RentalContract</code> sì.</p>
+</blockquote>
 <p><strong>Perché un <code>Guid</code> e non <code>rowversion</code>.</strong> I token nativi esistono su entrambi i provider ma con tipi
 e semantiche diverse (<code>rowversion</code> su SQL Server, <code>xmin</code> su PostgreSQL): mapparli richiederebbe
 configurazione condizionale. Un <code>Guid</code> applicativo si comporta in modo identico sui due, al prezzo
@@ -414,7 +423,7 @@ per principio.</p>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 8.0.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

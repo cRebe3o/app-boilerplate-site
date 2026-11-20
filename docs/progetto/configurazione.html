@@ -269,13 +269,16 @@ provider attivo. Cambiare database è cambiare <code>Database:Provider</code>, n
 <td>Accende <code>/api/auth/windows-login</code>, che altrimenti risponde 404. È <code>true</code> in <code>appsettings.Development.json</code>; fuori da <code>Development</code> si imposta <code>Auth__Windows__Enabled=true</code>. Usa Negotiate, e su Windows funziona anche fuori dominio</td>
 </tr>
 <tr>
-<td><code>Auth:Strategy</code></td>
-<td>no</td>
-<td><strong>Solo documentazione</strong>: non è letta dal codice. La schermata la sceglie il frontend con <code>VITE_AUTH_STRATEGY</code></td>
+<td><code>Auth:Password:Enabled</code></td>
+<td>no (<code>true</code>)</td>
+<td>Login con username e password. Spento: <code>/api/auth/login</code> e i cambi password rispondono 404, gli utenti nascono senza password, il frontend toglie form, campo password e pulsanti di cambio; si entra con Microsoft o Windows. Con <code>access_mode</code> <code>private</code> è <code>false</code> in <code>appsettings.Production.json</code>: si riaccende con <code>Auth__Password__Enabled=true</code>. Vedi <a href="../autenticazione/autenticazione.html#come-si-passa-dall-una-all-altra">Autenticazione</a></td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>Quali metodi sono attivi lo dice <code>GET /api/auth/methods</code>, da cui il frontend li legge; la schermata
+fra quelli attivi la sceglie <code>VITE_AUTH_STRATEGY</code>. Fino alla 7.x <code>appsettings.local.json.example</code>
+aveva una chiave <code>Auth:Strategy</code> che il codice non leggeva: dalla 8.0.0 non c'è più.</p>
 <h3 id="seed"><code>Seed</code></h3>
 <p>Letti <strong>al primo avvio su un database vuoto</strong>, per creare gli utenti: se esiste già anche un solo
 ruolo il seed aggiunge soltanto i permessi nuovi del catalogo, e cambiare queste chiavi non ha
@@ -309,7 +312,7 @@ effetto. L'eccezione è <code>Development</code>: lì username e password dell'a
 <tr>
 <td><code>Seed:AdminPassword</code></td>
 <td>vuoto</td>
-<td>Password dell'admin. Vuota in <code>Development</code> = <code>Admin@1234</code>; vuota fuori da <code>Development</code> = ne viene generata una casuale, <strong>non stampata</strong>: in produzione di fatto va impostata</td>
+<td>Password dell'admin. Vuota in <code>Development</code> = <code>Admin@1234</code>; vuota fuori da <code>Development</code> = ne viene generata una casuale, <strong>non stampata</strong>: in produzione, con il login con password, di fatto va impostata. Con <code>Auth:Password:Enabled</code> spento non è letta: l'admin nasce senza password ed entra con Microsoft (<code>Seed:AdminUsername</code> è allora l'email aziendale) o con l'utente Windows, e il seed lo scrive nel log</td>
 </tr>
 <tr>
 <td><code>Seed:WindowsUsername</code></td>
@@ -321,16 +324,20 @@ effetto. L'eccezione è <code>Development</code>: lì username e password dell'a
 </div>
 <p>Il seed crea anche permessi, ruoli (<code>SuperAdmin</code>, <code>Admin</code>, <code>Viewer</code>, <code>Custom</code>) e gruppi
 (<code>Administrators</code>, <code>Viewers</code>): l'elenco è in <code>DataSeeder.cs</code>. I permessi di una feature nuova si
-aggiungono lì, ma su un database già avviato vanno creati dal pannello Permessi.</p>
-<p><code>Viewer</code> legge tutto ciò che legge <code>Admin</code>, e niente di più: i permessi riservati al SuperAdmin
-(<code>permissions.*</code> e, con i lavori programmati e Grafana, <code>jobs.dashboard</code> e <code>telemetry.dashboard</code>) restano solo suoi, perché nessuno
-può dare un permesso che non ha (vedi <a href="../autenticazione/autenticazione.html#chi-puo-dare-ruoli-e-permessi">Chi può dare ruoli e permessi</a>).
-Un ruolo di sistema non si modifica dalla UI, quindi a ogni avvio il seed toglie ai ruoli di
-sistema diversi da SuperAdmin quei permessi, se li trova, e lo scrive nel log (&quot;Seed: tolti ai
-ruoli di sistema…&quot;).</p>
+aggiungono lì: su un database già avviato il seed li crea all'avvio successivo, li dà solo al
+SuperAdmin e lo scrive nel log (&quot;Seed: aggiunti i permessi …&quot;).</p>
+<p><code>Viewer</code> legge tutto ciò che legge <code>Admin</code>, e niente di più. I permessi riservati al SuperAdmin
+(<code>permissions.*</code> e, con i lavori programmati e Grafana, <code>jobs.dashboard</code> e <code>telemetry.dashboard</code>)
+non vanno a <strong>nessun altro ruolo</strong>, nemmeno personalizzato: darli risponde 403
+<code>SuperAdminOnlyPermission</code>, e a ogni avvio il seed li toglie ai ruoli che li hanno e lo scrive nel
+log (&quot;Seed: tolti ai ruoli i permessi riservati al SuperAdmin&quot;). Vedi
+<a href="../autenticazione/autenticazione.html#chi-puo-dare-ruoli-e-permessi">Chi può dare ruoli e permessi</a>.</p>
+<p>Dei ruoli di sistema si cambiano i <strong>permessi</strong> dalla pagina Ruoli, non nome e descrizione; il
+SuperAdmin non si modifica. Su un database già avviato il seed dà i permessi nuovi del catalogo solo
+al SuperAdmin: ad Admin e Viewer si assegnano da lì.</p>
 <h4 id="credenziali-di-sviluppo-nel-login">Credenziali di sviluppo nel login</h4>
-<p>In <code>Development</code>, con il login username e password (<code>VITE_AUTH_STRATEGY=jwt</code>), la pagina di login
-mostra username e password dell'admin. Non sono scritte nel frontend: le chiede al backend,
+<p>In <code>Development</code>, con il login username e password (<code>VITE_AUTH_STRATEGY=jwt</code> e
+<code>Auth:Password:Enabled</code> acceso), la pagina di login mostra username e password dell'admin. Non sono scritte nel frontend: le chiede al backend,
 <code>GET /api/auth/dev-credentials</code>, che restituisce <code>Seed:AdminUsername</code> e <code>Seed:AdminPassword</code> (con i
 default della tabella sopra).</p>
 <p>L'endpoint risponde solo se l'ambiente è <code>Development</code> <strong>e</strong> la richiesta arriva da questo computer
@@ -690,7 +697,7 @@ prima della build.</li>
 
   <footer class="footer">
     <p>Documentazione del template <strong>app-boilerplate</strong>. Le pagine sono generate dai file Markdown in <code>docs/</code>: modificare il <code>.md</code>, non l’HTML.</p>
-    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 7.1.1.</p>
+    <p class="footer-version">Descrive il template <strong>app-boilerplate</strong> alla versione 8.0.0.</p>
   </footer>
 
   <script src="../assets/search-index.js"></script>

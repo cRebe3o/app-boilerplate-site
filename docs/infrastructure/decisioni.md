@@ -225,6 +225,14 @@ Con il token, EF include il valore corrente nella `WHERE` dell'`UPDATE`: se qual
 frattempo la riga non viene trovata, `SaveChanges` lancia `DbUpdateConcurrencyException` e il
 middleware la traduce in un **409** con l'invito a ricaricare.
 
+> **Oggi copre solo metà del caso.** Il token non arriva al client e non torna indietro con il
+> comando: ogni richiesta rilegge la riga, con il token già aggiornato, e salva. Così il 409 arriva
+> solo a due richieste che si sovrappongono nello stesso istante; i due operatori con la stessa
+> schermata aperta dell'esempio si sovrascrivono ancora senza errore. Per coprirlo, il token deve
+> stare nella risposta, nel form e nel comando, e il repository deve usarlo come valore originale:
+> è una voce aperta del backlog del template. Nel template nessuna entità usa ancora `IVersioned`;
+> in app-demo `Equipment` e `RentalContract` sì.
+
 **Perché un `Guid` e non `rowversion`.** I token nativi esistono su entrambi i provider ma con tipi
 e semantiche diverse (`rowversion` su SQL Server, `xmin` su PostgreSQL): mapparli richiederebbe
 configurazione condizionale. Un `Guid` applicativo si comporta in modo identico sui due, al prezzo
